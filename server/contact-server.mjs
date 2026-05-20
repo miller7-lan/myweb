@@ -12,11 +12,97 @@ const distDir = path.join(rootDir, 'dist');
 const app = express();
 const port = Number(process.env.PORT || 3001);
 const host = process.env.HOST || '127.0.0.1';
-const contactTo = process.env.CONTACT_TO || '1813395822@qq.com';
+const contactTo = process.env.CONTACT_TO;
 const smtpUser = process.env.SMTP_USER;
 const smtpPass = process.env.SMTP_PASS;
+const trustProxy = process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
+const contactRateLimit = Number(process.env.CONTACT_RATE_LIMIT || 5);
+const contactRateWindowMs = Number(process.env.CONTACT_RATE_WINDOW_MS || 10 * 60 * 1000);
+const publicOrigin = process.env.PUBLIC_ORIGIN;
+
+if (trustProxy) {
+  app.set('trust proxy', 1);
+}
+
+app.disable('x-powered-by');
+
+app.use((_, res, next) => {
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; '));
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  next();
+});
 
 app.use(express.json({ limit: '24kb' }));
+
+const contactAttempts = new Map();
+
+const clientKey = (req) => req.ip || req.socket.remoteAddress || 'unknown';
+
+const sameOrigin = (req) => {
+  const origin = req.get('origin');
+  if (!origin) return true;
+
+  if (publicOrigin) {
+    return origin === publicOrigin;
+  }
+
+  const forwardedProto = req.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  const proto = forwardedProto || req.protocol;
+  return origin === `${proto}://${req.get('host')}`;
+};
+
+const contactLimiter = (req, res, next) => {
+  const now = Date.now();
+  const key = clientKey(req);
+  const current = contactAttempts.get(key);
+
+  if (!current || current.resetAt <= now) {
+    contactAttempts.set(key, { count: 1, resetAt: now + contactRateWindowMs });
+    return next();
+  }
+
+  if (current.count >= contactRateLimit) {
+    const retryAfter = Math.ceil((current.resetAt - now) / 1000);
+    res.setHeader('Retry-After', String(retryAfter));
+    return res.status(429).json({ ok: false, message: '发送太频繁了，请稍后再试。' });
+  }
+
+  current.count += 1;
+  return next();
+};
+
+const requireSameOrigin = (req, res, next) => {
+  if (!sameOrigin(req)) {
+    return res.status(403).json({ ok: false, message: '请求来源无效。' });
+  }
+
+  return next();
+};
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of contactAttempts) {
+    if (value.resetAt <= now) {
+      contactAttempts.delete(key);
+    }
+  }
+}, contactRateWindowMs).unref();
 
 const cleanSingleLine = (value) => String(value || '').replace(/[\r\n]+/g, ' ').trim();
 const escapeHtml = (value) =>
@@ -55,11 +141,16 @@ const transporter = () => {
   });
 };
 
-app.post('/api/contact', async (req, res) => {
+app.post('/api/contact', requireSameOrigin, contactLimiter, async (req, res) => {
   const name = cleanSingleLine(req.body?.name);
   const email = cleanSingleLine(req.body?.email);
   const subject = cleanSingleLine(req.body?.subject);
   const message = String(req.body?.message || '').trim();
+  const website = cleanSingleLine(req.body?.website);
+
+  if (website) {
+    return res.status(400).json({ ok: false, message: '请求未通过校验。' });
+  }
 
   if (!name || !email || !subject || !message) {
     return res.status(400).json({ ok: false, message: '请完整填写姓名、邮箱、主题和消息。' });
@@ -77,6 +168,10 @@ app.post('/api/contact', async (req, res) => {
   const safeSubject = `Galaxy Portfolio 联系：${subject}`;
 
   try {
+    if (!contactTo) {
+      throw new Error('CONTACT_TO is not configured.');
+    }
+
     await transporter().sendMail({
       from: `"Galaxy Portfolio" <${smtpUser}>`,
       to: contactTo,

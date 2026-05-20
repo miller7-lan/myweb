@@ -7,6 +7,7 @@ type FormState = {
   email: string;
   subject: string;
   message: string;
+  website: string;
 };
 
 type SubmitStatus = 'idle' | 'sending' | 'success' | 'error';
@@ -16,6 +17,7 @@ const emptyForm: FormState = {
   email: '',
   subject: '',
   message: '',
+  website: '',
 };
 
 const openChannels = [
@@ -230,6 +232,16 @@ export const SignalContent: React.FC = () => {
                 className="bg-[#020204]/55 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[var(--theme-color)]/60 transition-colors"
               />
             </div>
+            <label className="sr-only" htmlFor="contact-website">Website</label>
+            <input
+              id="contact-website"
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={form.website}
+              onChange={(event) => updateField('website', event.target.value)}
+              className="pointer-events-none absolute left-[-9999px] h-px w-px opacity-0"
+            />
             <div className="flex flex-col gap-2">
               <label className="text-sm text-gray-400 tracking-wider" htmlFor="contact-message">消息</label>
               <textarea

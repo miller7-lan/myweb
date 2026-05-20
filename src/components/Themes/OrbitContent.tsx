@@ -17,10 +17,12 @@ type ReleaseItem = {
   primaryDownload?: {
     label: string;
     href: string;
+    sha256?: string;
   };
   links?: Array<{
     label: string;
     href: string;
+    sha256?: string;
   }>;
   specs?: Array<{
     label: string;
@@ -45,11 +47,12 @@ const releases: ReleaseItem[] = [
     primaryDownload: {
       label: '下载 macOS DMG (1.1 MB)',
       href: '/downloads/Dazzle-Secretary-macOS.dmg',
+      sha256: '7667fcba05da7593e7b60367aaa19563e7f717457dd750828cc7aba50c6cac67',
     },
     links: [
-      { label: 'Windows ZIP (124 MB)', href: '/downloads/DazzleSecretaryPro-Windows-解压即用.zip' },
-      { label: 'macOS ZIP (592 KB)', href: '/downloads/Dazzle-Secretary-macOS.zip' },
-      { label: 'Android APK (45 MB)', href: '/downloads/DazzleSecretary-Android-debug.apk.1.1' },
+      { label: 'Windows ZIP (124 MB)', href: '/downloads/DazzleSecretaryPro-Windows-解压即用.zip', sha256: '62189fe4c7dac77410006ba4c8da3fd1bcd12f1054e76b0f9886b58a5f25a32f' },
+      { label: 'macOS ZIP (592 KB)', href: '/downloads/Dazzle-Secretary-macOS.zip', sha256: '62510df371c725e57ad0c18183914bb2e9ddd8cd19a6fd8926afb365efda9542' },
+      { label: 'Android APK (45 MB)', href: '/downloads/DazzleSecretary-Android-debug.apk.1.1', sha256: '7e8edd3ede089f0710d6c7b37d368bf130e73c1e22fab4b2d8a2018ddc862320' },
     ],
     specs: [
       { label: '内存', value: '4 GB RAM', icon: Cpu },
@@ -72,9 +75,10 @@ const releases: ReleaseItem[] = [
     primaryDownload: {
       label: '下载 macOS DMG (14 MB)',
       href: '/downloads/内网穿透控制台-macOS.dmg',
+      sha256: '4d3a259749dfb1965363fcc311ae821d2b2766b38ef2cc10c7533dc901839184',
     },
     links: [
-      { label: 'macOS ZIP (13 MB)', href: '/downloads/内网穿透控制台-macOS.zip' },
+      { label: 'macOS ZIP (13 MB)', href: '/downloads/内网穿透控制台-macOS.zip', sha256: '497550b258034ede01606c13827b4d300b375101937085593ddb536c93387cfd' },
     ],
     scenes: [
       '快速演示：把本地 Web 服务临时公开给客户或团队。',
@@ -97,9 +101,10 @@ const releases: ReleaseItem[] = [
     primaryDownload: {
       label: '下载 macOS DMG (70 MB)',
       href: '/downloads/利润助手-macOS.dmg',
+      sha256: 'a5f38e7824293ff101218c6c788f91a0cf4dde534e3b2fd4526db79b36cac7e5',
     },
     links: [
-      { label: 'macOS ZIP (62 MB)', href: '/downloads/利润助手-macOS.zip' },
+      { label: 'macOS ZIP (62 MB)', href: '/downloads/利润助手-macOS.zip', sha256: '43fc9b5b785bf440b6f660adb3ed900e759d04fcd841de829afa52cb32cdca90' },
     ],
     specs: [
       { label: '数据存储', value: '本地 SQLite', icon: Database },
@@ -160,6 +165,10 @@ export const OrbitContent: React.FC = () => {
   const activeItem = filteredReleases.find((release) => release.key === storedActiveItem.key) ?? filteredReleases[0] ?? storedActiveItem;
   const ActiveIcon = activeItem.icon;
   const activeNodeIndex = Math.max(0, filteredReleases.findIndex((release) => release.key === activeItem.key));
+  const activeDownloads = [
+    activeItem.primaryDownload,
+    ...(activeItem.links ?? []),
+  ].filter((download): download is NonNullable<ReleaseItem['primaryDownload']> & { sha256: string } => Boolean(download?.sha256));
 
   return (
     <div className="w-full">
@@ -317,6 +326,25 @@ export const OrbitContent: React.FC = () => {
                   {link.label}
                 </a>
               ))}
+            </div>
+          )}
+
+          {activeDownloads.length > 0 && (
+            <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+              <div className="hud-kicker mb-3">
+                <span className="hud-dot" />
+                <span>SHA-256 校验</span>
+              </div>
+              <div className="space-y-3">
+                {activeDownloads.map((download) => (
+                  <div key={download.href} className="grid gap-1 text-xs text-gray-500 md:grid-cols-[12rem_1fr] md:items-start">
+                    <span className="text-gray-400">{download.label.replace(/^下载\s*/, '')}</span>
+                    <code className="break-all rounded-lg bg-black/25 px-2 py-1 font-mono text-[11px] leading-relaxed text-gray-300">
+                      {download.sha256}
+                    </code>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
