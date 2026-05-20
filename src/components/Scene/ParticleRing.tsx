@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { particleVertexShader, particleFragmentShader } from '../../shaders/particles';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 import { createSeededRandom } from '../../utils/random';
-import { MeteorImpact, type RingImpactEvent } from './MeteorImpact';
+import { MeteorImpact, type ManualMeteorEvent, type RingImpactEvent } from './MeteorImpact';
+import { RingShip, type RingImpactSlot } from './RingShip';
 
 interface ParticleRingProps {
   mousePosRef: React.RefObject<THREE.Vector3>;
@@ -17,8 +18,12 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
   const pointsRef = useRef<THREE.Points>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const impactQueueRef = useRef<RingImpactEvent[]>([]);
+  const manualMeteorQueueRef = useRef<ManualMeteorEvent[]>([]);
+  const manualMeteorId = useRef(0);
+  const nextManualMeteorAt = useRef(0);
+  const shipPositionRef = useRef(new THREE.Vector3(6.8, 0.12, 0));
   const impactSlotCursor = useRef(0);
-  const impactSlots = useRef(
+  const impactSlots = useRef<RingImpactSlot[]>(
     Array.from({ length: 4 }, () => ({
       point: new THREE.Vector3(),
       startTime: -999,
@@ -87,6 +92,23 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
   const { viewState, visualMode } = useGalaxyStore();
   const localTime = useRef(0);
 
+  const handleManualMeteor = (event: { point: THREE.Vector3; stopPropagation: () => void }) => {
+    if (!groupRef.current) return;
+    if (visualMode === 'silent') return;
+    if (viewState !== 'HOME' && viewState !== 'HOVER_PLANET') return;
+    if (localTime.current < nextManualMeteorAt.current) return;
+
+    event.stopPropagation();
+    const target = groupRef.current.worldToLocal(event.point.clone());
+    target.y = 0.02;
+    manualMeteorId.current += 1;
+    manualMeteorQueueRef.current.push({
+      id: manualMeteorId.current,
+      target,
+    });
+    nextManualMeteorAt.current = localTime.current + 2.9;
+  };
+
   useFrame((_, delta) => {
     const motionScale = visualMode === 'silent' ? 0.08 : visualMode === 'focus' ? 0.36 : 1;
 
@@ -147,7 +169,15 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
           blending={THREE.AdditiveBlending}
         />
       </points>
-      <MeteorImpact impactQueueRef={impactQueueRef} />
+      <RingShip impactsRef={impactSlots} ringTimeRef={localTime} shipPositionRef={shipPositionRef} />
+      <MeteorImpact impactQueueRef={impactQueueRef} manualMeteorQueueRef={manualMeteorQueueRef} protectedPositionRef={shipPositionRef} />
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        onPointerDown={handleManualMeteor}
+      >
+        <circleGeometry args={[13.2, 96]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
+      </mesh>
     </group>
   );
 };

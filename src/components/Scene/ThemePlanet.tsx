@@ -247,16 +247,16 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         x: highlighted ? 1.1 : 1,
         y: highlighted ? 1.1 : 1,
         z: highlighted ? 1.1 : 1,
-        duration: 0.55,
-        ease: 'power3.out'
+        duration: highlighted ? 0.42 : 1.25,
+        ease: highlighted ? 'power3.out' : 'power2.out'
       });
     }
     
     if (materialRef.current) {
       gsap.to(materialRef.current.uniforms.uHoverBrightness, {
         value: highlighted ? 0.44 : 0.0,
-        duration: 0.3,
-        ease: 'power2.out'
+        duration: highlighted ? 0.28 : 1.35,
+        ease: highlighted ? 'power2.out' : 'power2.inOut'
       });
       
       const targetColor = highlighted ? new THREE.Color(themeDef.color) : new THREE.Color('#a0a0ab');
@@ -264,14 +264,16 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         r: targetColor.r,
         g: targetColor.g,
         b: targetColor.b,
-        duration: 0.2
+        duration: highlighted ? 0.24 : 1.1,
+        ease: highlighted ? 'power2.out' : 'power2.inOut'
       });
 
       gsap.to(materialRef.current.uniforms.uGlowColor.value, {
         r: targetColor.r,
         g: targetColor.g,
         b: targetColor.b,
-        duration: 0.2
+        duration: highlighted ? 0.24 : 1.1,
+        ease: highlighted ? 'power2.out' : 'power2.inOut'
       });
     }
 
@@ -297,6 +299,8 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
   const localTime = useRef(0);
   const haloTime = useRef(0);
   const haloSpin = useRef(0);
+  const haloScaleRef = useRef(0.92);
+  const coreScaleRef = useRef(0.74);
 
   useFrame((_, delta) => {
     const shouldPauseOrbit = Boolean(hoveredPlanet) && viewState !== 'ENTERING_THEME' && viewState !== 'LEAVING_THEME';
@@ -348,7 +352,12 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
           : isVisited
             ? 0.97
             : 0.92;
-      haloRef.current.scale.setScalar(haloScale);
+      haloScaleRef.current = THREE.MathUtils.lerp(
+        haloScaleRef.current,
+        haloScale,
+        highlighted ? 0.12 : 0.024
+      );
+      haloRef.current.scale.setScalar(haloScaleRef.current);
     }
 
     if (coreGlowRef.current) {
@@ -359,7 +368,12 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
           : isVisited
             ? 0.8
             : 0.74;
-      coreGlowRef.current.scale.setScalar(coreScale);
+      coreScaleRef.current = THREE.MathUtils.lerp(
+        coreScaleRef.current,
+        coreScale,
+        highlighted ? 0.12 : 0.026
+      );
+      coreGlowRef.current.scale.setScalar(coreScaleRef.current);
     }
 
     if (materialRef.current) {
@@ -410,7 +424,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
 
   return (
     <group ref={groupRef}>
-      {/* Invisible larger sphere for easier raycasting hit area */}
+      {/* Invisible sphere for raycasting hit area. Keep it tight so focus feels intentional. */}
       <mesh 
         onPointerOver={(e) => {
           e.stopPropagation();
@@ -430,7 +444,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
           handleClick();
         }}
       >
-        <sphereGeometry args={[2.5, 16, 16]} />
+        <sphereGeometry args={[1.35, 16, 16]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
       

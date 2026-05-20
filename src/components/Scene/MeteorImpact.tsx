@@ -10,13 +10,21 @@ export type RingImpactEvent = {
   strength: number;
 };
 
+export type ManualMeteorEvent = {
+  id: number;
+  target: THREE.Vector3;
+};
+
 interface MeteorImpactProps {
   impactQueueRef: React.MutableRefObject<RingImpactEvent[]>;
+  manualMeteorQueueRef: React.MutableRefObject<ManualMeteorEvent[]>;
+  protectedPositionRef: React.MutableRefObject<THREE.Vector3>;
 }
 
 const easeOutCubic = (value: number) => 1 - Math.pow(1 - value, 3);
 const meteorParticleCount = 320;
 const maxMeteorSlots = 3;
+const shipSafeDistance = 1.55;
 
 const meteorVertexShader = `
 uniform vec3 uHead;
@@ -117,7 +125,7 @@ const createMeteorUniforms = () => ({
   uColor: { value: new THREE.Color('#dbe7ff') },
 });
 
-export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef }) => {
+export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manualMeteorQueueRef, protectedPositionRef }) => {
   const particlesRefs = useRef<Array<THREE.Object3D | null>>([]);
   const flashRefs = useRef<Array<THREE.Mesh | null>>([]);
   const { viewState, visualMode } = useGalaxyStore();
@@ -171,17 +179,54 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef }) =>
     [uniforms]
   );
 
-  const launchMeteor = (slot: MeteorSlot) => {
+  const chooseSafeTarget = () => {
     const random = randomRef.current;
-    const angle = random() * Math.PI * 2;
-    const radius = 5.6 + random() * 5.4;
+    const protectedPosition = protectedPositionRef.current;
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const angle = random() * Math.PI * 2;
+      const radius = 5.6 + random() * 5.4;
+      const target = new THREE.Vector3(Math.cos(angle) * radius, 0.02, Math.sin(angle) * radius);
+      if (target.distanceTo(protectedPosition) >= shipSafeDistance) {
+        return target;
+      }
+    }
+
+    const fallbackAngle = Math.atan2(protectedPosition.z, protectedPosition.x) + Math.PI * (0.42 + random() * 0.28);
+    const fallbackRadius = THREE.MathUtils.clamp(protectedPosition.length() + 1.2 + random() * 1.8, 5.6, 10.6);
+    return new THREE.Vector3(Math.cos(fallbackAngle) * fallbackRadius, 0.02, Math.sin(fallbackAngle) * fallbackRadius);
+  };
+
+  const nudgeTargetAwayFromShip = (slot: MeteorSlot) => {
+    const protectedPosition = protectedPositionRef.current;
+    if (slot.target.distanceTo(protectedPosition) >= shipSafeDistance) return;
+
+    const safeDirection = slot.target.clone().sub(protectedPosition);
+    if (safeDirection.lengthSq() < 0.001) {
+      safeDirection.set(-protectedPosition.z, 0, protectedPosition.x);
+    }
+    safeDirection.normalize();
+    slot.target.copy(protectedPosition).add(safeDirection.multiplyScalar(shipSafeDistance + 0.45));
+    slot.target.y = 0.02;
+    slot.direction.copy(slot.target).sub(slot.start).normalize();
+    slot.sideA.crossVectors(slot.direction, new THREE.Vector3(0, 1, 0));
+    if (slot.sideA.lengthSq() < 0.001) {
+      slot.sideA.crossVectors(slot.direction, new THREE.Vector3(1, 0, 0));
+    }
+    slot.sideA.normalize();
+    slot.sideB.crossVectors(slot.direction, slot.sideA).normalize();
+  };
+
+  const launchMeteor = (slot: MeteorSlot, manualTarget?: THREE.Vector3) => {
+    const random = randomRef.current;
+    const target = manualTarget?.clone() ?? chooseSafeTarget();
     const travel = new THREE.Vector3(
       -5.4 - random() * 2.2,
       2.3 + random() * 1.2,
       -2.2 + random() * 4.4
     ).normalize();
 
-    slot.target.set(Math.cos(angle) * radius, 0.02, Math.sin(angle) * radius);
+    slot.target.copy(target);
     slot.start.copy(slot.target).add(travel.multiplyScalar(9.0 + random() * 2.2));
     slot.direction.copy(slot.target).sub(slot.start).normalize();
     slot.sideA.crossVectors(slot.direction, new THREE.Vector3(0, 1, 0));
@@ -190,7 +235,7 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef }) =>
     }
     slot.sideA.normalize();
     slot.sideB.crossVectors(slot.direction, slot.sideA).normalize();
-    slot.flightDuration = 0.82 + random() * 0.28;
+    slot.flightDuration = manualTarget ? 0.78 : 0.82 + random() * 0.28;
     slot.phase = 'flying';
     slot.phaseTime = 0;
   };
@@ -230,6 +275,7 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef }) =>
     clock.current += delta;
 
     if (!canRun) {
+      manualMeteorQueueRef.current = [];
       queuedLaunches.current = [];
       nextLaunchAt.current = clock.current + 1.8;
       slots.current.forEach((slot, index) => {
@@ -240,6 +286,14 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef }) =>
         if (flash) flash.visible = false;
       });
       return;
+    }
+
+    while (manualMeteorQueueRef.current.length > 0) {
+      const slot = slots.current.find((candidate) => candidate.phase === 'idle');
+      if (!slot) break;
+      const manualMeteor = manualMeteorQueueRef.current.shift();
+      if (!manualMeteor) break;
+      launchMeteor(slot, manualMeteor.target);
     }
 
     if (clock.current >= nextLaunchAt.current) {
@@ -263,6 +317,7 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef }) =>
         updateMeteorUniforms(slot, index, meteorOpacity, progress);
 
         if (progress >= 1) {
+          nudgeTargetAwayFromShip(slot);
           impactId.current += 1;
           impactQueueRef.current.push({
             id: impactId.current,
