@@ -28,9 +28,10 @@ export const LockBeam: React.FC = () => {
     const theme = state.hoveredPlanet ? themes[state.hoveredPlanet] : null;
     const planetPosition = state.hoveredPlanet ? state.planetPositions[state.hoveredPlanet] : null;
     const isVisible = Boolean(theme && planetPosition) && (state.viewState === 'HOME' || state.viewState === 'HOVER_PLANET');
+    const modeOpacity = state.visualMode === 'silent' ? 0.42 : state.visualMode === 'focus' ? 0.68 : 1;
 
     pulseRef.current += delta;
-    const targetOpacity = isVisible ? 0.28 + Math.sin(pulseRef.current * 3.2) * 0.08 : 0;
+    const targetOpacity = isVisible ? (0.28 + Math.sin(pulseRef.current * 3.2) * 0.08) * modeOpacity : 0;
     material.opacity = THREE.MathUtils.lerp(material.opacity, targetOpacity, 0.12);
 
     if (!theme || !planetPosition) return;

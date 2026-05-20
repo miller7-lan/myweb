@@ -17,7 +17,7 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
   const groupRef = useRef<THREE.Group>(null);
   const pointsRef = useRef<THREE.Points>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
-  const { viewState, hoveredPlanet, visitedThemes, completionPulseId } = useGalaxyStore();
+  const { viewState, hoveredPlanet, visitedThemes, completionPulseId, visualMode } = useGalaxyStore();
   const [completionGlow, setCompletionGlow] = useState(false);
   const isVisible = viewState === 'HOME' || viewState === 'HOVER_PLANET';
   const isComplete = Object.values(visitedThemes).filter(Boolean).length === 5;
@@ -96,11 +96,13 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
 
   useFrame((_, delta) => {
     const isLockingPlanet = Boolean(hoveredPlanet) && (viewState === 'HOME' || viewState === 'HOVER_PLANET');
+    const motionScale = visualMode === 'silent' ? 0.12 : visualMode === 'focus' ? 0.42 : 1;
+    const opacityBase = visualMode === 'silent' ? 0.46 : visualMode === 'focus' ? 0.72 : 1;
 
     if (viewState !== 'THEME') {
-      localTime.current += delta;
+      localTime.current += delta * motionScale;
       if (pointsRef.current) {
-        pointsRef.current.rotation.y -= delta * (isLockingPlanet ? 0.09 : 0.18); // Counter-clockwise rotation
+        pointsRef.current.rotation.y -= delta * motionScale * (isLockingPlanet ? 0.09 : 0.18); // Counter-clockwise rotation
       }
     }
     
@@ -113,9 +115,10 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
       materialRef.current.uniforms.uMousePos.value.copy(mousePosRef.current);
       materialRef.current.uniforms.uMouseScreenPos.value.copy(mouseScreenPosRef.current);
       materialRef.current.uniforms.uAspect.value = screenAspect;
+      materialRef.current.uniforms.uParticleSize.value = visualMode === 'silent' ? 3.2 : visualMode === 'focus' ? 3.8 : 4.5;
       materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.lerp(
         materialRef.current.uniforms.uOpacity.value,
-        isLockingPlanet ? 0.58 : 1.0,
+        (isLockingPlanet ? 0.58 : 1.0) * opacityBase,
         0.08
       );
       // Removed opacity overwrite here because we use AdditiveBlending and don't natively support opacity on ShaderMaterial this way without another uniform, but keeping structure valid

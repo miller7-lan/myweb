@@ -3,6 +3,7 @@ import { create } from 'zustand';
 export type ViewState = 'HOME' | 'HOVER_PLANET' | 'ENTERING_THEME' | 'THEME' | 'LEAVING_THEME';
 export type ThemeKey = 'identity' | 'creations' | 'stack' | 'orbit' | 'signal' | null;
 export type NonNullThemeKey = Exclude<ThemeKey, null>;
+export type VisualMode = 'cinematic' | 'focus' | 'silent';
 
 interface GalaxyState {
   viewState: ViewState;
@@ -12,13 +13,23 @@ interface GalaxyState {
   visitSequence: NonNullThemeKey[];
   lastVisitedTheme: ThemeKey;
   completionPulseId: number;
+  visualMode: VisualMode;
   planetPositions: Partial<Record<NonNullThemeKey, [number, number, number]>>;
   setViewState: (state: ViewState) => void;
   setHoveredPlanet: (theme: ThemeKey) => void;
   setActiveTheme: (theme: ThemeKey) => void;
   visitTheme: (theme: NonNullThemeKey) => void;
+  setVisualMode: (mode: VisualMode) => void;
   setPlanetPosition: (theme: NonNullThemeKey, position: [number, number, number]) => void;
 }
+
+const readInitialVisualMode = (): VisualMode => {
+  if (typeof window === 'undefined') return 'cinematic';
+  const storedMode = window.localStorage.getItem('galaxy-visual-mode');
+  return storedMode === 'focus' || storedMode === 'silent' || storedMode === 'cinematic'
+    ? storedMode
+    : 'cinematic';
+};
 
 export const useGalaxyStore = create<GalaxyState>((set) => ({
   viewState: 'HOME',
@@ -28,6 +39,7 @@ export const useGalaxyStore = create<GalaxyState>((set) => ({
   visitSequence: [],
   lastVisitedTheme: null,
   completionPulseId: 0,
+  visualMode: readInitialVisualMode(),
   planetPositions: {},
   setViewState: (state) => set({ viewState: state }),
   setHoveredPlanet: (theme) => set({ hoveredPlanet: theme }),
@@ -68,6 +80,13 @@ export const useGalaxyStore = create<GalaxyState>((set) => ({
       lastVisitedTheme: theme,
       completionPulseId: !wasComplete && isComplete ? state.completionPulseId + 1 : state.completionPulseId,
     };
+  }),
+  setVisualMode: (mode) => set(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('galaxy-visual-mode', mode);
+    }
+
+    return { visualMode: mode };
   }),
   setPlanetPosition: (theme, position) => set((state) => ({
     planetPositions: {

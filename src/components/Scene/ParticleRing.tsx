@@ -84,14 +84,16 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
     uImpactRadius: { value: 6.8 }
   }), []);
 
-  const { viewState } = useGalaxyStore();
+  const { viewState, visualMode } = useGalaxyStore();
   const localTime = useRef(0);
 
   useFrame((_, delta) => {
+    const motionScale = visualMode === 'silent' ? 0.08 : visualMode === 'focus' ? 0.36 : 1;
+
     if (viewState !== 'THEME') {
-      localTime.current += delta;
+      localTime.current += delta * motionScale;
       if (groupRef.current) {
-        groupRef.current.rotation.y -= delta * 0.09; // Counter-clockwise ring rotation
+        groupRef.current.rotation.y -= delta * motionScale * 0.09; // Counter-clockwise ring rotation
       }
     }
     
@@ -122,6 +124,8 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
       materialRef.current.uniforms.uMousePos.value.copy(mousePosRef.current);
       materialRef.current.uniforms.uMouseScreenPos.value.copy(mouseScreenPosRef.current);
       materialRef.current.uniforms.uAspect.value = screenAspect;
+      materialRef.current.uniforms.uParticleSize.value = visualMode === 'silent' ? 2.25 : visualMode === 'focus' ? 2.85 : 3.5;
+      materialRef.current.uniforms.uOpacity.value = visualMode === 'silent' ? 0.34 : visualMode === 'focus' ? 0.62 : 1;
     }
   });
 

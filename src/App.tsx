@@ -4,10 +4,13 @@ import { GalaxyScene } from './components/Scene/GalaxyScene';
 import { UIOverlay } from './components/UI/UIOverlay';
 import { ThemeOverlay } from './components/UI/ThemeOverlay';
 import { OrientationOverlay } from './components/UI/OrientationOverlay';
+import { useGalaxyStore } from './store/useGalaxyStore';
 
 function App() {
+  const visualMode = useGalaxyStore((state) => state.visualMode);
+
   return (
-    <div className="w-full h-full relative overflow-hidden bg-galaxy-bg text-gray-200">
+    <div className="w-full h-full relative overflow-hidden bg-galaxy-bg text-gray-200" data-visual-mode={visualMode}>
       <Canvas
         camera={{ position: [0, 5, 20], fov: 45 }}
         gl={{ antialias: true, alpha: false }}

@@ -22,7 +22,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
   const coreGlowRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   
-  const { viewState, hoveredPlanet, visitedThemes, lastVisitedTheme, setHoveredPlanet, activeTheme, setViewState, setActiveTheme, setPlanetPosition } = useGalaxyStore();
+  const { viewState, hoveredPlanet, visitedThemes, lastVisitedTheme, visualMode, setHoveredPlanet, activeTheme, setViewState, setActiveTheme, setPlanetPosition } = useGalaxyStore();
   
   const isHovered = hoveredPlanet === themeDef.key;
   const isActive = activeTheme === themeDef.key;
@@ -301,22 +301,24 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
   useFrame((_, delta) => {
     const shouldPauseOrbit = Boolean(hoveredPlanet) && viewState !== 'ENTERING_THEME' && viewState !== 'LEAVING_THEME';
     const highlighted = isHovered || isFocused;
+    const motionScale = visualMode === 'silent' ? 0.16 : visualMode === 'focus' ? 0.48 : 1;
+    const haloMotionScale = visualMode === 'silent' ? 0.2 : visualMode === 'focus' ? 0.55 : 1;
 
     if (viewState !== 'THEME' && !shouldPauseOrbit) {
-      localTime.current += delta;
+      localTime.current += delta * motionScale;
       
       if (pointsRef.current) {
-        pointsRef.current.rotation.y -= delta * 0.9; // Planet own rotation
+        pointsRef.current.rotation.y -= delta * motionScale * 0.9; // Planet own rotation
       }
     }
 
     if (haloRef.current) {
-      haloTime.current += delta;
+      haloTime.current += delta * haloMotionScale;
       const wobble = highlighted && viewState !== 'THEME' ? 1 : 0;
       const nonlinearSpeed = highlighted
         ? 1.25 + (Math.sin(haloTime.current * 1.7 + themeDef.orbitOffset) + 1) * 0.55
         : 0.55;
-      haloSpin.current += delta * nonlinearSpeed;
+      haloSpin.current += delta * haloMotionScale * nonlinearSpeed;
 
       if (highlighted) {
         const roll = haloSpin.current + themeDef.orbitOffset;
@@ -365,6 +367,14 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       materialRef.current.uniforms.uMousePos.value.copy(mousePosRef.current);
       materialRef.current.uniforms.uMouseScreenPos.value.copy(mouseScreenPosRef.current);
       materialRef.current.uniforms.uAspect.value = screenAspect;
+      if (viewState === 'HOME' || viewState === 'HOVER_PLANET') {
+        materialRef.current.uniforms.uParticleSize.value = visualMode === 'silent' ? 3.0 : visualMode === 'focus' ? 3.45 : 4.0;
+        materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.lerp(
+          materialRef.current.uniforms.uOpacity.value,
+          visualMode === 'silent' ? 0.56 : visualMode === 'focus' ? 0.74 : 1,
+          0.08
+        );
+      }
     }
 
     // Calculate dynamic orbit position based on local time
@@ -446,7 +456,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         <meshBasicMaterial
           color={themeDef.color}
           transparent
-          opacity={isHovered || isFocused ? shapeProfile.glowHover : isLastVisited ? shapeProfile.glowHover * 0.72 : isVisited ? shapeProfile.glowIdle * 1.35 : shapeProfile.glowIdle}
+          opacity={(isHovered || isFocused ? shapeProfile.glowHover : isLastVisited ? shapeProfile.glowHover * 0.72 : isVisited ? shapeProfile.glowIdle * 1.35 : shapeProfile.glowIdle) * (visualMode === 'silent' ? 0.36 : visualMode === 'focus' ? 0.64 : 1)}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
@@ -457,7 +467,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         <meshBasicMaterial
           color={themeDef.color}
           transparent
-          opacity={isHovered || isFocused ? 0.46 : isLastVisited ? 0.34 : isVisited ? 0.2 : 0.12}
+          opacity={(isHovered || isFocused ? 0.46 : isLastVisited ? 0.34 : isVisited ? 0.2 : 0.12) * (visualMode === 'silent' ? 0.35 : visualMode === 'focus' ? 0.62 : 1)}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />

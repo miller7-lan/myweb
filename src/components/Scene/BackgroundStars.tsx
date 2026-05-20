@@ -24,12 +24,12 @@ export const BackgroundStars: React.FC = () => {
     return [pos, op];
   }, []);
 
-  const { viewState } = useGalaxyStore();
+  const { viewState, visualMode } = useGalaxyStore();
 
   useFrame(() => {
-    if (viewState === 'THEME') return;
+    if (viewState === 'THEME' || visualMode === 'silent') return;
     if (pointsRef.current) {
-      pointsRef.current.rotation.y += 0.0003; // Extremely slow drift
+      pointsRef.current.rotation.y += visualMode === 'focus' ? 0.00012 : 0.0003; // Extremely slow drift
     }
   });
 
@@ -43,7 +43,7 @@ export const BackgroundStars: React.FC = () => {
         size={0.8} 
         color="#1a1a20" 
         transparent 
-        opacity={0.3}
+        opacity={visualMode === 'silent' ? 0.12 : visualMode === 'focus' ? 0.2 : 0.3}
         sizeAttenuation 
         depthWrite={false}
       />

@@ -120,7 +120,7 @@ const createMeteorUniforms = () => ({
 export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef }) => {
   const particlesRefs = useRef<Array<THREE.Object3D | null>>([]);
   const flashRefs = useRef<Array<THREE.Mesh | null>>([]);
-  const viewState = useGalaxyStore((state) => state.viewState);
+  const { viewState, visualMode } = useGalaxyStore();
   const randomRef = useRef(createSeededRandom(20260520));
   const impactId = useRef(0);
   const nextLaunchAt = useRef(2.2);
@@ -224,7 +224,9 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef }) =>
   };
 
   useFrame((_, delta) => {
-    const canRun = viewState === 'HOME' || viewState === 'HOVER_PLANET';
+    const canRun = visualMode !== 'silent' && (viewState === 'HOME' || viewState === 'HOVER_PLANET');
+    const meteorOpacity = visualMode === 'focus' ? 0.48 : 0.95;
+    const impactStrength = visualMode === 'focus' ? 0.48 : 1.15;
     clock.current += delta;
 
     if (!canRun) {
@@ -242,7 +244,7 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef }) =>
 
     if (clock.current >= nextLaunchAt.current) {
       scheduleMeteorWave();
-      nextLaunchAt.current = clock.current + 4 + randomRef.current() * 2;
+      nextLaunchAt.current = clock.current + (visualMode === 'focus' ? 8 : 4) + randomRef.current() * (visualMode === 'focus' ? 4 : 2);
     }
 
     while (queuedLaunches.current.length > 0 && queuedLaunches.current[0] <= clock.current) {
@@ -258,14 +260,14 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef }) =>
         const progress = Math.min(slot.phaseTime / slot.flightDuration, 1);
         const eased = easeOutCubic(progress);
         slot.head.lerpVectors(slot.start, slot.target, eased);
-        updateMeteorUniforms(slot, index, 0.95, progress);
+        updateMeteorUniforms(slot, index, meteorOpacity, progress);
 
         if (progress >= 1) {
           impactId.current += 1;
           impactQueueRef.current.push({
             id: impactId.current,
             point: slot.target.clone(),
-            strength: 1.15,
+            strength: impactStrength,
           });
           slot.phase = 'flash';
           slot.phaseTime = 0;
