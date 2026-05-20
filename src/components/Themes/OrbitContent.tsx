@@ -95,9 +95,12 @@ const releases: ReleaseItem[] = [
     status: 'Stable',
     platform: 'macOS App Bundle',
     primaryDownload: {
-      label: '下载 macOS ZIP (61 MB)',
-      href: '/downloads/利润助手-macOS.zip',
+      label: '下载 macOS DMG (70 MB)',
+      href: '/downloads/利润助手-macOS.dmg',
     },
+    links: [
+      { label: 'macOS ZIP (62 MB)', href: '/downloads/利润助手-macOS.zip' },
+    ],
     specs: [
       { label: '数据存储', value: '本地 SQLite', icon: Database },
       { label: '磁盘空间', value: '约 200 MB 可用', icon: HardDrive },
