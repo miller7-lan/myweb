@@ -1,73 +1,78 @@
-# React + TypeScript + Vite
+# Dazzle Galaxy Portfolio
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一个以银河、星球和 HUD 控制台为视觉语言的个人作品集网页。页面用 3D 星环作为主导航，把个人介绍、作品档案、技术栈、软件发行和联系入口组织成五个可探索模块。
 
-Currently, two official plugins are available:
+## 网页定位
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+这个网页不是传统的滚动式简历，而是一个可交互的个人宇宙：
 
-## React Compiler
+- 用星球代表不同信息模块，让访问者通过点击、悬停和键盘导航进入内容。
+- 用半透明 HUD、扫描线、粒子环和主题色反馈强化“控制台”体验。
+- 用项目黑盒、技能星图、发行轨道和联系信号等概念，把作品展示做成一套统一的叙事系统。
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 核心模块
 
-## Expanding the ESLint configuration
+- **Identity 身份**：展示个人定位、当前关注方向、工作原则和工程画像。
+- **Creations 作品**：用项目黑盒形式展示项目背景、需求、设计、技术栈和亮点。
+- **Stack 技术栈**：用技能星图呈现已掌握、学习中和计划学习的工具与系统。
+- **Orbit 轨道**：展示可下载的软件发行包、平台信息、版本说明和校验信息。
+- **Signal 信号**：提供联系表单、开放交流方向和沟通边界。
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 交互特色
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **星球聚焦**：鼠标靠近星球时触发锁定光束、主题色高亮和信息浮层。
+- **视觉模式**：支持 Cinematic、Focus、Silent 三档视觉强度，适配沉浸浏览和低功耗浏览。
+- **访问进度**：记录访问过的模块，并在全部模块完成后触发银河地图完成状态。
+- **流星与涟漪**：星环上会出现流星冲击，点击星环也能手动触发流星坠落。
+- **纸船漂流**：星环上有一艘简笔画纸船，会沿环形水流漂动，并受到流星涟漪影响。
+- **公告舱**：首页提供最近更新公告入口，用于展示版本、安全和体验改动。
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 技术栈
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- React 19
+- TypeScript
+- Vite
+- Three.js
+- @react-three/fiber
+- @react-three/drei
+- GSAP
+- Zustand
+- Tailwind CSS
+- Lucide React
+
+## 本地运行
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+构建生产版本：
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
 ```
+
+预览生产构建：
+
+```bash
+npm run preview
+```
+
+## 项目结构
+
+```text
+src/
+  components/
+    Scene/      # 3D 银河、星球、星环、流星、纸船等场景组件
+    Themes/     # 五个主题模块的内容组件
+    UI/         # 首页 HUD、主题覆盖层、方向提示等界面组件
+  data/         # 主题与技能数据
+  shaders/      # 粒子着色器
+  store/        # 全局交互状态
+  styles/       # 全局样式与 HUD 组件样式
+```
+
+## 设计关键词
+
+银河导航、粒子星环、低亮度 HUD、扫描反馈、主题色锁定、软件发行轨道、技能星图、项目黑盒、纸船漂流。
