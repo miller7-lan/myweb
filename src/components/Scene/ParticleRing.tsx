@@ -81,16 +81,20 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
     uColor: { value: new THREE.Color('#8a8a98') }, // Faint glow between background and planets
     uGlowColor: { value: new THREE.Color('#aeb7c8') },
     uHoverBrightness: { value: 0.0 },
+    uIsHovered: { value: 0.0 },
     uOpacity: { value: 1.0 },
     uIntroProgress: { value: 0.0 },
     uImpactPoints: { value: Array.from({ length: 4 }, () => new THREE.Vector3()) },
     uImpactStartTimes: { value: Array.from({ length: 4 }, () => -999) },
     uImpactStrengths: { value: Array.from({ length: 4 }, () => 0.0) },
-    uImpactRadius: { value: 6.8 }
+    uImpactRadius: { value: 6.8 },
+    uShipPos: { value: new THREE.Vector3() },
+    uShipLightStrength: { value: 0.0 }
   }), []);
 
   const { viewState, visualMode } = useGalaxyStore();
   const localTime = useRef(0);
+  const tempMastPos = useMemo(() => new THREE.Vector3(), []);
 
   const handleManualMeteor = (event: { point: THREE.Vector3; stopPropagation: () => void }) => {
     if (!groupRef.current) return;
@@ -148,6 +152,16 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
       materialRef.current.uniforms.uAspect.value = screenAspect;
       materialRef.current.uniforms.uParticleSize.value = visualMode === 'silent' ? 2.25 : visualMode === 'focus' ? 2.85 : 3.5;
       materialRef.current.uniforms.uOpacity.value = visualMode === 'silent' ? 0.34 : visualMode === 'focus' ? 0.62 : 1;
+
+      // Update starlight world position and twinkling light strength inside the shader
+      if (groupRef.current) {
+        // Reconstruct mast-top Morning Star position in local coordinates, then convert to world coordinates
+        tempMastPos.copy(shipPositionRef.current).add(new THREE.Vector3(0, 0.39, 0));
+        groupRef.current.localToWorld(tempMastPos);
+        materialRef.current.uniforms.uShipPos.value.copy(tempMastPos);
+      }
+      const pulse = 0.72 + Math.sin(localTime.current * 6.5) * 0.28;
+      materialRef.current.uniforms.uShipLightStrength.value = pulse;
     }
   });
 

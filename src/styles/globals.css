@@ -22,15 +22,54 @@ canvas {
   .hud-panel {
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(226, 232, 240, 0.1);
-    background:
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background-image:
+      /* Corner brackets (top-left, top-right, bottom-left, bottom-right) */
+      linear-gradient(to right, var(--theme-color, #e2e8f0) 10px, transparent 10px),
+      linear-gradient(to bottom, var(--theme-color, #e2e8f0) 10px, transparent 10px),
+      linear-gradient(to left, var(--theme-color, #e2e8f0) 10px, transparent 10px),
+      linear-gradient(to bottom, var(--theme-color, #e2e8f0) 10px, transparent 10px),
+      linear-gradient(to right, var(--theme-color, #e2e8f0) 10px, transparent 10px),
+      linear-gradient(to top, var(--theme-color, #e2e8f0) 10px, transparent 10px),
+      linear-gradient(to left, var(--theme-color, #e2e8f0) 10px, transparent 10px),
+      linear-gradient(to top, var(--theme-color, #e2e8f0) 10px, transparent 10px),
+      /* Standard fills & radial glows */
       linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
-      radial-gradient(circle at var(--hud-x, 88%) var(--hud-y, 12%), color-mix(in srgb, var(--theme-color, #e2e8f0) 20%, transparent), transparent 34%),
-      rgba(2, 2, 4, 0.54);
+      radial-gradient(circle at var(--hud-x, 88%) var(--hud-y, 12%), color-mix(in srgb, var(--theme-color, #e2e8f0) 20%, transparent), transparent 34%);
+    background-color: rgba(2, 2, 4, 0.54);
+    background-position:
+      top left, top left,
+      top right, top right,
+      bottom left, bottom left,
+      bottom right, bottom right,
+      0 0, 0 0;
+    background-size:
+      10px 1.5px, 1.5px 10px,
+      10px 1.5px, 1.5px 10px,
+      10px 1.5px, 1.5px 10px,
+      10px 1.5px, 1.5px 10px,
+      100% 100%, 100% 100%;
+    background-repeat: no-repeat;
     box-shadow:
       0 24px 90px rgba(0, 0, 0, 0.38),
       inset 0 0 36px rgba(255, 255, 255, 0.025);
     backdrop-filter: blur(22px);
+    transition: background-size 320ms cubic-bezier(0.25, 1, 0.5, 1), border-color 320ms ease, box-shadow 320ms ease;
+  }
+
+  .hud-panel:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    /* Expand corner brackets on hover! */
+    background-size:
+      15px 1.8px, 1.8px 15px,
+      15px 1.8px, 1.8px 15px,
+      15px 1.8px, 1.8px 15px,
+      15px 1.8px, 1.8px 15px,
+      100% 100%, 100% 100%;
+    box-shadow:
+      0 28px 100px rgba(0, 0, 0, 0.44),
+      0 0 16px color-mix(in srgb, var(--theme-color, #e2e8f0) 8%, transparent),
+      inset 0 0 36px rgba(255, 255, 255, 0.035);
   }
 
   .hud-panel::before {
@@ -38,7 +77,7 @@ canvas {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    opacity: 0.52;
+    opacity: 0.42;
     background:
       linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
       linear-gradient(0deg, rgba(255,255,255,0.025) 1px, transparent 1px);
@@ -97,6 +136,13 @@ canvas {
     font-size: 0.72rem;
     line-height: 1;
     letter-spacing: 0.08em;
+    transition: border-color 220ms ease, background 220ms ease, color 220ms ease;
+  }
+
+  .hud-chip:hover {
+    border-color: color-mix(in srgb, var(--theme-color, #e2e8f0) 42%, rgba(255,255,255,0.12));
+    background: color-mix(in srgb, var(--theme-color, #e2e8f0) 10%, rgba(255,255,255,0.06));
+    color: #ffffff;
   }
 
   .hud-search {
@@ -124,6 +170,30 @@ canvas {
       0 0 28px color-mix(in srgb, var(--theme-color, #e2e8f0) 12%, transparent);
   }
 
+  .hud-input {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(2, 2, 4, 0.45);
+    padding: 0.75rem 1rem;
+    color: #ffffff;
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 220ms ease, box-shadow 220ms ease, background 220ms ease;
+  }
+
+  .hud-input::placeholder {
+    color: rgb(75 85 99);
+  }
+
+  .hud-input:focus {
+    border-color: color-mix(in srgb, var(--theme-color, #e2e8f0) 62%, rgba(255,255,255,0.12));
+    background: rgba(2, 2, 4, 0.65);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--theme-color, #e2e8f0) 18%, transparent),
+      0 0 24px color-mix(in srgb, var(--theme-color, #e2e8f0) 10%, transparent);
+  }
+
   .release-orbit-line {
     position: absolute;
     left: 1.5rem;
@@ -146,26 +216,59 @@ canvas {
     background: linear-gradient(180deg, color-mix(in srgb, var(--theme-color, #e2e8f0) 68%, transparent), transparent);
     box-shadow: 0 0 18px color-mix(in srgb, var(--theme-color, #e2e8f0) 36%, transparent);
     pointer-events: none;
+    transition: left 450ms cubic-bezier(0.25, 1, 0.5, 1);
   }
 
   .scan-card {
     position: relative;
     overflow: hidden;
     border-radius: 1.25rem;
-    border: 1px solid rgba(255, 255, 255, 0.075);
-    background:
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background-image:
+      /* Corner brackets (top-left, top-right, bottom-left, bottom-right) */
+      linear-gradient(to right, var(--theme-color, #e2e8f0) 8px, transparent 8px),
+      linear-gradient(to bottom, var(--theme-color, #e2e8f0) 8px, transparent 8px),
+      linear-gradient(to left, var(--theme-color, #e2e8f0) 8px, transparent 8px),
+      linear-gradient(to bottom, var(--theme-color, #e2e8f0) 8px, transparent 8px),
+      linear-gradient(to right, var(--theme-color, #e2e8f0) 8px, transparent 8px),
+      linear-gradient(to top, var(--theme-color, #e2e8f0) 8px, transparent 8px),
+      linear-gradient(to left, var(--theme-color, #e2e8f0) 8px, transparent 8px),
+      linear-gradient(to top, var(--theme-color, #e2e8f0) 8px, transparent 8px),
+      /* Fills & gradients */
       radial-gradient(circle at 80% 14%, color-mix(in srgb, var(--theme-color, #e2e8f0) 17%, transparent), transparent 30%),
       linear-gradient(145deg, rgba(255,255,255,0.052), rgba(255,255,255,0.012));
+    background-color: rgba(2, 2, 4, 0.38);
+    background-position:
+      top left, top left,
+      top right, top right,
+      bottom left, bottom left,
+      bottom right, bottom right,
+      0 0, 0 0;
+    background-size:
+      8px 1.2px, 1.2px 8px,
+      8px 1.2px, 1.2px 8px,
+      8px 1.2px, 1.2px 8px,
+      8px 1.2px, 1.2px 8px,
+      100% 100%, 100% 100%;
+    background-repeat: no-repeat;
     box-shadow: inset 0 0 40px rgba(255,255,255,0.018);
-    transition: border-color 300ms ease, background 300ms ease, transform 300ms ease, box-shadow 300ms ease;
+    transition: border-color 300ms ease, background-size 300ms cubic-bezier(0.25, 1, 0.5, 1), transform 300ms ease, box-shadow 300ms ease;
   }
 
   .scan-card:hover,
   .scan-card:focus-visible {
     border-color: color-mix(in srgb, var(--theme-color, #e2e8f0) 42%, rgba(255,255,255,0.12));
-    transform: translateY(-3px);
+    transform: translateY(-4px);
+    /* Expand brackets on hover! */
+    background-size:
+      13px 1.5px, 1.5px 13px,
+      13px 1.5px, 1.5px 13px,
+      13px 1.5px, 1.5px 13px,
+      13px 1.5px, 1.5px 13px,
+      100% 100%, 100% 100%;
     box-shadow:
       0 24px 70px color-mix(in srgb, var(--theme-color, #e2e8f0) 11%, transparent),
+      0 0 12px color-mix(in srgb, var(--theme-color, #e2e8f0) 5%, transparent),
       inset 0 0 44px rgba(255,255,255,0.026);
   }
 
@@ -208,11 +311,39 @@ canvas {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: min(42rem, calc(100vw - 3rem));
-    height: 1px;
+    width: min(52rem, calc(100vw - 3rem));
+    height: 2px;
     transform: translate(-50%, -50%);
-    background: linear-gradient(90deg, transparent, var(--theme-color, #e2e8f0), transparent);
-    box-shadow: 0 0 22px var(--theme-color, #e2e8f0);
+    background: linear-gradient(90deg, transparent, var(--theme-color, #e2e8f0), #ffffff, var(--theme-color, #e2e8f0), transparent);
+    box-shadow: 0 0 32px var(--theme-color, #e2e8f0), 0 0 12px #ffffff;
+    opacity: 0;
+  }
+
+  /* Custom high-tech tinted scrollbars */
+  .overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--theme-color, #e2e8f0) 25%, transparent) rgba(2, 2, 4, 0.35);
+  }
+
+  .overflow-y-auto::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-track {
+    background: rgba(2, 2, 4, 0.25);
+    border-radius: 9999px;
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--theme-color, #e2e8f0) 30%, transparent);
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.02);
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: var(--theme-color, #e2e8f0);
+    box-shadow: 0 0 10px var(--theme-color, #e2e8f0);
   }
 
   [data-visual-mode="focus"] .hud-panel {
@@ -266,5 +397,28 @@ canvas {
   [data-visual-mode="silent"] *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  /* Drifting space coordinate grid for subpage backdrop depth */
+  .theme-grid-backdrop {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 54px 54px;
+    background-position: center;
+    animation: gridDrift 80s linear infinite;
+  }
+
+  @keyframes gridDrift {
+    0% {
+      background-position: 0px 0px;
+    }
+    100% {
+      background-position: 54px 108px;
+    }
   }
 }

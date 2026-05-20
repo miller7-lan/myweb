@@ -193,7 +193,7 @@ export const SignalContent: React.FC = () => {
           <form className="hud-panel rounded-3xl p-6 md:p-7 flex flex-col gap-5" onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="flex flex-col gap-2">
-                <label className="text-sm text-gray-400 tracking-wider" htmlFor="contact-name">姓名</label>
+                <label className="text-xs uppercase tracking-wider text-gray-500" htmlFor="contact-name">姓名</label>
                 <input
                   id="contact-name"
                   type="text"
@@ -202,11 +202,11 @@ export const SignalContent: React.FC = () => {
                   value={form.name}
                   onChange={(event) => updateField('name', event.target.value)}
                   placeholder="你的名字"
-                  className="bg-[#020204]/55 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[var(--theme-color)]/60 transition-colors"
+                  className="hud-input"
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-sm text-gray-400 tracking-wider" htmlFor="contact-email">你的邮箱</label>
+                <label className="text-xs uppercase tracking-wider text-gray-500" htmlFor="contact-email">你的邮箱</label>
                 <input
                   id="contact-email"
                   type="email"
@@ -215,12 +215,12 @@ export const SignalContent: React.FC = () => {
                   value={form.email}
                   onChange={(event) => updateField('email', event.target.value)}
                   placeholder="your@email.com"
-                  className="bg-[#020204]/55 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[var(--theme-color)]/60 transition-colors"
+                  className="hud-input"
                 />
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-sm text-gray-400 tracking-wider" htmlFor="contact-subject">主题</label>
+              <label className="text-xs uppercase tracking-wider text-gray-500" htmlFor="contact-subject">主题</label>
               <input
                 id="contact-subject"
                 type="text"
@@ -229,7 +229,7 @@ export const SignalContent: React.FC = () => {
                 value={form.subject}
                 onChange={(event) => updateField('subject', event.target.value)}
                 placeholder="合作咨询 / 技术问题..."
-                className="bg-[#020204]/55 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[var(--theme-color)]/60 transition-colors"
+                className="hud-input"
               />
             </div>
             <label className="sr-only" htmlFor="contact-website">Website</label>
@@ -243,7 +243,7 @@ export const SignalContent: React.FC = () => {
               className="pointer-events-none absolute left-[-9999px] h-px w-px opacity-0"
             />
             <div className="flex flex-col gap-2">
-              <label className="text-sm text-gray-400 tracking-wider" htmlFor="contact-message">消息</label>
+              <label className="text-xs uppercase tracking-wider text-gray-500" htmlFor="contact-message">消息</label>
               <textarea
                 id="contact-message"
                 required
@@ -251,8 +251,8 @@ export const SignalContent: React.FC = () => {
                 value={form.message}
                 onChange={(event) => updateField('message', event.target.value)}
                 placeholder="告诉我你的想法..."
-                rows={3}
-                className="bg-[#020204]/55 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[var(--theme-color)]/60 transition-colors resize-none"
+                rows={4}
+                className="hud-input resize-none"
               />
             </div>
 

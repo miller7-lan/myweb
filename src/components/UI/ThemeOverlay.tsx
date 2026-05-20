@@ -43,15 +43,25 @@ export const ThemeOverlay: React.FC = () => {
       );
 
       gsap.fromTo('.theme-scanline',
-        { scaleX: 0.05, opacity: 0 },
-        { scaleX: 1, opacity: 1, duration: 0.5, ease: 'power3.out', delay: 0.08 }
+        { top: '0%', scaleX: 0.15, opacity: 0 },
+        { 
+          top: '100%', 
+          scaleX: 1, 
+          opacity: 1, 
+          duration: 1.1, 
+          ease: 'power2.inOut', 
+          delay: 0.05,
+          onComplete: () => {
+            gsap.to('.theme-scanline', { opacity: 0, duration: 0.3 });
+          }
+        }
       );
 
       gsap.to('.theme-scan-intro', {
         opacity: 0,
         duration: 0.45,
         ease: 'power2.inOut',
-        delay: 0.78
+        delay: 0.95
       });
       
       gsap.fromTo('.theme-content', 
@@ -87,7 +97,8 @@ export const ThemeOverlay: React.FC = () => {
       style={{ ['--theme-color' as string]: theme.color }}
     >
       {/* Background Dimmer & Blur */}
-      <div className="theme-backdrop absolute inset-0 bg-[#020204]/82 backdrop-blur-2xl opacity-0 pointer-events-auto">
+      <div className="theme-backdrop absolute inset-0 bg-[#020204]/75 backdrop-blur-2xl opacity-0 pointer-events-auto">
+        <div className="theme-grid-backdrop" />
         <div className="theme-orb right-[12%] top-[18%] h-56 w-56" />
         <div className="theme-orb bottom-[10%] left-[8%] h-72 w-72 opacity-[0.07]" />
       </div>

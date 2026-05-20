@@ -74,6 +74,7 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
     uColor: { value: new THREE.Color('#a0a0ab') }, // Match planets
     uGlowColor: { value: new THREE.Color('#aeb7c8') },
     uHoverBrightness: { value: 0.0 },
+    uIsHovered: { value: 0.0 },
     uOpacity: { value: 1.0 },
     uIntroProgress: { value: 0.0 },
     uImpactPoint: { value: new THREE.Vector3() },

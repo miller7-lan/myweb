@@ -1,5 +1,5 @@
-import React, { useMemo, useRef } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import React, { useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 import { createSeededRandom } from '../../utils/random';
@@ -18,13 +18,16 @@ interface RingShipProps {
 
 const impactLife = 1.85;
 const impactRadius = 6.8;
-const baseFlowVelocity = 0.026;
+const baseFlowVelocity = 0.108; // 20% higher than the ring's rotation speed (0.09)
 
 export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shipPositionRef }) => {
   const groupRef = useRef<THREE.Group>(null);
   const drawingRef = useRef<THREE.Group>(null);
+  const starCoreRef = useRef<THREE.Mesh>(null);
+  const starLightRef = useRef<THREE.PointLight>(null);
+  const reactorRef = useRef<THREE.Mesh>(null);
+  const thrusterRef = useRef<THREE.Mesh>(null);
   const randomRef = useRef(createSeededRandom(260520));
-  const { camera } = useThree();
   const angleRef = useRef(1.1);
   const radiusRef = useRef(7.0);
   const targetRadiusRef = useRef(7.0);
@@ -41,63 +44,19 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
   const leanVelocityRef = useRef(0);
   const { viewState, visualMode } = useGalaxyStore();
 
-  const shipLineGeometry = useMemo(() => {
-    const points = [
-      // hull
-      -0.24, -0.08, 0, 0.24, -0.08, 0,
-      -0.24, -0.08, 0, -0.14, -0.18, 0,
-      -0.14, -0.18, 0, 0.15, -0.18, 0,
-      0.15, -0.18, 0, 0.24, -0.08, 0,
-      // mast
-      0, -0.08, 0, 0, 0.26, 0,
-      // sail
-      0, 0.22, 0, 0.18, 0.02, 0,
-      0.18, 0.02, 0, 0, -0.04, 0,
-      // small flag / bow hint
-      0, 0.26, 0, -0.09, 0.2, 0,
-    ];
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-    return geometry;
-  }, []);
-
-  const wakeLineGeometry = useMemo(() => {
-    const points = [
-      -0.24, -0.22, 0, -0.1, -0.22, 0,
-      0.02, -0.24, 0, 0.18, -0.24, 0,
-    ];
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-    return geometry;
-  }, []);
-
-  const hullMaterial = useMemo(() => new THREE.LineBasicMaterial({
-    color: '#f8fafc',
-    transparent: true,
-    opacity: 0.88,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  }), []);
-
-  const wakeMaterial = useMemo(() => new THREE.LineBasicMaterial({
-    color: '#93c5fd',
-    transparent: true,
-    opacity: 0.2,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  }), []);
-
   useFrame((_, delta) => {
     const visible = viewState === 'HOME' || viewState === 'HOVER_PLANET';
     const dt = Math.min(delta, 0.033);
     const motionScale = visualMode === 'silent' ? 0.32 : visualMode === 'focus' ? 0.62 : 1;
-    const visualScale = visualMode === 'silent' ? 0.66 : visualMode === 'focus' ? 0.78 : 1;
-    const random = randomRef.current;
+    
+    // Increased base scale by 20% (from 0.95 to 1.14)
+    const visualScale = (visualMode === 'silent' ? 0.66 : visualMode === 'focus' ? 0.78 : 1) * 1.14;
     const ringTime = ringTimeRef.current;
+    const random = randomRef.current;
 
     if (ringTime >= nextCurrentShiftAt.current) {
       nextCurrentShiftAt.current = ringTime + 8 + random() * 7;
-      targetFlowVelocityRef.current = 0.022 + random() * 0.008;
+      targetFlowVelocityRef.current = 0.098 + random() * 0.02; // Averages to 0.108
       targetRadiusRef.current = 6.85 + (random() - 0.5) * 0.42;
     }
 
@@ -115,9 +74,10 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
       0.12,
       Math.sin(effectiveAngle) * laneRadius
     );
-    const tangent = new THREE.Vector3(-Math.sin(effectiveAngle), 0, Math.cos(effectiveAngle));
-    const radial = new THREE.Vector3(Math.cos(effectiveAngle), 0, Math.sin(effectiveAngle));
+    const tangent = new THREE.Vector3(-Math.sin(effectiveAngle), 0, Math.cos(effectiveAngle)).normalize();
+    const radial = new THREE.Vector3(Math.cos(effectiveAngle), 0, Math.sin(effectiveAngle)).normalize();
 
+    // Meteor wave impact forces
     let tangentForce = 0;
     let radialForce = 0;
     let liftForce = 0;
@@ -175,24 +135,293 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
 
     groupRef.current.visible = visible;
     groupRef.current.position.copy(position);
-    groupRef.current.quaternion.copy(camera.quaternion);
-    groupRef.current.scale.setScalar(visualScale * (1.05 + liftOffsetRef.current * 0.18));
+
+    // Dynamic 3D alignment to orbit path tangent
+    const lookMatrix = new THREE.Matrix4();
+    lookMatrix.lookAt(position, position.clone().add(tangent), new THREE.Vector3(0, 1, 0));
+    const targetQuaternion = new THREE.Quaternion().setFromRotationMatrix(lookMatrix);
+    groupRef.current.quaternion.copy(targetQuaternion);
+
+    groupRef.current.scale.setScalar(visualScale * (1.0 + liftOffsetRef.current * 0.16));
 
     if (drawingRef.current) {
-      drawingRef.current.rotation.z = Math.sin(ringTime * 2.4) * 0.035 + leanOffsetRef.current;
-      drawingRef.current.scale.x = 1;
+      drawingRef.current.rotation.z = Math.sin(ringTime * 2.4) * 0.02 + leanOffsetRef.current;
+      drawingRef.current.rotation.x = Math.cos(ringTime * 3.1) * 0.015;
     }
 
-    const targetOpacity = visible ? (visualMode === 'silent' ? 0.48 : visualMode === 'focus' ? 0.64 : 0.88) : 0;
-    hullMaterial.opacity = THREE.MathUtils.lerp(hullMaterial.opacity, targetOpacity, 0.12);
-    wakeMaterial.opacity = THREE.MathUtils.lerp(wakeMaterial.opacity, targetOpacity * (0.16 + liftOffsetRef.current * 0.12), 0.12);
+    // Twinkling Morning Star & its dynamic physical light source
+    if (starCoreRef.current) {
+      const starScale = 1.0 + Math.sin(ringTime * 6.5) * 0.22;
+      starCoreRef.current.scale.setScalar(starScale);
+    }
+    if (starLightRef.current) {
+      const pulse = 0.72 + Math.sin(ringTime * 6.5) * 0.28;
+      starLightRef.current.intensity = (visualMode === 'silent' ? 1.8 : visualMode === 'focus' ? 3.6 : 5.5) * pulse;
+    }
+
+    // Fusion Core Reactor
+    if (reactorRef.current) {
+      reactorRef.current.rotation.y = ringTime * 2.8;
+      reactorRef.current.rotation.x = ringTime * 1.4;
+    }
+
+    // High frequency plasma thruster flicker
+    if (thrusterRef.current) {
+      const flicker = 0.82 + Math.sin(ringTime * 14.0) * 0.18;
+      thrusterRef.current.scale.set(flicker, flicker, 0.92 + Math.cos(ringTime * 18.0) * 0.22);
+    }
   });
 
   return (
     <group ref={groupRef}>
       <group ref={drawingRef}>
-        <lineSegments geometry={shipLineGeometry} material={hullMaterial} />
-        <lineSegments geometry={wakeLineGeometry} material={wakeMaterial} />
+        {/* 1. 微型核聚变星核光源 (Point light from fusion core - steady secondary ambient light) */}
+        <pointLight position={[0, 0.035, 0.20]} intensity={0.65} distance={1.0} color="#fbbf24" />
+
+        {/* 2. 船头顶「启明星」闪烁点光源 (Pulsing primary Point light that physically twinkles and illuminates sails/outriggers below) */}
+        <pointLight 
+          ref={starLightRef} 
+          position={[0, 0.39, -0.04]} 
+          intensity={5.5} 
+          distance={2.5} 
+          color="#fde68a" 
+        />
+
+        {/* 1. 中央主甲板船舱 (Holographic Wireframe Central Hull) */}
+        {/* Outline Wireframe */}
+        <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <coneGeometry args={[0.075, 0.62, 5]} />
+          <meshStandardMaterial 
+            color="#ffffff" 
+            wireframe 
+            transparent 
+            opacity={0.88}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+        {/* Soft semi-transparent backing hull for physical structure */}
+        <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <coneGeometry args={[0.074, 0.61, 5]} />
+          <meshStandardMaterial 
+            color="#ffffff" 
+            transparent 
+            opacity={0.08}
+            roughness={0.1}
+            metalness={0.9}
+          />
+        </mesh>
+        
+        {/* Central cabin wireframe canopy */}
+        <mesh position={[0, 0.03, -0.06]}>
+          <sphereGeometry args={[0.045, 12, 12]} />
+          <meshStandardMaterial 
+            color="#ffffff" 
+            wireframe
+            transparent
+            opacity={0.72}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+
+        {/* 2. 左侧体稳定浮筒 (Left Outrigger Wireframe Hull) */}
+        <mesh position={[-0.20, -0.05, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
+          <coneGeometry args={[0.038, 0.42, 4]} />
+          <meshStandardMaterial 
+            color="#ffffff" 
+            wireframe
+            transparent
+            opacity={0.78}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+        <mesh position={[-0.20, -0.05, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
+          <coneGeometry args={[0.037, 0.41, 4]} />
+          <meshStandardMaterial 
+            color="#ffffff" 
+            transparent 
+            opacity={0.06}
+            roughness={0.1}
+            metalness={0.9}
+          />
+        </mesh>
+
+        {/* 3. 右侧体稳定浮筒 (Right Outrigger Wireframe Hull) */}
+        <mesh position={[0.20, -0.05, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
+          <coneGeometry args={[0.038, 0.42, 4]} />
+          <meshStandardMaterial 
+            color="#ffffff" 
+            wireframe
+            transparent
+            opacity={0.78}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+        <mesh position={[0.20, -0.05, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
+          <coneGeometry args={[0.037, 0.41, 4]} />
+          <meshStandardMaterial 
+            color="#ffffff" 
+            transparent 
+            opacity={0.06}
+            roughness={0.1}
+            metalness={0.9}
+          />
+        </mesh>
+
+        {/* 4. 连接桥臂 (Connecting Struts - Wireframe) */}
+        <mesh position={[-0.10, -0.025, 0]}>
+          <boxGeometry args={[0.18, 0.015, 0.08]} />
+          <meshStandardMaterial color="#ffffff" wireframe transparent opacity={0.68} />
+        </mesh>
+        <mesh position={[0.10, -0.025, 0]}>
+          <boxGeometry args={[0.18, 0.015, 0.08]} />
+          <meshStandardMaterial color="#ffffff" wireframe transparent opacity={0.68} />
+        </mesh>
+
+        {/* 5. 中央桅杆 (Mast) */}
+        <mesh position={[0, 0.18, 0]}>
+          <cylinderGeometry args={[0.006, 0.009, 0.38, 5]} />
+          <meshStandardMaterial color="#ffffff" wireframe transparent opacity={0.74} />
+        </mesh>
+
+        {/* 6. 双折射轻量太阳帆 (Double Swept-Back Holographic Sails) */}
+        {/* Left Wing Sail */}
+        <group position={[-0.15, 0.22, 0.06]} rotation={[0, Math.PI / 7, -Math.PI / 15]}>
+          {/* Sail Border Outline */}
+          <mesh>
+            <boxGeometry args={[0.26, 0.28, 0.003]} />
+            <meshStandardMaterial 
+              color="#ffffff" 
+              wireframe
+              transparent 
+              opacity={0.90}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+          {/* Sail energy field sheet (faint and ethereal) */}
+          <mesh>
+            <boxGeometry args={[0.258, 0.278, 0.001]} />
+            <meshStandardMaterial 
+              color="#ffffff" 
+              transparent 
+              opacity={0.12}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        </group>
+        
+        {/* Right Wing Sail */}
+        <group position={[0.15, 0.22, 0.06]} rotation={[0, -Math.PI / 7, Math.PI / 15]}>
+          {/* Sail Border Outline */}
+          <mesh>
+            <boxGeometry args={[0.26, 0.28, 0.003]} />
+            <meshStandardMaterial 
+              color="#ffffff" 
+              wireframe
+              transparent 
+              opacity={0.90}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+          {/* Sail energy field sheet */}
+          <mesh>
+            <boxGeometry args={[0.258, 0.278, 0.001]} />
+            <meshStandardMaterial 
+              color="#ffffff" 
+              transparent 
+              opacity={0.12}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        </group>
+
+        {/* 7. 3D 金色「启明星」星芒 (3D Twinkling Morning Star - Wireframe & Lines) */}
+        <group position={[0, 0.39, -0.04]}>
+          {/* Intense Solid Starlight Core Sphere (The visible light bulb!) */}
+          <mesh ref={starCoreRef}>
+            <sphereGeometry args={[0.032, 10, 10]} />
+            <meshBasicMaterial color="#ffffff" />
+          </mesh>
+          {/* Outer Twinkling Gold Aura Wireframe Octahedron 1 */}
+          <mesh>
+            <octahedronGeometry args={[0.065]} />
+            <meshBasicMaterial 
+              color="#fbbf24" 
+              wireframe 
+              transparent 
+              opacity={0.92} 
+            />
+          </mesh>
+          {/* Outer Twinkling Gold Aura Wireframe Octahedron 2 (Cross-rotated for detailed star lattice) */}
+          <mesh rotation={[0, Math.PI / 4, 0]}>
+            <octahedronGeometry args={[0.065]} />
+            <meshBasicMaterial 
+              color="#f59e0b" 
+              wireframe 
+              transparent 
+              opacity={0.78} 
+            />
+          </mesh>
+          {/* Long Vertical light needle */}
+          <mesh>
+            <cylinderGeometry args={[0.003, 0.003, 0.26, 4]} />
+            <meshBasicMaterial color="#fde68a" transparent opacity={0.88} />
+          </mesh>
+          {/* Long Horizontal light needle */}
+          <mesh rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.003, 0.003, 0.26, 4]} />
+            <meshBasicMaterial color="#fde68a" transparent opacity={0.88} />
+          </mesh>
+          {/* Short Diagonal needles */}
+          <mesh rotation={[Math.PI / 4, 0, Math.PI / 4]}>
+            <cylinderGeometry args={[0.002, 0.002, 0.16, 4]} />
+            <meshBasicMaterial color="#fde68a" transparent opacity={0.65} />
+          </mesh>
+          <mesh rotation={[-Math.PI / 4, 0, -Math.PI / 4]}>
+            <cylinderGeometry args={[0.002, 0.002, 0.16, 4]} />
+            <meshBasicMaterial color="#fde68a" transparent opacity={0.65} />
+          </mesh>
+        </group>
+
+        {/* 8. 恒星能量反应炉 (Fusion Reactor Core - Amber Gold Wireframe) */}
+        <group position={[0, 0.035, 0.20]}>
+          <mesh ref={reactorRef}>
+            <octahedronGeometry args={[0.035]} />
+            <meshBasicMaterial 
+              color="#fbbf24" 
+              wireframe 
+              transparent 
+              opacity={0.90} 
+            />
+          </mesh>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.065, 0.005, 6, 24]} />
+            <meshBasicMaterial 
+              color="#fbbf24" 
+              wireframe
+              transparent 
+              opacity={0.82} 
+            />
+          </mesh>
+        </group>
+
+        {/* 9. 等离子引擎喷口 (Engine Nozzle - Wireframe) */}
+        <mesh position={[0, 0, 0.31]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.032, 0.024, 0.06, 6]} />
+          <meshStandardMaterial color="#cbd5e1" wireframe transparent opacity={0.78} />
+        </mesh>
+
+        {/* 10. 等离子引擎尾羽 (Flickering Plasma Thruster Tail Plume - Wireframe Cone) */}
+        <mesh ref={thrusterRef} position={[0, 0, 0.44]} rotation={[-Math.PI / 2, 0, 0]}>
+          <coneGeometry args={[0.038, 0.22, 8, 2, true]} />
+          <meshBasicMaterial 
+            color="#e0f2fe" 
+            wireframe
+            transparent 
+            opacity={0.65} 
+            blending={THREE.AdditiveBlending}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
       </group>
     </group>
   );

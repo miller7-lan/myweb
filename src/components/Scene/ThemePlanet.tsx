@@ -36,6 +36,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
   const returnProgress = useRef({ value: 0 });
   const returnStartPosition = useRef(new THREE.Vector3(0, 5, 15));
   const hasStartedEnterAnimation = useRef(false);
+  const wasHighlightedRef = useRef(false);
   
   // Base properties
   const particleCount = 1800;
@@ -51,6 +52,11 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     orbit: { haloRadius: 1.05, haloTube: 0.014, glowRadius: 0.72, glowIdle: 0.05, glowHover: 0.21 },
     signal: { haloRadius: 0.94, haloTube: 0.018, glowRadius: 0.76, glowIdle: 0.065, glowHover: 0.26 },
   }[String(themeDef.key)] ?? { haloRadius: 0.94, haloTube: 0.014, glowRadius: 0.72, glowIdle: 0.045, glowHover: 0.2 };
+  const softenedThemeColor = useMemo(
+    () => new THREE.Color(themeDef.color).lerp(new THREE.Color('#cbd5e1'), 0.34),
+    [themeDef.color]
+  );
+  const softenedThemeHex = useMemo(() => `#${softenedThemeColor.getHexString()}`, [softenedThemeColor]);
 
   const [positions, randoms, initialPositions] = useMemo(() => {
     const pos = new Float32Array(particleCount * 3);
@@ -240,44 +246,79 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     if (!groupRef.current || viewState === 'LEAVING_THEME') return;
 
     const highlighted = isHovered || isFocused;
+    const wasHighlighted = wasHighlightedRef.current;
+    wasHighlightedRef.current = highlighted;
 
     // Don't mess with scale during entry animation
     if (viewState !== 'ENTERING_THEME' && viewState !== 'THEME') {
-      gsap.to(groupRef.current.scale, {
-        x: highlighted ? 1.1 : 1,
-        y: highlighted ? 1.1 : 1,
-        z: highlighted ? 1.1 : 1,
-        duration: highlighted ? 0.42 : 1.25,
-        ease: highlighted ? 'power3.out' : 'power2.out'
-      });
+      gsap.killTweensOf(groupRef.current.scale);
+
+      if (highlighted) {
+        const currentScale = Math.max(groupRef.current.scale.x, 1);
+        groupRef.current.scale.setScalar(currentScale);
+        gsap.to(groupRef.current.scale, {
+          x: 1.24,
+          y: 1.24,
+          z: 1.24,
+          duration: 0.28,
+          ease: 'power3.out',
+          overwrite: 'auto',
+        });
+      } else if (wasHighlighted) {
+        gsap.to(groupRef.current.scale, {
+          x: 1,
+          y: 1,
+          z: 1,
+          duration: 0.62,
+          ease: 'power2.out',
+          overwrite: 'auto',
+        });
+      }
     }
     
     if (materialRef.current) {
-      gsap.to(materialRef.current.uniforms.uHoverBrightness, {
-        value: highlighted ? 0.44 : 0.0,
-        duration: highlighted ? 0.28 : 1.35,
-        ease: highlighted ? 'power2.out' : 'power2.inOut'
-      });
+      gsap.killTweensOf(materialRef.current.uniforms.uHoverBrightness);
+      gsap.killTweensOf(materialRef.current.uniforms.uColor.value);
+      gsap.killTweensOf(materialRef.current.uniforms.uGlowColor.value);
+
+      // Set uIsHovered instantly without delay to suppress the spotlight on the very first frame
+      materialRef.current.uniforms.uIsHovered.value = highlighted ? 1.0 : 0.0;
       
-      const targetColor = highlighted ? new THREE.Color(themeDef.color) : new THREE.Color('#a0a0ab');
-      gsap.to(materialRef.current.uniforms.uColor.value, {
-        r: targetColor.r,
-        g: targetColor.g,
-        b: targetColor.b,
-        duration: highlighted ? 0.24 : 1.1,
-        ease: highlighted ? 'power2.out' : 'power2.inOut'
+      const targetColor = highlighted ? softenedThemeColor.clone() : new THREE.Color('#a0a0ab');
+      if (highlighted) {
+        materialRef.current.uniforms.uColor.value.copy(targetColor);
+        materialRef.current.uniforms.uGlowColor.value.copy(targetColor);
+      }
+
+      gsap.to(materialRef.current.uniforms.uHoverBrightness, {
+        value: highlighted ? 0.36 : 0.0,
+        duration: highlighted ? 0.2 : 1.35,
+        ease: highlighted ? 'power2.out' : 'power2.inOut',
+        overwrite: 'auto',
       });
 
-      gsap.to(materialRef.current.uniforms.uGlowColor.value, {
-        r: targetColor.r,
-        g: targetColor.g,
-        b: targetColor.b,
-        duration: highlighted ? 0.24 : 1.1,
-        ease: highlighted ? 'power2.out' : 'power2.inOut'
-      });
+      if (!highlighted) {
+        gsap.to(materialRef.current.uniforms.uColor.value, {
+          r: targetColor.r,
+          g: targetColor.g,
+          b: targetColor.b,
+          duration: 1.1,
+          ease: 'power2.inOut',
+          overwrite: 'auto',
+        });
+
+        gsap.to(materialRef.current.uniforms.uGlowColor.value, {
+          r: targetColor.r,
+          g: targetColor.g,
+          b: targetColor.b,
+          duration: 1.1,
+          ease: 'power2.inOut',
+          overwrite: 'auto',
+        });
+      }
     }
 
-  }, [isHovered, isFocused, viewState, themeDef.color]);
+  }, [isHovered, isFocused, viewState, softenedThemeColor]);
 
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
@@ -288,6 +329,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     uColor: { value: new THREE.Color('#a0a0ab') },
     uGlowColor: { value: new THREE.Color('#a0a0ab') },
     uHoverBrightness: { value: 0.0 },
+    uIsHovered: { value: 0.0 }, // Instant response on hover to damp spotlight
     uOpacity: { value: 1.0 },
     uIntroProgress: { value: 0.0 },
     uImpactPoint: { value: new THREE.Vector3() },
@@ -383,9 +425,12 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       materialRef.current.uniforms.uAspect.value = screenAspect;
       if (viewState === 'HOME' || viewState === 'HOVER_PLANET') {
         materialRef.current.uniforms.uParticleSize.value = visualMode === 'silent' ? 3.0 : visualMode === 'focus' ? 3.45 : 4.0;
+        // Scale down particle opacity when hovered/focused to prevent additive blending blowout (white burnout)
+        const baseOpacity = visualMode === 'silent' ? 0.56 : visualMode === 'focus' ? 0.74 : 1.0;
+        const targetOpacity = baseOpacity * (highlighted ? 0.38 : 0.82);
         materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.lerp(
           materialRef.current.uniforms.uOpacity.value,
-          visualMode === 'silent' ? 0.56 : visualMode === 'focus' ? 0.74 : 1,
+          targetOpacity,
           0.08
         );
       }
@@ -468,9 +513,10 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       <mesh ref={coreGlowRef} visible={viewState !== 'THEME'}>
         <sphereGeometry args={[shapeProfile.glowRadius, 32, 32]} />
         <meshBasicMaterial
-          color={themeDef.color}
+          color={softenedThemeHex}
           transparent
-          opacity={(isHovered || isFocused ? shapeProfile.glowHover : isLastVisited ? shapeProfile.glowHover * 0.72 : isVisited ? shapeProfile.glowIdle * 1.35 : shapeProfile.glowIdle) * (visualMode === 'silent' ? 0.36 : visualMode === 'focus' ? 0.64 : 1)}
+          // Scaled down the glowing core's hover opacity by 0.32 so it highlights the theme color instead of burning out to white
+          opacity={(isHovered || isFocused ? shapeProfile.glowHover * 0.32 : isLastVisited ? shapeProfile.glowHover * 0.72 : isVisited ? shapeProfile.glowIdle * 1.35 : shapeProfile.glowIdle) * (visualMode === 'silent' ? 0.36 : visualMode === 'focus' ? 0.64 : 1)}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
@@ -479,7 +525,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       <mesh ref={haloRef} rotation={[haloDefaultTilt, 0, 0]} visible={viewState !== 'THEME'}>
         <torusGeometry args={[shapeProfile.haloRadius, shapeProfile.haloTube, 10, 96]} />
         <meshBasicMaterial
-          color={themeDef.color}
+          color={softenedThemeHex}
           transparent
           opacity={(isHovered || isFocused ? 0.46 : isLastVisited ? 0.34 : isVisited ? 0.2 : 0.12) * (visualMode === 'silent' ? 0.35 : visualMode === 'focus' ? 0.62 : 1)}
           blending={THREE.AdditiveBlending}
@@ -503,12 +549,12 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
               : 'opacity-0 translate-y-4 scale-90'}
           `}
           style={{
-            boxShadow: `0 4px 30px ${themeDef.color}30`,
+            boxShadow: `0 4px 30px ${softenedThemeHex}24`,
           }}
         >
           <span 
             className="text-xs font-bold tracking-[0.2em] uppercase mb-0.5 flex items-center gap-2"
-            style={{ color: themeDef.color, textShadow: `0 0 12px ${themeDef.color}` }}
+            style={{ color: softenedThemeHex, textShadow: `0 0 10px ${softenedThemeHex}` }}
           >
             <span>{themeDef.title}</span>
             <span className="opacity-50 text-[10px] font-normal tracking-widest">|</span>

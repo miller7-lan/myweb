@@ -74,7 +74,10 @@ uniform vec2 uMouseScreenPos;
 uniform float uAspect;
 uniform vec3 uGlowColor;
 uniform float uHoverBrightness;
+uniform float uIsHovered; // 1.0 if hovered/active, 0.0 otherwise (instant response)
 uniform float uOpacity;
+uniform vec3 uShipPos;
+uniform float uShipLightStrength;
 
 varying vec3 vPosition;
 varying float vDistanceToMouse;
@@ -103,13 +106,26 @@ void main() {
   // Mouse light stays subtle so focused planets keep their theme color.
   vec3 lightColor = mix(vec3(0.7, 0.75, 0.85), uGlowColor, clamp(uHoverBrightness * 1.4, 0.0, 0.85));
   
-  // Keep global mouse light and focused planet light separate so they do not fight.
-  float focusLightDamping = 1.0 - clamp(uHoverBrightness * 0.62, 0.0, 0.55);
-  vec3 finalColor = mix(uColor, lightColor, lightIntensity * focusLightDamping);
+  // Damp the screen-space mouse spotlight when the planet itself is hovered/focused (uIsHovered > 0 or uHoverBrightness > 0),
+  // so the rich, beautiful theme colors do not get washed out to white/grey.
+  float mouseDamp = 1.0 - clamp(max(uIsHovered, uHoverBrightness * 2.27), 0.0, 1.0);
+  float effectiveLightIntensity = lightIntensity * mouseDamp;
+  
+  vec3 finalColor = mix(uColor, lightColor, effectiveLightIntensity);
   finalColor = mix(finalColor, uGlowColor, clamp(uHoverBrightness * 0.5, 0.0, 0.38));
   finalColor += uGlowColor * uHoverBrightness * 0.24;
   finalColor += mix(vec3(0.65, 0.72, 0.82), uGlowColor, 0.28) * clamp(vImpactGlow * 0.62, 0.0, 0.72);
   
-  gl_FragColor = vec4(finalColor, alpha * uOpacity * (1.0 + clamp(vImpactGlow * 0.24, 0.0, 0.28)));
+  // Volumetric Lighting around the ship's mast-top twinkling Morning Star
+  float distToShip = distance(vPosition, uShipPos);
+  float shipLightIntensity = smoothstep(3.2, 0.0, distToShip);
+  vec3 goldGlow = vec3(0.99, 0.88, 0.45) * shipLightIntensity * 1.8 * uShipLightStrength;
+  finalColor += goldGlow;
+  
+  float opacityBoost = shipLightIntensity * 1.2 * uShipLightStrength;
+  float finalOpacity = alpha * uOpacity * (1.0 + clamp(vImpactGlow * 0.24, 0.0, 0.28) + opacityBoost);
+  
+  gl_FragColor = vec4(finalColor, finalOpacity);
 }
 `;
+
