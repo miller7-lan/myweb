@@ -11,7 +11,7 @@ export type RingImpactEvent = {
 };
 
 interface MeteorImpactProps {
-  impactRef: React.MutableRefObject<RingImpactEvent | null>;
+  impactQueueRef: React.MutableRefObject<RingImpactEvent[]>;
 }
 
 const easeOutCubic = (value: number) => 1 - Math.pow(1 - value, 3);
@@ -117,7 +117,7 @@ const createMeteorUniforms = () => ({
   uColor: { value: new THREE.Color('#dbe7ff') },
 });
 
-export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactRef }) => {
+export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef }) => {
   const particlesRefs = useRef<Array<THREE.Object3D | null>>([]);
   const flashRefs = useRef<Array<THREE.Mesh | null>>([]);
   const viewState = useGalaxyStore((state) => state.viewState);
@@ -262,11 +262,11 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactRef }) => {
 
         if (progress >= 1) {
           impactId.current += 1;
-          impactRef.current = {
+          impactQueueRef.current.push({
             id: impactId.current,
             point: slot.target.clone(),
             strength: 1.15,
-          };
+          });
           slot.phase = 'flash';
           slot.phaseTime = 0;
           updateMeteorUniforms(slot, index, 0, 1);

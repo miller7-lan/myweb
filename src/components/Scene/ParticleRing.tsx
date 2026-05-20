@@ -16,8 +16,15 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
   const groupRef = useRef<THREE.Group>(null);
   const pointsRef = useRef<THREE.Points>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
-  const impactRef = useRef<RingImpactEvent | null>(null);
-  const lastImpactId = useRef(0);
+  const impactQueueRef = useRef<RingImpactEvent[]>([]);
+  const impactSlotCursor = useRef(0);
+  const impactSlots = useRef(
+    Array.from({ length: 4 }, () => ({
+      point: new THREE.Vector3(),
+      startTime: -999,
+      strength: 0,
+    }))
+  );
 
   const particleCount = 12000;
   
@@ -71,9 +78,9 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
     uHoverBrightness: { value: 0.0 },
     uOpacity: { value: 1.0 },
     uIntroProgress: { value: 0.0 },
-    uImpactPoint: { value: new THREE.Vector3() },
-    uImpactStartTime: { value: -999 },
-    uImpactStrength: { value: 0.0 },
+    uImpactPoints: { value: Array.from({ length: 4 }, () => new THREE.Vector3()) },
+    uImpactStartTimes: { value: Array.from({ length: 4 }, () => -999) },
+    uImpactStrengths: { value: Array.from({ length: 4 }, () => 0.0) },
     uImpactRadius: { value: 6.8 }
   }), []);
 
@@ -93,12 +100,23 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
     }
     
     if (materialRef.current) {
-      const pendingImpact = impactRef.current;
-      if (pendingImpact && pendingImpact.id !== lastImpactId.current) {
-        lastImpactId.current = pendingImpact.id;
-        materialRef.current.uniforms.uImpactPoint.value.copy(pendingImpact.point);
-        materialRef.current.uniforms.uImpactStartTime.value = localTime.current;
-        materialRef.current.uniforms.uImpactStrength.value = pendingImpact.strength;
+      while (impactQueueRef.current.length > 0) {
+        const pendingImpact = impactQueueRef.current.shift();
+        if (!pendingImpact) break;
+        const expiredSlot = impactSlots.current.findIndex(
+          (slot) => localTime.current - slot.startTime > 1.55
+        );
+        const slotIndex = expiredSlot >= 0 ? expiredSlot : impactSlotCursor.current;
+        impactSlotCursor.current = (slotIndex + 1) % impactSlots.current.length;
+
+        const slot = impactSlots.current[slotIndex];
+        slot.point.copy(pendingImpact.point);
+        slot.startTime = localTime.current;
+        slot.strength = pendingImpact.strength;
+
+        materialRef.current.uniforms.uImpactPoints.value[slotIndex].copy(slot.point);
+        materialRef.current.uniforms.uImpactStartTimes.value[slotIndex] = slot.startTime;
+        materialRef.current.uniforms.uImpactStrengths.value[slotIndex] = slot.strength;
       }
       materialRef.current.uniforms.uTime.value = localTime.current;
       materialRef.current.uniforms.uMousePos.value.copy(mousePosRef.current);
@@ -125,7 +143,7 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
           blending={THREE.AdditiveBlending}
         />
       </points>
-      <MeteorImpact impactRef={impactRef} />
+      <MeteorImpact impactQueueRef={impactQueueRef} />
     </group>
   );
 };

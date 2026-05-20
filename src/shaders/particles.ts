@@ -8,9 +8,9 @@ uniform vec3 uGlowColor;
 uniform float uHoverBrightness;
 uniform float uOpacity;
 uniform float uIntroProgress;
-uniform vec3 uImpactPoint;
-uniform float uImpactStartTime;
-uniform float uImpactStrength;
+uniform vec3 uImpactPoints[4];
+uniform float uImpactStartTimes[4];
+uniform float uImpactStrengths[4];
 uniform float uImpactRadius;
 
 attribute float aRandom;
@@ -30,15 +30,19 @@ void main() {
   targetPos.y += sin(uTime * 0.5 + aRandom * 10.0) * 0.05;
   targetPos.x += cos(uTime * 0.3 + aRandom * 10.0) * 0.05;
 
-  float impactAge = uTime - uImpactStartTime;
   float impactLife = 1.55;
-  float impactActive = step(0.0, impactAge) * (1.0 - step(impactLife, impactAge));
-  float waveTravel = impactAge / impactLife;
-  float distToImpact = distance(position.xz, uImpactPoint.xz);
-  float waveFront = waveTravel * uImpactRadius;
-  float waveBand = 1.0 - smoothstep(0.0, 0.62, abs(distToImpact - waveFront));
-  float waveFalloff = pow(1.0 - clamp(waveTravel, 0.0, 1.0), 1.45);
-  float wave = waveBand * waveFalloff * uImpactStrength * impactActive;
+  float combinedWave = 0.0;
+  for (int i = 0; i < 4; i++) {
+    float impactAge = uTime - uImpactStartTimes[i];
+    float impactActive = step(0.0, impactAge) * (1.0 - step(impactLife, impactAge));
+    float waveTravel = impactAge / impactLife;
+    float distToImpact = distance(position.xz, uImpactPoints[i].xz);
+    float waveFront = waveTravel * uImpactRadius;
+    float waveBand = 1.0 - smoothstep(0.0, 0.62, abs(distToImpact - waveFront));
+    float waveFalloff = pow(1.0 - clamp(waveTravel, 0.0, 1.0), 1.45);
+    combinedWave += waveBand * waveFalloff * uImpactStrengths[i] * impactActive;
+  }
+  float wave = min(combinedWave, 1.65);
   vec2 radialDir = normalize(position.xz + vec2(0.0001));
   targetPos.xz += radialDir * wave * 0.24;
   targetPos.y += wave * (0.62 + aRandom * 0.28);
