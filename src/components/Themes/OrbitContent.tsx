@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowDownToLine, Bot, Cpu, HardDrive, Monitor, Network, Search, type LucideIcon } from 'lucide-react';
+import { ArrowDownToLine, Bot, Calculator, Cpu, Database, HardDrive, Monitor, Network, Search, type LucideIcon } from 'lucide-react';
 
-type ReleaseKey = 'secretary' | 'tunnel' | 'next';
+type ReleaseKey = 'secretary' | 'tunnel' | 'profit' | 'next';
 
 type ReleaseItem = {
   key: ReleaseKey;
@@ -13,6 +13,7 @@ type ReleaseItem = {
   body: string;
   status: string;
   platform: string;
+  image?: string;
   primaryDownload?: {
     label: string;
     href: string;
@@ -83,11 +84,39 @@ const releases: ReleaseItem[] = [
     keywords: ['tunnel', '内网穿透', '公网', 'cloudflare', 'pinggy', 'macos', '端口'],
   },
   {
+    key: 'profit',
+    title: '利润助手 v1.0',
+    subtitle: '本地家庭利润记账',
+    date: '2026 · RELEASE',
+    node: 'Node 03',
+    icon: Calculator,
+    image: '/software/profit-assistant-icon.png',
+    body: '围绕录入、看板、历史和设置构建的本地记账应用，数据保存在本机 SQLite 文件中，适合记录家庭利润、查看趋势和维护自定义字段。',
+    status: 'Stable',
+    platform: 'macOS App Bundle',
+    primaryDownload: {
+      label: '下载 macOS ZIP (61 MB)',
+      href: '/downloads/利润助手-macOS.zip',
+    },
+    specs: [
+      { label: '数据存储', value: '本地 SQLite', icon: Database },
+      { label: '磁盘空间', value: '约 200 MB 可用', icon: HardDrive },
+      { label: '分辨率', value: '1280 × 720+', icon: Monitor },
+      { label: '网络', value: '无需联网', icon: Network },
+    ],
+    scenes: [
+      '本地私有：账目数据默认保存在本机，不上传云端。',
+      '灵活字段：支持自定义字段和利润计算口径。',
+      '趋势看板：录入、历史、统计视图围绕日常记账闭环设计。',
+    ],
+    keywords: ['profit', '利润助手', '记账', '家庭利润', 'sqlite', 'macos', '本地应用'],
+  },
+  {
     key: 'next',
     title: '后续更新方向',
     subtitle: '维护与发行计划',
     date: 'NEXT ORBIT',
-    node: 'Node 03',
+    node: 'Node 04',
     icon: ArrowDownToLine,
     body: '后续会优先补齐版本提示、自动更新体验，以及更多本地工具的发行包整理。',
     status: 'Planning',
@@ -105,7 +134,7 @@ export const OrbitContent: React.FC = () => {
   const [activeRelease, setActiveRelease] = useState<ReleaseKey>(() => {
     const preferredTab = window.sessionStorage.getItem('preferredOrbitTab');
     window.sessionStorage.removeItem('preferredOrbitTab');
-    return preferredTab === 'tunnel' ? 'tunnel' : 'secretary';
+    return preferredTab === 'tunnel' || preferredTab === 'profit' ? preferredTab : 'secretary';
   });
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -253,6 +282,23 @@ export const OrbitContent: React.FC = () => {
           </div>
 
           <p className="mb-6 max-w-3xl text-sm font-light leading-relaxed text-gray-400">{activeItem.body}</p>
+
+          {activeItem.image && (
+            <div className="mb-6 flex items-center gap-4 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+              <img
+                src={activeItem.image}
+                alt={`${activeItem.title} 图标`}
+                className="h-16 w-16 rounded-2xl border border-white/10 bg-white/5 object-cover shadow-[0_0_28px_rgba(196,181,253,0.12)]"
+              />
+              <div>
+                <div className="hud-kicker mb-2">
+                  <span className="hud-dot" />
+                  <span>Software Image</span>
+                </div>
+                <p className="text-sm font-light text-gray-400">已接入现有软件图标与本地打包下载资源。</p>
+              </div>
+            </div>
+          )}
 
           {activeItem.primaryDownload && (
             <a href={activeItem.primaryDownload.href} download className="inline-flex items-center gap-3 bg-white text-black px-6 py-4 rounded-full font-medium hover:bg-gray-200 transition-colors md:px-8">

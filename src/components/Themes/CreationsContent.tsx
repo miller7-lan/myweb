@@ -14,7 +14,7 @@ type Project = {
   design: string[];
   techStack: string[];
   highlights: string[];
-  releaseTarget?: 'secretary' | 'tunnel';
+  releaseTarget?: 'secretary' | 'tunnel' | 'profit';
 };
 
 const projects: Project[] = [
@@ -94,6 +94,7 @@ const projects: Project[] = [
     ],
     techStack: ['Python', 'PySide6', 'SQLite', 'pandas', 'matplotlib', 'PyInstaller'],
     highlights: ['本地记账', '安全公式', '报表看板'],
+    releaseTarget: 'profit',
   },
   {
     title: 'Tokens Monitor',
