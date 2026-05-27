@@ -1,93 +1,187 @@
 # Agent Notes
 
+## Canonical Deployment Model
+
+This repository is the source of truth for the portfolio site:
+
+- GitHub repository: `https://github.com/miller7-lan/myweb`
+- Main branch: `main`
+- Public website: `https://dazzle-galaxy-show.pages.dev`
+- Cloudflare Pages project: `dazzle-galaxy-show`
+
+The normal update path is:
+
+1. Edit source files.
+2. Run `npm run build`.
+3. Commit changes to `main`.
+4. Push to GitHub with `git push origin main`.
+5. Let GitHub-connected Cloudflare Pages update `https://dazzle-galaxy-show.pages.dev`.
+
+Use a manual Cloudflare Pages deploy only when GitHub-connected deployment is slow, failed, or explicitly requested:
+
+```bash
+rsync -a --delete --exclude='downloads/' dist/ /private/tmp/dazzle-cf-dist/
+find /private/tmp/dazzle-cf-dist -type f -size +25M -print
+npm exec --yes --registry=https://registry.npmjs.org --package wrangler -- \
+  wrangler pages deploy /private/tmp/dazzle-cf-dist \
+  --project-name=dazzle-galaxy-show \
+  --branch=main \
+  --commit-dirty=true
+```
+
+If using Wrangler or changing Cloudflare behavior, load and follow the Cloudflare/Wrangler skill first. Verify current Wrangler syntax rather than relying on memory.
+
+## Netlify Role
+
+Netlify is not the public website entrypoint.
+
+- Do not present `https://dazzle-galaxy-show.netlify.app` as the website URL.
+- Netlify root/app routes should redirect to `https://dazzle-galaxy-show.pages.dev`.
+- Netlify is kept only as a legacy file CDN for `https://dazzle-galaxy-show.netlify.app/downloads/*`.
+
+Only use the Netlify skill/CLI when:
+
+- Updating Netlify redirect rules.
+- Uploading or preserving legacy files under `/downloads/*`.
+- Verifying Netlify download CDN availability.
+
+When changing Netlify config, deploy it intentionally:
+
+```bash
+npm exec --yes --registry=https://registry.npmjs.org --package netlify-cli -- \
+  netlify deploy --prod --dir=dist --message "Update download CDN redirects"
+```
+
+Afterward verify:
+
+```bash
+curl -I https://dazzle-galaxy-show.netlify.app/foo
+curl -I https://dazzle-galaxy-show.netlify.app/downloads/<encoded-file-name>
+```
+
+Expected behavior:
+
+- Non-download paths return `301` to `https://dazzle-galaxy-show.pages.dev/...`.
+- `/downloads/*` file paths return `200`.
+
+## Download Asset Rules
+
+Every visible download button on `https://dazzle-galaxy-show.pages.dev` must work.
+
+Cloudflare Pages has a practical single-file limit around 25 MiB. Do not assume files in `public/downloads/` are available on Cloudflare Pages, because `public/downloads/*` is ignored by Git except `README.txt`.
+
+Use one of these link helpers in `src/components/Themes/OrbitContent.tsx`:
+
+- `githubAsset('release-assets/<file>')`
+  - Use for files committed under `release-assets/`.
+  - Good for new assets that fit GitHub's normal file-size constraints.
+  - Example: `release-assets/利润助手-Android-debug.apk`.
+
+- `legacyDownload('/downloads/<file>')`
+  - Use for legacy files that exist on the Netlify `/downloads/*` CDN.
+  - Use when the file is ignored from Git or too large for Cloudflare Pages.
+  - Do not use Netlify for page routes, only for file downloads.
+
+- Direct `'/downloads/<file>'`
+  - Only use if the file is tracked in Git, deployed by Cloudflare Pages, and verified with `curl -I https://dazzle-galaxy-show.pages.dev/downloads/<file>`.
+
+Do not add a download entry until the target URL has been verified with `curl -I` and returns a successful status.
+
+Current known large or special assets:
+
+- `public/downloads/DazzleSecretaryPro-Windows-解压即用.zip` → `legacyDownload(...)`
+- `public/downloads/DazzleSecretary-Android-debug.apk.1.1` → `legacyDownload(...)`
+- `public/downloads/利润助手-macOS.dmg` → `legacyDownload(...)`
+- `public/downloads/利润助手-macOS.zip` → `legacyDownload(...)`
+- `release-assets/利润助手-Android-debug.apk` → `githubAsset(...)`
+
+The 利润助手 Android APK was added on 2026-05-27. It appears on the `pages.dev` release page as `Android APK (26 MB)` and points to GitHub raw.
+
 ## Software Package Release Workflow
 
-This site uses GitHub-connected Cloudflare Pages as the single public web entrypoint:
+When adding or updating downloadable software:
 
-- Public site: `https://dazzle-galaxy-show.pages.dev` on Cloudflare Pages.
-- Source of truth: GitHub repository `https://github.com/miller7-lan/myweb`, branch `main`.
-- Deployment path: commit changes to `main`, push to GitHub, then let Cloudflare Pages update `https://dazzle-galaxy-show.pages.dev`.
-- Deprecated Netlify URL: `https://dazzle-galaxy-show.netlify.app` must not be used as a public content entrypoint. Keep it redirect-only to `https://dazzle-galaxy-show.pages.dev` unless the user explicitly asks to restore Netlify hosting.
-- Download exception: legacy files under `https://dazzle-galaxy-show.netlify.app/downloads/...` remain valid download targets because Cloudflare Pages does not reliably carry ignored/oversized package files from GitHub. The Netlify root and app routes still redirect to Cloudflare Pages; only `/downloads/*` is kept as a file CDN.
+1. Confirm the source project.
+   - Inspect the user's provided project directory, build scripts, artifacts, and application metadata.
+   - Prefer existing build scripts and packaging conventions.
+   - Do not modify the source project logic unless the user explicitly asks.
 
-Cloudflare Pages only supports files up to 25 MiB. The page itself must remain on `https://dazzle-galaxy-show.pages.dev`; download buttons may target GitHub raw assets or the Netlify `/downloads/*` CDN exception when that is the only available location for legacy package files.
+2. Generate release packages.
+   - macOS apps usually need both `.dmg` and `.zip`.
+   - Android apps use `.apk`.
+   - Windows bundles usually use `.zip`.
+   - Record actual file size and SHA-256 from the generated file. Never guess.
 
-When adding or updating software packages:
+3. Decide storage and link type.
+   - New tracked assets: put under `release-assets/` and link with `githubAsset(...)`.
+   - Existing legacy packages already on Netlify CDN: keep using `legacyDownload(...)`.
+   - Oversized new packages that cannot live in GitHub or Cloudflare Pages: stop and ask the user for the desired storage/CDN.
 
-1. Put installer files in `public/downloads/`.
-2. Update the release metadata in `src/components/Themes/OrbitContent.tsx`.
-3. Use local relative links for files at or below 25 MiB:
-   - Example: `/downloads/SmallApp-macOS.dmg`
-4. Keep every visible download button on `https://dazzle-galaxy-show.pages.dev` working:
-   - For committed assets in `release-assets/`, use `githubAsset('release-assets/<file>')`.
-   - For legacy files that exist locally in `public/downloads/` but are ignored or oversized for Cloudflare Pages, use `legacyDownload('/downloads/<file>')`.
-   - Do not use `/downloads/<file>` directly unless the file is tracked in Git and verified on Cloudflare Pages.
-5. Run `npm run build`.
-6. Commit the source changes and push `main` to GitHub so Cloudflare Pages deploys automatically:
-   - `git add <changed files>`
-   - `git commit -m "Update site content"`
-   - `git push origin main`
-7. If manual Cloudflare Pages deployment is needed, create a temporary publish directory that excludes all files over 25 MiB.
-   - Example:
-     `rsync -a --delete --exclude='downloads/LargeApp-macOS.dmg' dist/ /private/tmp/dazzle-cf-dist/`
-8. Confirm the temporary directory has no oversized files:
-   - `find /private/tmp/dazzle-cf-dist -type f -size +25M -print`
-9. Deploy the temporary directory to Cloudflare Pages:
-    - `npm exec --yes --registry=https://registry.npmjs.org --package wrangler -- wrangler pages deploy /private/tmp/dazzle-cf-dist --project-name=dazzle-galaxy-show --branch=main --commit-dirty=true`
-10. Verify the production site responds:
-    - `curl -I https://dazzle-galaxy-show.pages.dev`
+4. Update `src/components/Themes/OrbitContent.tsx`.
+   - Update `ReleaseKey` if adding a new release.
+   - Add or update the item in `releases`.
+   - Fill `title`, `subtitle`, `date`, `node`, `icon`, `body`, `status`, `platform`, downloads, SHA-256, specs, scenes, and keywords.
+   - Keep platform labels accurate, e.g. `macOS / Android`.
 
-Current known oversized files that exceed Cloudflare Pages' single-file limit and are served through the Netlify `/downloads/*` CDN exception until moved elsewhere:
+5. Update `src/components/Themes/CreationsContent.tsx` when needed.
+   - Add the `releaseTarget` key to project metadata.
+   - Ensure "查看发行页面" opens the correct release node.
+   - If a release changes platform support, download availability, or product positioning, update the matching project card too. Do not update only `OrbitContent.tsx`.
+   - Keep the existing creation-card style: update `subtitle`, `desc`, `requirements`, `problem`, `design`, `techStack`, and `highlights` instead of adding a separate visual section.
+   - On 2026-05-27, 利润助手 was updated in the creations archive from a desktop-only local ledger to `Local Profit Ledger · Desktop / Android`, reflecting the Kotlin Android APK and shared `family_ledger.db` workflow.
 
-- `public/downloads/DazzleSecretaryPro-Windows-解压即用.zip`
-- `public/downloads/DazzleSecretary-Android-debug.apk.1.1`
-- `public/downloads/利润助手-macOS.dmg`
-- `public/downloads/利润助手-macOS.zip`
-- `release-assets/利润助手-Android-debug.apk` is committed to GitHub and linked with `githubAsset(...)`; it was added on 2026-05-27 so the `pages.dev` release page shows an Android APK download for 利润助手.
+6. Keep design consistent.
+   - Do not add a separate page for a release.
+   - Do not change the overall visual system unless asked.
+   - Keep edits scoped to data arrays, release metadata, and necessary imports.
 
-## 软件包与项目档案更新流程
+7. Validate.
+   - Run `npm run build`.
+   - Verify every visible download URL:
 
-新增或更新可下载软件、桌面应用、工具包，或同步更新个人作品说明时，统一沿用下面流程：保持现有风格、页面结构和跳转逻辑不变，只做最小幅度代码改动。
+```bash
+curl -L -o /dev/null -s -w '%{http_code}\n' -I '<download-url>'
+```
 
-1. 先确认来源项目
-   - 检查用户提供的软件项目目录、构建脚本、现有产物和应用信息。
-   - 优先使用项目已有的构建脚本或打包方式。
-   - 如果构建脚本因为非核心依赖失败，但已有可复用资源，可以按原脚本结构手动组装产物，不改动来源项目逻辑。
+   - Verify the site:
 
-2. 生成发行包
-   - macOS 应用优先生成 `.dmg` 和 `.zip` 两种包。
-   - 产物统一放入 `public/downloads/`。
-   - 文件命名采用：`软件名-macOS.dmg`、`软件名-macOS.zip`。
-   - 生成后记录文件大小和 SHA-256，用于下载页展示和校验。
+```bash
+curl -I https://dazzle-galaxy-show.pages.dev
+```
 
-3. 更新软件发行页
-   - 修改 `src/components/Themes/OrbitContent.tsx`。
-   - 在 `ReleaseKey` 中增加新的发行 key。
-   - 在 `releases` 数组中新增或更新对应节点。
-   - 补齐 `title`、`subtitle`、`date`、`node`、`icon`、`body`、`status`、`platform`、下载链接、SHA-256、系统要求、节点说明和关键词。
-   - 如新增节点影响编号，顺延后续 `node` 编号。
-   - 大于 25 MiB 的下载包不能直接发布到 Cloudflare Pages。现有历史包可沿用 `legacyDownload('/downloads/...')`，新包优先放 `release-assets/` 并用 `githubAsset(...)`；若超过 GitHub 普通文件限制，再询问用户要使用的存储/CDN 方案。
+   - If the page is deployed, verify the built JS contains any newly added label, e.g.:
 
-4. 更新个人作品页
-   - 修改 `src/components/Themes/CreationsContent.tsx`。
-   - 在 `Project` 的 `releaseTarget` 联合类型中增加对应 key。
-   - 在 `projects` 数组中新增或更新项目说明。
-   - 文案结构沿用现有字段：`desc`、`requirements`、`problem`、`design`、`techStack`、`highlights`。
-   - 有下载页的软件必须设置 `releaseTarget`，让“查看发行页面”跳到对应发行节点。
+```bash
+html=$(curl -fsSL https://dazzle-galaxy-show.pages.dev)
+asset=$(printf '%s' "$html" | sed -n 's/.*src="\([^"]*assets\/index-[^"]*\.js\)".*/\1/p' | head -1)
+curl -fsSL "https://dazzle-galaxy-show.pages.dev$asset" | grep 'Android APK'
+```
 
-5. 保持设计一致
-   - 不新增独立页面。
-   - 不改现有视觉风格、交互动效和布局体系。
-   - 不引入新的状态管理或数据层。
-   - 只在现有数组、类型和必要 import 上做增量改动。
+## Git Workflow
 
-6. 验证
-   - 运行 `npm run build`，确认 TypeScript 和 Vite 构建通过。
-   - 如果启动本地服务，优先使用可用端口；端口占用时换下一个端口。
-   - 用浏览器确认软件发行页出现新节点、DMG/ZIP 下载链接显示正确、SHA-256 校验值显示正确、个人作品页出现对应项目、项目详情中的“查看发行页面”能跳到对应发行节点。
+Before editing:
 
-## 注意事项
+```bash
+git status --short
+```
 
-- `public/downloads/*` 当前被 `.gitignore` 忽略，新生成的发行包可能不会出现在 `git status` 中，但仍应确认文件真实存在。
-- 不要回滚用户已有改动；仓库存在无关改动时，只处理本次任务需要的文件。
-- 下载包体积、哈希值必须以实际生成文件为准，不要手写猜测。
+After edits:
+
+```bash
+npm run build
+git add <changed files>
+git commit -m "<clear message>"
+git push origin main
+```
+
+Do not revert unrelated user changes. If the worktree has unrelated modifications, leave them alone unless they block the task.
+
+## Current Site Notes
+
+- The site is a Vite/React app.
+- Build command: `npm run build`.
+- Build output: `dist`.
+- `public/downloads/*` is ignored by Git except `public/downloads/README.txt`.
+- `release-assets/` is used for committed downloadable assets that should not be bundled into Cloudflare Pages' publish directory.
+- `netlify.toml` intentionally keeps `/downloads/*` available and redirects other routes to Cloudflare Pages.
+- `src/components/Themes/SignalContent.tsx` uses `VITE_CONTACT_API_URL` or `/api/contact`; do not point public page code back to Netlify unless explicitly requested.
