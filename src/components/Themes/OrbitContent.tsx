@@ -33,6 +33,8 @@ type ReleaseItem = {
 };
 
 const secureDownload = (path: string) => path;
+const githubAsset = (path: string) =>
+  `https://github.com/miller7-lan/myweb/raw/main/${encodeURI(path)}`;
 
 const releases: ReleaseItem[] = [
   {
@@ -97,7 +99,7 @@ const releases: ReleaseItem[] = [
     icon: Calculator,
     body: '围绕录入、看板、历史和设置构建的本地记账应用，数据保存在本机 SQLite 文件中，适合记录家庭利润、查看趋势和维护自定义字段。',
     status: 'Stable',
-    platform: 'macOS App Bundle',
+    platform: 'macOS / Android',
     primaryDownload: {
       label: '下载 macOS DMG (70 MB)',
       href: secureDownload('/downloads/利润助手-macOS.dmg'),
@@ -105,6 +107,7 @@ const releases: ReleaseItem[] = [
     },
     links: [
       { label: 'macOS ZIP (62 MB)', href: secureDownload('/downloads/利润助手-macOS.zip'), sha256: '43fc9b5b785bf440b6f660adb3ed900e759d04fcd841de829afa52cb32cdca90' },
+      { label: 'Android APK (26 MB)', href: githubAsset('release-assets/利润助手-Android-debug.apk'), sha256: '8979e07abaf47f10ed1fe295052c1d6427c9c1d072932df7f1c8f8119d1f5c05' },
     ],
     specs: [
       { label: '数据存储', value: '本地 SQLite', icon: Database },
@@ -117,7 +120,7 @@ const releases: ReleaseItem[] = [
       '灵活字段：支持自定义字段和利润计算口径。',
       '趋势看板：录入、历史、统计视图围绕日常记账闭环设计。',
     ],
-    keywords: ['profit', '利润助手', '记账', '家庭利润', 'sqlite', 'macos', '本地应用'],
+    keywords: ['profit', '利润助手', '记账', '家庭利润', 'sqlite', 'macos', 'android', 'apk', '本地应用'],
   },
   {
     key: 'localMonitor',
