@@ -4,9 +4,9 @@ publish = "dist"
 functions = "netlify/functions"
 
 [[redirects]]
-from = "/*"
-to = "https://dazzle-galaxy-show.pages.dev/:splat"
-status = 301
+from = "/downloads/*"
+to = "/downloads/:splat"
+status = 200
 force = true
 
 [[redirects]]
@@ -21,5 +21,6 @@ status = 200
 
 [[redirects]]
 from = "/*"
-to = "/index.html"
-status = 200
+to = "https://dazzle-galaxy-show.pages.dev/:splat"
+status = 301
+force = true

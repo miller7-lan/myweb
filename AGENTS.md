@@ -8,8 +8,9 @@ This site uses GitHub-connected Cloudflare Pages as the single public web entryp
 - Source of truth: GitHub repository `https://github.com/miller7-lan/myweb`, branch `main`.
 - Deployment path: commit changes to `main`, push to GitHub, then let Cloudflare Pages update `https://dazzle-galaxy-show.pages.dev`.
 - Deprecated Netlify URL: `https://dazzle-galaxy-show.netlify.app` must not be used as a public content entrypoint. Keep it redirect-only to `https://dazzle-galaxy-show.pages.dev` unless the user explicitly asks to restore Netlify hosting.
+- Download exception: legacy files under `https://dazzle-galaxy-show.netlify.app/downloads/...` remain valid download targets because Cloudflare Pages does not reliably carry ignored/oversized package files from GitHub. The Netlify root and app routes still redirect to Cloudflare Pages; only `/downloads/*` is kept as a file CDN.
 
-Cloudflare Pages only supports files up to 25 MiB. Do not introduce new public links to `dazzle-galaxy-show.netlify.app`. If a package is too large for Cloudflare Pages, pause and ask for the intended storage/CDN target instead of silently reintroducing Netlify as a public URL.
+Cloudflare Pages only supports files up to 25 MiB. The page itself must remain on `https://dazzle-galaxy-show.pages.dev`; download buttons may target GitHub raw assets or the Netlify `/downloads/*` CDN exception when that is the only available location for legacy package files.
 
 When adding or updating software packages:
 
@@ -17,8 +18,10 @@ When adding or updating software packages:
 2. Update the release metadata in `src/components/Themes/OrbitContent.tsx`.
 3. Use local relative links for files at or below 25 MiB:
    - Example: `/downloads/SmallApp-macOS.dmg`
-4. Use Cloudflare Pages-relative links for public download links when files are eligible for Cloudflare Pages:
-   - Example: `/downloads/SmallApp-macOS.dmg`
+4. Keep every visible download button on `https://dazzle-galaxy-show.pages.dev` working:
+   - For committed assets in `release-assets/`, use `githubAsset('release-assets/<file>')`.
+   - For legacy files that exist locally in `public/downloads/` but are ignored or oversized for Cloudflare Pages, use `legacyDownload('/downloads/<file>')`.
+   - Do not use `/downloads/<file>` directly unless the file is tracked in Git and verified on Cloudflare Pages.
 5. Run `npm run build`.
 6. Commit the source changes and push `main` to GitHub so Cloudflare Pages deploys automatically:
    - `git add <changed files>`
@@ -34,12 +37,13 @@ When adding or updating software packages:
 10. Verify the production site responds:
     - `curl -I https://dazzle-galaxy-show.pages.dev`
 
-Current known oversized files that exceed Cloudflare Pages' single-file limit and need an explicit non-Netlify storage decision before being linked publicly:
+Current known oversized files that exceed Cloudflare Pages' single-file limit and are served through the Netlify `/downloads/*` CDN exception until moved elsewhere:
 
 - `public/downloads/DazzleSecretaryPro-Windows-解压即用.zip`
 - `public/downloads/DazzleSecretary-Android-debug.apk.1.1`
 - `public/downloads/利润助手-macOS.dmg`
 - `public/downloads/利润助手-macOS.zip`
+- `release-assets/利润助手-Android-debug.apk` is committed to GitHub and linked with `githubAsset(...)`; it was added on 2026-05-27 so the `pages.dev` release page shows an Android APK download for 利润助手.
 
 ## 软件包与项目档案更新流程
 
@@ -62,7 +66,7 @@ Current known oversized files that exceed Cloudflare Pages' single-file limit an
    - 在 `releases` 数组中新增或更新对应节点。
    - 补齐 `title`、`subtitle`、`date`、`node`、`icon`、`body`、`status`、`platform`、下载链接、SHA-256、系统要求、节点说明和关键词。
    - 如新增节点影响编号，顺延后续 `node` 编号。
-   - 大于 25 MiB 的下载包不能直接发布到 Cloudflare Pages；不要自动改回 Netlify 链接，先询问用户要使用的存储/CDN 方案。
+   - 大于 25 MiB 的下载包不能直接发布到 Cloudflare Pages。现有历史包可沿用 `legacyDownload('/downloads/...')`，新包优先放 `release-assets/` 并用 `githubAsset(...)`；若超过 GitHub 普通文件限制，再询问用户要使用的存储/CDN 方案。
 
 4. 更新个人作品页
    - 修改 `src/components/Themes/CreationsContent.tsx`。

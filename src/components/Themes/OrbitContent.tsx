@@ -32,7 +32,8 @@ type ReleaseItem = {
   keywords: string[];
 };
 
-const secureDownload = (path: string) => path;
+const legacyDownload = (path: string) =>
+  `https://dazzle-galaxy-show.netlify.app${encodeURI(path)}`;
 const githubAsset = (path: string) =>
   `https://github.com/miller7-lan/myweb/raw/main/${encodeURI(path)}`;
 
@@ -49,13 +50,13 @@ const releases: ReleaseItem[] = [
     platform: 'macOS / Windows / Android',
     primaryDownload: {
       label: '下载 macOS DMG (1.1 MB)',
-      href: secureDownload('/downloads/Dazzle-Secretary-macOS.dmg'),
+      href: legacyDownload('/downloads/Dazzle-Secretary-macOS.dmg'),
       sha256: '7667fcba05da7593e7b60367aaa19563e7f717457dd750828cc7aba50c6cac67',
     },
     links: [
-      { label: 'Windows ZIP (124 MB)', href: secureDownload('/downloads/DazzleSecretaryPro-Windows-解压即用.zip'), sha256: '62189fe4c7dac77410006ba4c8da3fd1bcd12f1054e76b0f9886b58a5f25a32f' },
-      { label: 'macOS ZIP (592 KB)', href: secureDownload('/downloads/Dazzle-Secretary-macOS.zip'), sha256: '62510df371c725e57ad0c18183914bb2e9ddd8cd19a6fd8926afb365efda9542' },
-      { label: 'Android APK (45 MB)', href: secureDownload('/downloads/DazzleSecretary-Android-debug.apk.1.1'), sha256: '7e8edd3ede089f0710d6c7b37d368bf130e73c1e22fab4b2d8a2018ddc862320' },
+      { label: 'Windows ZIP (124 MB)', href: legacyDownload('/downloads/DazzleSecretaryPro-Windows-解压即用.zip'), sha256: '62189fe4c7dac77410006ba4c8da3fd1bcd12f1054e76b0f9886b58a5f25a32f' },
+      { label: 'macOS ZIP (592 KB)', href: legacyDownload('/downloads/Dazzle-Secretary-macOS.zip'), sha256: '62510df371c725e57ad0c18183914bb2e9ddd8cd19a6fd8926afb365efda9542' },
+      { label: 'Android APK (45 MB)', href: legacyDownload('/downloads/DazzleSecretary-Android-debug.apk.1.1'), sha256: '7e8edd3ede089f0710d6c7b37d368bf130e73c1e22fab4b2d8a2018ddc862320' },
     ],
     specs: [
       { label: '内存', value: '4 GB RAM', icon: Cpu },
@@ -77,11 +78,11 @@ const releases: ReleaseItem[] = [
     platform: 'macOS Only',
     primaryDownload: {
       label: '下载 macOS DMG (14 MB)',
-      href: secureDownload('/downloads/内网穿透控制台-macOS.dmg'),
+      href: legacyDownload('/downloads/内网穿透控制台-macOS.dmg'),
       sha256: '4d3a259749dfb1965363fcc311ae821d2b2766b38ef2cc10c7533dc901839184',
     },
     links: [
-      { label: 'macOS ZIP (13 MB)', href: secureDownload('/downloads/内网穿透控制台-macOS.zip'), sha256: '497550b258034ede01606c13827b4d300b375101937085593ddb536c93387cfd' },
+      { label: 'macOS ZIP (13 MB)', href: legacyDownload('/downloads/内网穿透控制台-macOS.zip'), sha256: '497550b258034ede01606c13827b4d300b375101937085593ddb536c93387cfd' },
     ],
     scenes: [
       '快速演示：把本地 Web 服务临时公开给客户或团队。',
@@ -102,11 +103,11 @@ const releases: ReleaseItem[] = [
     platform: 'macOS / Android',
     primaryDownload: {
       label: '下载 macOS DMG (70 MB)',
-      href: secureDownload('/downloads/利润助手-macOS.dmg'),
+      href: legacyDownload('/downloads/利润助手-macOS.dmg'),
       sha256: 'a5f38e7824293ff101218c6c788f91a0cf4dde534e3b2fd4526db79b36cac7e5',
     },
     links: [
-      { label: 'macOS ZIP (62 MB)', href: secureDownload('/downloads/利润助手-macOS.zip'), sha256: '43fc9b5b785bf440b6f660adb3ed900e759d04fcd841de829afa52cb32cdca90' },
+      { label: 'macOS ZIP (62 MB)', href: legacyDownload('/downloads/利润助手-macOS.zip'), sha256: '43fc9b5b785bf440b6f660adb3ed900e759d04fcd841de829afa52cb32cdca90' },
       { label: 'Android APK (26 MB)', href: githubAsset('release-assets/利润助手-Android-debug.apk'), sha256: '8979e07abaf47f10ed1fe295052c1d6427c9c1d072932df7f1c8f8119d1f5c05' },
     ],
     specs: [
@@ -134,11 +135,11 @@ const releases: ReleaseItem[] = [
     platform: 'macOS App Bundle',
     primaryDownload: {
       label: '下载 macOS DMG (1.2 MB)',
-      href: secureDownload('/downloads/本机检测-macOS.dmg'),
+      href: legacyDownload('/downloads/本机检测-macOS.dmg'),
       sha256: '1152ed0768f202bb3378c5527e8e7e728ebef69904033980de95144135fd2601',
     },
     links: [
-      { label: 'macOS ZIP (1.0 MB)', href: secureDownload('/downloads/本机检测-macOS.zip'), sha256: '9abe4ac8a59e6d015057f539ad8428b9edef3bf5bd87c131172910580f5f01a7' },
+      { label: 'macOS ZIP (1.0 MB)', href: legacyDownload('/downloads/本机检测-macOS.zip'), sha256: '9abe4ac8a59e6d015057f539ad8428b9edef3bf5bd87c131172910580f5f01a7' },
     ],
     specs: [
       { label: '系统', value: 'macOS 14+', icon: Monitor },
