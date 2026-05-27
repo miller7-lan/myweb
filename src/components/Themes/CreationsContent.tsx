@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { Activity, ArrowRight, Bot, Calculator, Eye, FolderSearch, Moon, Network, Route, Search, SearchCode, X, type LucideIcon } from 'lucide-react';
+import { Activity, ArrowRight, Bot, Calculator, Cpu, Eye, FolderSearch, Moon, Network, Route, Search, SearchCode, X, type LucideIcon } from 'lucide-react';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 
 type Project = {
@@ -14,7 +14,7 @@ type Project = {
   design: string[];
   techStack: string[];
   highlights: string[];
-  releaseTarget?: 'secretary' | 'tunnel' | 'profit';
+  releaseTarget?: 'secretary' | 'tunnel' | 'profit' | 'localMonitor';
 };
 
 const projects: Project[] = [
@@ -135,6 +135,26 @@ const projects: Project[] = [
     highlights: ['环境扫描', '磁盘清理', '开发工具'],
   },
   {
+    title: '本机检测',
+    subtitle: 'macOS Floating System Monitor',
+    icon: Cpu,
+    desc: 'macOS 原生悬浮检测工具，实时查看 CPU、内存、网络、热状态和代理出口 IP，用轻量窗口承载本机状态。',
+    requirements: [
+      '实时采集 CPU、内存、网络速率与系统热状态',
+      '以悬浮窗口展示关键指标，适合长时间任务旁路观察',
+      '提供代理出口 IP 查询和本机运行状态快速判断',
+    ],
+    problem: '把 Activity Monitor、网络测速和代理出口确认这些分散动作收束成一个随手可看的本机状态面板。',
+    design: [
+      '使用 SwiftUI/AppKit 构建 macOS 原生 LSUIElement 应用',
+      '按 MetricCollector 拆分采集职责，降低指标扩展成本',
+      '用本地采集优先的方式减少常驻工具对系统的额外负担',
+    ],
+    techStack: ['Swift', 'SwiftUI', 'AppKit', 'Combine', 'Mach API', 'URLSession'],
+    highlights: ['系统监测', '悬浮窗口', 'macOS 原生'],
+    releaseTarget: 'localMonitor',
+  },
+  {
     title: '防待机工具集',
     subtitle: 'macOS / Windows Keep Awake',
     icon: Moon,
@@ -239,7 +259,7 @@ const ProjectDetailBubble: React.FC<{
 
       <div
         ref={containerRef}
-        className="hud-panel relative w-[calc(100vw-32px)] md:w-[600px] max-h-[75vh] overflow-y-auto rounded-[28px] p-6 md:p-8 pointer-events-auto"
+        className="hud-panel relative w-[calc(100vw-32px)] md:w-[600px] max-h-[75vh] flex flex-col rounded-[28px] p-6 md:p-8 pointer-events-auto overflow-hidden"
         style={{
           ['--theme-color' as string]: '#93c5fd',
           ['--hud-x' as string]: '92%',
@@ -248,13 +268,13 @@ const ProjectDetailBubble: React.FC<{
       >
         <button
           onClick={handleClose}
-          className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors duration-300"
+          className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors duration-300 z-10"
           aria-label="关闭项目详情"
         >
           <X size={18} />
         </button>
 
-        <div className="flex flex-col space-y-5">
+        <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col space-y-5">
           <div className="stagger-item pr-8">
             <div className="hud-kicker mb-4">
               <span className="hud-dot" />

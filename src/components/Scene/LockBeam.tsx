@@ -6,21 +6,11 @@ import { useGalaxyStore } from '../../store/useGalaxyStore';
 
 export const LockBeam: React.FC = () => {
   const pulseRef = useRef(0);
-
-  const geometry = useMemo(() => new THREE.CylinderGeometry(0.018, 0.018, 1, 10, 1, true), []);
-  const material = useMemo(() => new THREE.MeshBasicMaterial({
-    color: '#e2e8f0',
-    transparent: true,
-    opacity: 0,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  }), []);
-
-  const beam = useMemo(() => new THREE.Mesh(geometry, material), [geometry, material]);
+  const beamRef = useRef<THREE.Mesh>(null);
   const targetPosition = useRef(new THREE.Vector3());
   const midpoint = useRef(new THREE.Vector3());
   const direction = useRef(new THREE.Vector3());
+  const targetColor = useRef(new THREE.Color());
   const up = useMemo(() => new THREE.Vector3(0, 1, 0), []);
 
   useFrame((_, delta) => {
@@ -29,6 +19,10 @@ export const LockBeam: React.FC = () => {
     const planetPosition = state.hoveredPlanet ? state.planetPositions[state.hoveredPlanet] : null;
     const isVisible = Boolean(theme && planetPosition) && (state.viewState === 'HOME' || state.viewState === 'HOVER_PLANET');
     const modeOpacity = state.visualMode === 'silent' ? 0.42 : state.visualMode === 'focus' ? 0.68 : 1;
+    const beam = beamRef.current;
+    if (!beam) return;
+
+    const material = beam.material as THREE.MeshBasicMaterial;
 
     pulseRef.current += delta;
     const targetOpacity = isVisible ? (0.28 + Math.sin(pulseRef.current * 3.2) * 0.08) * modeOpacity : 0;
@@ -43,8 +37,20 @@ export const LockBeam: React.FC = () => {
     beam.position.copy(midpoint.current);
     beam.scale.set(1, length, 1);
     beam.quaternion.setFromUnitVectors(up, direction.current);
-    material.color.lerp(new THREE.Color(theme.color), 0.18);
+    material.color.lerp(targetColor.current.set(theme.color), 0.18);
   });
 
-  return <primitive object={beam} />;
+  return (
+    <mesh ref={beamRef}>
+      <cylinderGeometry args={[0.018, 0.018, 1, 10, 1, true]} />
+      <meshBasicMaterial
+        color="#e2e8f0"
+        transparent
+        opacity={0}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
 };

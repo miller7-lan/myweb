@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowDownToLine, Bot, Calculator, Cpu, Database, HardDrive, Monitor, Network, Search, type LucideIcon } from 'lucide-react';
 
-type ReleaseKey = 'secretary' | 'tunnel' | 'profit' | 'next';
+type ReleaseKey = 'secretary' | 'tunnel' | 'profit' | 'localMonitor' | 'next';
 
 type ReleaseItem = {
   key: ReleaseKey;
@@ -13,7 +13,6 @@ type ReleaseItem = {
   body: string;
   status: string;
   platform: string;
-  image?: string;
   primaryDownload?: {
     label: string;
     href: string;
@@ -33,6 +32,8 @@ type ReleaseItem = {
   keywords: string[];
 };
 
+const secureDownload = (path: string) => path;
+
 const releases: ReleaseItem[] = [
   {
     key: 'secretary',
@@ -46,13 +47,13 @@ const releases: ReleaseItem[] = [
     platform: 'macOS / Windows / Android',
     primaryDownload: {
       label: '下载 macOS DMG (1.1 MB)',
-      href: '/downloads/Dazzle-Secretary-macOS.dmg',
+      href: secureDownload('/downloads/Dazzle-Secretary-macOS.dmg'),
       sha256: '7667fcba05da7593e7b60367aaa19563e7f717457dd750828cc7aba50c6cac67',
     },
     links: [
-      { label: 'Windows ZIP (124 MB)', href: '/downloads/DazzleSecretaryPro-Windows-解压即用.zip', sha256: '62189fe4c7dac77410006ba4c8da3fd1bcd12f1054e76b0f9886b58a5f25a32f' },
-      { label: 'macOS ZIP (592 KB)', href: '/downloads/Dazzle-Secretary-macOS.zip', sha256: '62510df371c725e57ad0c18183914bb2e9ddd8cd19a6fd8926afb365efda9542' },
-      { label: 'Android APK (45 MB)', href: '/downloads/DazzleSecretary-Android-debug.apk.1.1', sha256: '7e8edd3ede089f0710d6c7b37d368bf130e73c1e22fab4b2d8a2018ddc862320' },
+      { label: 'Windows ZIP (124 MB)', href: secureDownload('/downloads/DazzleSecretaryPro-Windows-解压即用.zip'), sha256: '62189fe4c7dac77410006ba4c8da3fd1bcd12f1054e76b0f9886b58a5f25a32f' },
+      { label: 'macOS ZIP (592 KB)', href: secureDownload('/downloads/Dazzle-Secretary-macOS.zip'), sha256: '62510df371c725e57ad0c18183914bb2e9ddd8cd19a6fd8926afb365efda9542' },
+      { label: 'Android APK (45 MB)', href: secureDownload('/downloads/DazzleSecretary-Android-debug.apk.1.1'), sha256: '7e8edd3ede089f0710d6c7b37d368bf130e73c1e22fab4b2d8a2018ddc862320' },
     ],
     specs: [
       { label: '内存', value: '4 GB RAM', icon: Cpu },
@@ -74,11 +75,11 @@ const releases: ReleaseItem[] = [
     platform: 'macOS Only',
     primaryDownload: {
       label: '下载 macOS DMG (14 MB)',
-      href: '/downloads/内网穿透控制台-macOS.dmg',
+      href: secureDownload('/downloads/内网穿透控制台-macOS.dmg'),
       sha256: '4d3a259749dfb1965363fcc311ae821d2b2766b38ef2cc10c7533dc901839184',
     },
     links: [
-      { label: 'macOS ZIP (13 MB)', href: '/downloads/内网穿透控制台-macOS.zip', sha256: '497550b258034ede01606c13827b4d300b375101937085593ddb536c93387cfd' },
+      { label: 'macOS ZIP (13 MB)', href: secureDownload('/downloads/内网穿透控制台-macOS.zip'), sha256: '497550b258034ede01606c13827b4d300b375101937085593ddb536c93387cfd' },
     ],
     scenes: [
       '快速演示：把本地 Web 服务临时公开给客户或团队。',
@@ -94,17 +95,16 @@ const releases: ReleaseItem[] = [
     date: '2026 · RELEASE',
     node: 'Node 03',
     icon: Calculator,
-    image: '/software/profit-assistant-icon.png',
     body: '围绕录入、看板、历史和设置构建的本地记账应用，数据保存在本机 SQLite 文件中，适合记录家庭利润、查看趋势和维护自定义字段。',
     status: 'Stable',
     platform: 'macOS App Bundle',
     primaryDownload: {
       label: '下载 macOS DMG (70 MB)',
-      href: '/downloads/利润助手-macOS.dmg',
+      href: secureDownload('/downloads/利润助手-macOS.dmg'),
       sha256: 'a5f38e7824293ff101218c6c788f91a0cf4dde534e3b2fd4526db79b36cac7e5',
     },
     links: [
-      { label: 'macOS ZIP (62 MB)', href: '/downloads/利润助手-macOS.zip', sha256: '43fc9b5b785bf440b6f660adb3ed900e759d04fcd841de829afa52cb32cdca90' },
+      { label: 'macOS ZIP (62 MB)', href: secureDownload('/downloads/利润助手-macOS.zip'), sha256: '43fc9b5b785bf440b6f660adb3ed900e759d04fcd841de829afa52cb32cdca90' },
     ],
     specs: [
       { label: '数据存储', value: '本地 SQLite', icon: Database },
@@ -120,11 +120,42 @@ const releases: ReleaseItem[] = [
     keywords: ['profit', '利润助手', '记账', '家庭利润', 'sqlite', 'macos', '本地应用'],
   },
   {
+    key: 'localMonitor',
+    title: '本机检测 v1.0',
+    subtitle: 'macOS 悬浮系统监测',
+    date: '2026 · RELEASE',
+    node: 'Node 04',
+    icon: Cpu,
+    body: 'SwiftUI/AppKit 原生本机状态面板，支持 CPU、内存、网络速率、热状态和代理出口 IP 的轻量检测。',
+    status: 'Stable',
+    platform: 'macOS App Bundle',
+    primaryDownload: {
+      label: '下载 macOS DMG (1.2 MB)',
+      href: secureDownload('/downloads/本机检测-macOS.dmg'),
+      sha256: '1152ed0768f202bb3378c5527e8e7e728ebef69904033980de95144135fd2601',
+    },
+    links: [
+      { label: 'macOS ZIP (1.0 MB)', href: secureDownload('/downloads/本机检测-macOS.zip'), sha256: '9abe4ac8a59e6d015057f539ad8428b9edef3bf5bd87c131172910580f5f01a7' },
+    ],
+    specs: [
+      { label: '系统', value: 'macOS 14+', icon: Monitor },
+      { label: '架构', value: 'Apple Silicon', icon: Cpu },
+      { label: '磁盘空间', value: '约 10 MB 可用', icon: HardDrive },
+      { label: '网络', value: 'IP 查询需联网', icon: Network },
+    ],
+    scenes: [
+      '悬浮观察：长时间下载、编译或运行任务时快速查看本机负载。',
+      '网络判断：同时观察网络速率和代理出口 IP。',
+      '轻量常驻：原生状态面板减少额外运行负担。',
+    ],
+    keywords: ['monitor', '本机检测', '系统监测', 'cpu', '内存', '网络', '代理', 'macos'],
+  },
+  {
     key: 'next',
     title: '后续更新方向',
     subtitle: '维护与发行计划',
     date: 'NEXT ORBIT',
-    node: 'Node 04',
+    node: 'Node 05',
     icon: ArrowDownToLine,
     body: '后续会优先补齐版本提示、自动更新体验，以及更多本地工具的发行包整理。',
     status: 'Planning',
@@ -142,9 +173,31 @@ export const OrbitContent: React.FC = () => {
   const [activeRelease, setActiveRelease] = useState<ReleaseKey>(() => {
     const preferredTab = window.sessionStorage.getItem('preferredOrbitTab');
     window.sessionStorage.removeItem('preferredOrbitTab');
-    return preferredTab === 'tunnel' || preferredTab === 'profit' ? preferredTab : 'secretary';
+    return preferredTab === 'tunnel' || preferredTab === 'profit' || preferredTab === 'localMonitor' ? preferredTab : 'secretary';
   });
   const [searchQuery, setSearchQuery] = useState('');
+
+  const [isScanning, setIsScanning] = useState(false);
+  const [pingResults, setPingResults] = useState<Record<string, number>>({});
+  const [eccentricity, setEccentricity] = useState(1.0);
+
+  const runOrbitPing = () => {
+    setIsScanning(true);
+    setPingResults({});
+    
+    releases.forEach((release, index) => {
+      setTimeout(() => {
+        setPingResults(prev => ({
+          ...prev,
+          [release.key]: Math.floor(12 + Math.random() * 24)
+        }));
+        if (index === releases.length - 1) {
+          setIsScanning(false);
+        }
+      }, (index + 1) * 600);
+    });
+  };
+
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredReleases = useMemo(() => {
@@ -295,23 +348,6 @@ export const OrbitContent: React.FC = () => {
 
           <p className="mb-6 max-w-3xl text-sm font-light leading-relaxed text-gray-400">{activeItem.body}</p>
 
-          {activeItem.image && (
-            <div className="mb-6 flex items-center gap-4 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
-              <img
-                src={activeItem.image}
-                alt={`${activeItem.title} 图标`}
-                className="h-16 w-16 rounded-2xl border border-white/10 bg-white/5 object-cover shadow-[0_0_28px_rgba(196,181,253,0.12)]"
-              />
-              <div>
-                <div className="hud-kicker mb-2">
-                  <span className="hud-dot" />
-                  <span>Software Image</span>
-                </div>
-                <p className="text-sm font-light text-gray-400">已接入现有软件图标与本地打包下载资源。</p>
-              </div>
-            </div>
-          )}
-
           {activeItem.primaryDownload && (
             <a href={activeItem.primaryDownload.href} download className="inline-flex items-center gap-3 bg-white text-black px-6 py-4 rounded-full font-medium hover:bg-gray-200 transition-colors md:px-8">
               <ArrowDownToLine size={20} />
@@ -380,6 +416,140 @@ export const OrbitContent: React.FC = () => {
             </ul>
           </>
         )}
+
+        {/* Orbit Diagnostics and Gravitational Calibration Control */}
+        <div className="hud-panel rounded-3xl p-6 mt-8 relative overflow-hidden">
+          {/* Subtle radar circular line animations when scanning */}
+          {isScanning && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-[var(--theme-color,#93c5fd)]/10 animate-[ping_1.6s_infinite] pointer-events-none" />
+          )}
+          
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="hud-kicker mb-2">
+                <span className={`hud-dot ${isScanning ? 'bg-[var(--theme-color,#93c5fd)] shadow-[0_0_12px_var(--theme-color,#93c5fd)] animate-pulse' : 'bg-gray-600'}`} />
+                <span>ORBIT DIAGNOSTICS CONTROL</span>
+              </div>
+              <h3 className="text-xl font-light text-white tracking-wide">轨道通信诊断与引力标定</h3>
+            </div>
+            
+            <button
+              type="button"
+              onClick={runOrbitPing}
+              disabled={isScanning}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border border-white/10 bg-white/5 font-medium text-xs text-gray-200 hover:bg-white/10 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed select-none"
+            >
+              <span>{isScanning ? '扫描中 (SCANNING...)' : '测试发行轨道通信 (PING ORBITS)'}</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Communication Latency Ping Results */}
+            <div className="rounded-2xl border border-white/[0.05] bg-black/25 p-5 space-y-3.5">
+              <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-gray-500 font-mono">
+                <span>Node Communication Status</span>
+                <span>Latency</span>
+              </div>
+              
+              <div className="space-y-2.5 font-mono text-xs">
+                {releases.map((node) => {
+                  const ping = pingResults[node.key];
+                  const hasPinged = ping !== undefined;
+                  return (
+                    <div key={node.key} className="flex flex-col gap-1.5 p-2 rounded-xl bg-white/[0.015] border border-white/[0.03]">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-300 font-light truncate">{node.title} ({node.node})</span>
+                        {isScanning && ping === undefined ? (
+                          <span className="text-[var(--theme-color,#93c5fd)] animate-pulse tracking-widest text-[10px]">SCANNING...</span>
+                        ) : hasPinged ? (
+                          <span className={`font-semibold text-[10px] ${ping < 20 ? 'text-green-400' : 'text-yellow-400'}`}>
+                            {ping} ms (STABLE)
+                          </span>
+                        ) : (
+                          <span className="text-gray-600 text-[10px]">STANDBY</span>
+                        )}
+                      </div>
+                      <div className="h-1 w-full bg-white/[0.03] rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-gray-500 to-[var(--theme-color,#93c5fd)] transition-all duration-500"
+                          style={{ 
+                            width: isScanning && ping === undefined 
+                              ? '45%' 
+                              : hasPinged 
+                                ? `${Math.max(10, Math.min(100, 100 - (ping / 150) * 100))}%` 
+                                : '0%' 
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Gravity Alignment Simulator Slider */}
+            <div className="rounded-2xl border border-white/[0.05] bg-black/25 p-5 flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-gray-500 font-mono mb-2">
+                  <span>Gravitational Calibrator</span>
+                  <span className="text-gray-300 font-semibold">{eccentricity.toFixed(2)} G</span>
+                </div>
+                <p className="text-xs text-gray-400 font-light leading-relaxed mb-4">
+                  调整滑块以微调主轨道的重力波形参数。实时计算轨道偏心率（Eccentricity）与偏转安全指数。
+                </p>
+              </div>
+
+              {/* Custom SVG visualization warped by eccentricity value */}
+              <div className="relative h-24 rounded-xl bg-black/40 border border-white/[0.03] flex items-center justify-center overflow-hidden mb-4 select-none">
+                <svg className="w-full h-full opacity-60 animate-[pulse_6s_infinite]" viewBox="0 0 200 100">
+                  {/* Orbit oval */}
+                  <ellipse 
+                    cx="100" 
+                    cy="50" 
+                    rx={Math.max(20, 60 * (1.5 - (eccentricity - 1) * 0.4))}
+                    ry={Math.max(10, 30 * (1 - (eccentricity - 1) * 0.3))}
+                    fill="none" 
+                    stroke="var(--theme-color, #93c5fd)" 
+                    strokeWidth="1" 
+                    strokeDasharray="4 3"
+                    className="transition-all duration-300 origin-center"
+                    style={{ transform: `rotate(${(eccentricity - 1) * 30}deg)` }}
+                  />
+                  {/* Central Star */}
+                  <circle cx="100" cy="50" r="4" fill="#ffffff" />
+                  {/* Planetary dot */}
+                  <circle 
+                    cx={100 + 40 * Math.sin(eccentricity * Math.PI)} 
+                    cy={50 + 20 * Math.cos(eccentricity * Math.PI)} 
+                    r="2.5" 
+                    fill="var(--theme-color, #93c5fd)" 
+                  />
+                </svg>
+                <div className="absolute bottom-2 left-2 text-[9px] font-mono text-gray-500 uppercase tracking-widest">
+                  Orbit Ellipse Shape: {eccentricity === 1 ? 'Circular' : eccentricity > 1.2 ? 'Hyperbolic' : 'Elliptical'}
+                </div>
+              </div>
+
+              {/* Gravity Range Input */}
+              <div className="space-y-2">
+                <input 
+                  type="range"
+                  min="0.5"
+                  max="1.5"
+                  step="0.05"
+                  value={eccentricity}
+                  onChange={(e) => setEccentricity(parseFloat(e.target.value))}
+                  className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white"
+                />
+                <div className="flex justify-between items-center text-[9px] font-mono text-gray-500">
+                  <span>0.5G (LOW GRAVITY)</span>
+                  <span className="text-gray-400">NORMAL (1.0G)</span>
+                  <span>1.5G (CRITICAL)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

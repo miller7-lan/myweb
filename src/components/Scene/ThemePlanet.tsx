@@ -13,9 +13,19 @@ interface ThemePlanetProps {
   mousePosRef: React.RefObject<THREE.Vector3>;
   mouseScreenPosRef: React.RefObject<THREE.Vector2>;
   screenAspect: number;
+  isMobilePortrait: boolean;
+  layoutProgressRef: React.RefObject<{ value: number }>;
 }
 
-export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef, mouseScreenPosRef, screenAspect }) => {
+const portraitPlanetPositions: Record<string, [number, number, number]> = {
+  identity: [0, 6.72, 0.2],
+  creations: [-2.45, 4.22, 0],
+  stack: [2.45, 4.22, 0],
+  orbit: [-2.45, 1.72, 0],
+  signal: [2.45, 1.72, 0],
+};
+
+export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef, mouseScreenPosRef, screenAspect, isMobilePortrait, layoutProgressRef }) => {
   const groupRef = useRef<THREE.Group>(null);
   const pointsRef = useRef<THREE.Points>(null);
   const haloRef = useRef<THREE.Mesh>(null);
@@ -343,23 +353,28 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
   const haloSpin = useRef(0);
   const haloScaleRef = useRef(0.92);
   const coreScaleRef = useRef(0.74);
+  const orbitPositionRef = useRef(new THREE.Vector3());
+  const portraitPositionRef = useRef(new THREE.Vector3());
+  const blendedPositionRef = useRef(new THREE.Vector3());
 
   useFrame((_, delta) => {
     const shouldPauseOrbit = Boolean(hoveredPlanet) && viewState !== 'ENTERING_THEME' && viewState !== 'LEAVING_THEME';
     const highlighted = isHovered || isFocused;
     const motionScale = visualMode === 'silent' ? 0.16 : visualMode === 'focus' ? 0.48 : 1;
     const haloMotionScale = visualMode === 'silent' ? 0.2 : visualMode === 'focus' ? 0.55 : 1;
+    const portraitProgress = layoutProgressRef.current?.value ?? 0;
+    const portraitMotionScale = THREE.MathUtils.lerp(1, 0.18, portraitProgress);
 
     if (viewState !== 'THEME' && !shouldPauseOrbit) {
-      localTime.current += delta * motionScale;
+      localTime.current += delta * motionScale * portraitMotionScale;
       
       if (pointsRef.current) {
-        pointsRef.current.rotation.y -= delta * motionScale * 0.9; // Planet own rotation
+        pointsRef.current.rotation.y -= delta * motionScale * 0.9 * THREE.MathUtils.lerp(1, 0.7, portraitProgress); // Planet own rotation
       }
     }
 
     if (haloRef.current) {
-      haloTime.current += delta * haloMotionScale;
+      haloTime.current += delta * haloMotionScale * THREE.MathUtils.lerp(1, 0.46, portraitProgress);
       const wobble = highlighted && viewState !== 'THEME' ? 1 : 0;
       const nonlinearSpeed = highlighted
         ? 1.25 + (Math.sin(haloTime.current * 1.7 + themeDef.orbitOffset) + 1) * 0.55
@@ -424,7 +439,8 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       materialRef.current.uniforms.uMouseScreenPos.value.copy(mouseScreenPosRef.current);
       materialRef.current.uniforms.uAspect.value = screenAspect;
       if (viewState === 'HOME' || viewState === 'HOVER_PLANET') {
-        materialRef.current.uniforms.uParticleSize.value = visualMode === 'silent' ? 3.0 : visualMode === 'focus' ? 3.45 : 4.0;
+        const defaultParticleSize = visualMode === 'silent' ? 3.0 : visualMode === 'focus' ? 3.45 : 4.0;
+        materialRef.current.uniforms.uParticleSize.value = defaultParticleSize + portraitProgress * 0.35;
         // Scale down particle opacity when hovered/focused to prevent additive blending blowout (white burnout)
         const baseOpacity = visualMode === 'silent' ? 0.56 : visualMode === 'focus' ? 0.74 : 1.0;
         const targetOpacity = baseOpacity * (highlighted ? 0.38 : 0.82);
@@ -448,28 +464,31 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     
     const newY = y * cosT - z * sinT;
     const newZ = y * sinT + z * cosT;
-    const orbitPos = new THREE.Vector3(x, newY, newZ);
+    const orbitPos = orbitPositionRef.current.set(x, newY, newZ);
+    const portraitPosition = portraitPlanetPositions[String(themeDef.key)] ?? [0, 5, 0];
+    const portraitPos = portraitPositionRef.current.set(portraitPosition[0], portraitPosition[1], portraitPosition[2]);
+    const homePos = blendedPositionRef.current.lerpVectors(orbitPos, portraitPos, portraitProgress);
 
     if (groupRef.current) {
       if (viewState === 'HOME' || viewState === 'HOVER_PLANET') {
-        groupRef.current.position.copy(orbitPos);
+        groupRef.current.position.copy(homePos);
       } else if (isReturning.current) {
-        // Smoothly blend from the expanded position back to the moving orbit.
-        groupRef.current.position.lerpVectors(returnStartPosition.current, orbitPos, returnProgress.current.value);
+        // Smoothly blend from the expanded position back to the active responsive layout.
+        groupRef.current.position.lerpVectors(returnStartPosition.current, homePos, returnProgress.current.value);
       } else if (viewState === 'LEAVING_THEME' && !isActive) {
-        groupRef.current.position.copy(orbitPos);
+        groupRef.current.position.copy(homePos);
       }
 
       if (themeDef.key) {
         const { x: px, y: py, z: pz } = groupRef.current.position;
-        setPlanetPosition(themeDef.key, [px, py, pz]);
+        setPlanetPosition(themeDef.key, px, py, pz);
       }
     }
   });
 
   return (
     <group ref={groupRef}>
-      {/* Invisible sphere for raycasting hit area. Keep it tight so focus feels intentional. */}
+      {/* Invisible sphere for raycasting hit area. It expands on mobile portrait for thumb-friendly taps. */}
       <mesh 
         onPointerOver={(e) => {
           e.stopPropagation();
@@ -489,7 +508,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
           handleClick();
         }}
       >
-        <sphereGeometry args={[1.35, 16, 16]} />
+        <sphereGeometry args={[isMobilePortrait ? 1.8 : 1.35, 16, 16]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
       
@@ -534,7 +553,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       </mesh>
 
       <Html
-        position={[0, 2.0, 0]}
+        position={[0, isMobilePortrait ? -1.32 : 2.0, 0]}
         center
         zIndexRange={[100, 0]}
         style={{ pointerEvents: 'none' }}
@@ -542,10 +561,10 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         <div
           className={`
             flex flex-col items-center justify-center
-            px-5 py-2.5 rounded-2xl backdrop-blur-xl border border-white/10
+            ${isMobilePortrait ? 'min-w-[5.4rem] px-3 py-2 rounded-xl' : 'px-5 py-2.5 rounded-2xl'} backdrop-blur-xl border border-white/10
             bg-[#0a0a0f]/60 text-gray-200 transition-all duration-300 ease-out
-            ${(isHovered || isFocused) && viewState !== 'THEME' 
-              ? 'opacity-100 translate-y-0 scale-100' 
+            ${((isHovered || isFocused) || isMobilePortrait) && viewState !== 'THEME'
+              ? `translate-y-0 ${isMobilePortrait && !isHovered && !isFocused ? 'opacity-75 scale-90' : 'opacity-100 scale-100'}`
               : 'opacity-0 translate-y-4 scale-90'}
           `}
           style={{
@@ -553,14 +572,14 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
           }}
         >
           <span 
-            className="text-xs font-bold tracking-[0.2em] uppercase mb-0.5 flex items-center gap-2"
+            className={`${isMobilePortrait ? 'text-[10px] tracking-[0.16em] gap-1.5 whitespace-nowrap' : 'text-xs tracking-[0.2em] gap-2'} font-bold uppercase mb-0.5 flex items-center`}
             style={{ color: softenedThemeHex, textShadow: `0 0 10px ${softenedThemeHex}` }}
           >
             <span>{themeDef.title}</span>
             <span className="opacity-50 text-[10px] font-normal tracking-widest">|</span>
             <span className="tracking-widest">{themeDef.chineseName}</span>
           </span>
-          <span className="text-[10px] text-gray-400 tracking-wider whitespace-nowrap">
+          <span className={`${isMobilePortrait ? 'hidden' : 'block'} text-[10px] text-gray-400 tracking-wider whitespace-nowrap`}>
             {themeDef.subtitle}
           </span>
         </div>

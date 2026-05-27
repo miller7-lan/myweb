@@ -26,7 +26,7 @@ export const StackContent: React.FC = () => {
         <span className="block text-xl text-gray-400 font-extralight tracking-widest mb-3">技能星图</span>
         
         <p className="text-xs text-gray-500 font-light max-w-sm leading-relaxed tracking-wide mb-3">
-          A constellation map of tools, languages, and systems I am building.
+          A project-backed constellation of tools, languages, and systems I have shipped.
         </p>
 
         <div className="flex flex-wrap gap-3">

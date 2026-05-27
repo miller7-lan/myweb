@@ -15,11 +15,13 @@ export const GalaxyScene: React.FC = () => {
   const mouseScreenPos = useRef(new THREE.Vector2(0, 0));
   const { camera, size } = useThree();
   const { viewState } = useGalaxyStore();
+  const isMobilePortrait = size.width <= 768 && size.height > size.width;
   const galaxyGroup = useRef<THREE.Group>(null);
-  
-  // Animation state ref
   const introState = useRef({ progress: 0 });
+  const layoutProgress = useRef({ value: isMobilePortrait ? 1 : 0 });
   const planetsGroup = useRef<THREE.Group>(null);
+  const pointerVector = useRef(new THREE.Vector3());
+  const pointerTarget = useRef(new THREE.Vector3());
 
   useEffect(() => {
     // Intro aggregation animation
@@ -45,36 +47,47 @@ export const GalaxyScene: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Handle fading of core and rings when entering/leaving theme
     if (!galaxyGroup.current) return;
-    
-    // Core and Rings are the first two children typically, or we can just animate opacity
-    // if we added opacity props, but we didn't hook them to materials perfectly.
-    // Instead, we can scale the whole group or fade it if we added a global uniform.
-    // For now, let's scale down the core and ring group when active.
-    
+
     const isTheme = viewState === 'ENTERING_THEME' || viewState === 'THEME';
+    const homeScale = isMobilePortrait ? 0.36 : 1;
     
     gsap.to(galaxyGroup.current.scale, {
-      x: isTheme ? 0.01 : 1,
-      y: isTheme ? 0.01 : 1,
-      z: isTheme ? 0.01 : 1,
+      x: isTheme ? 0.01 : homeScale,
+      y: isTheme ? 0.01 : homeScale,
+      z: isTheme ? 0.01 : homeScale,
       duration: isTheme ? 0.8 : 1.2,
       ease: isTheme ? 'power2.in' : 'power4.out',
       overwrite: 'auto'
     });
+
+    gsap.to(galaxyGroup.current.position, {
+      y: !isTheme && isMobilePortrait ? -0.82 : 0,
+      duration: 1.0,
+      ease: 'power3.out',
+      overwrite: 'auto',
+    });
     
-  }, [viewState]);
+  }, [isMobilePortrait, viewState]);
+
+  useEffect(() => {
+    gsap.to(layoutProgress.current, {
+      value: isMobilePortrait ? 1 : 0,
+      duration: isMobilePortrait ? 0.72 : 1.0,
+      ease: isMobilePortrait ? 'power3.out' : 'power4.inOut',
+      overwrite: 'auto',
+    });
+  }, [isMobilePortrait]);
 
   useFrame((state) => {
     mouseScreenPos.current.copy(state.mouse);
 
     // Raycast mouse to a plane to get 3D coordinates for light
-    const vec = new THREE.Vector3(state.mouse.x, state.mouse.y, 0.5);
+    const vec = pointerVector.current.set(state.mouse.x, state.mouse.y, 0.5);
     vec.unproject(camera);
     const dir = vec.sub(camera.position).normalize();
     const distance = -camera.position.z / dir.z;
-    const targetPos = camera.position.clone().add(dir.multiplyScalar(distance));
+    const targetPos = pointerTarget.current.copy(camera.position).add(dir.multiplyScalar(distance));
     
     // Smooth lerp mouse light position
     mousePos.current.lerp(targetPos, 0.1);
@@ -108,6 +121,8 @@ export const GalaxyScene: React.FC = () => {
             mousePosRef={mousePos}
             mouseScreenPosRef={mouseScreenPos}
             screenAspect={size.width / size.height}
+            isMobilePortrait={isMobilePortrait}
+            layoutProgressRef={layoutProgress}
           />
         ))}
       </group>

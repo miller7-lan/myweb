@@ -9,6 +9,8 @@ lerna-debug.log*
 .env
 .env.*
 !.env.example
+.contact-rate-limits.json
+.contact-rate-limits.json.*.tmp
 
 node_modules
 dist
@@ -27,3 +29,6 @@ public/downloads/*
 *.njsproj
 *.sln
 *.sw?
+
+# Local Netlify folder
+.netlify

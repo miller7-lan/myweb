@@ -42,6 +42,15 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
   const liftVelocityRef = useRef(0);
   const leanOffsetRef = useRef(0);
   const leanVelocityRef = useRef(0);
+  const basePositionRef = useRef(new THREE.Vector3());
+  const tangentRef = useRef(new THREE.Vector3());
+  const radialRef = useRef(new THREE.Vector3());
+  const impactDirectionRef = useRef(new THREE.Vector3());
+  const positionRef = useRef(new THREE.Vector3());
+  const lookMatrixRef = useRef(new THREE.Matrix4());
+  const lookTargetRef = useRef(new THREE.Vector3());
+  const upRef = useRef(new THREE.Vector3(0, 1, 0));
+  const targetQuaternionRef = useRef(new THREE.Quaternion());
   const { viewState, visualMode } = useGalaxyStore();
 
   useFrame((_, delta) => {
@@ -69,13 +78,13 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
     const laneRadius = radiusRef.current + Math.sin(ringTime * 0.34 + angleRef.current * 1.6) * 0.08;
     const effectiveAngle = angleRef.current + tangentOffsetRef.current;
 
-    const basePosition = new THREE.Vector3(
+    const basePosition = basePositionRef.current.set(
       Math.cos(effectiveAngle) * laneRadius,
       0.12,
       Math.sin(effectiveAngle) * laneRadius
     );
-    const tangent = new THREE.Vector3(-Math.sin(effectiveAngle), 0, Math.cos(effectiveAngle)).normalize();
-    const radial = new THREE.Vector3(Math.cos(effectiveAngle), 0, Math.sin(effectiveAngle)).normalize();
+    const tangent = tangentRef.current.set(-Math.sin(effectiveAngle), 0, Math.cos(effectiveAngle)).normalize();
+    const radial = radialRef.current.set(Math.cos(effectiveAngle), 0, Math.sin(effectiveAngle)).normalize();
 
     // Meteor wave impact forces
     let tangentForce = 0;
@@ -96,7 +105,7 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
       const influence = (waveAlignment * waveFalloff * 1.05 + nearImpact * 0.95) * (0.42 + distanceFalloff * 0.85) * slot.strength;
 
       if (influence <= 0) return;
-      const direction = basePosition.clone().sub(slot.point).normalize();
+      const direction = impactDirectionRef.current.copy(basePosition).sub(slot.point).normalize();
       const tangentDirection = direction.dot(tangent);
       const radialDirection = direction.dot(radial);
       tangentForce += influence * tangentDirection * 3.6;
@@ -126,9 +135,10 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
     leanOffsetRef.current += leanVelocityRef.current * dt;
     leanOffsetRef.current = THREE.MathUtils.clamp(leanOffsetRef.current, -0.36, 0.36);
 
-    const position = basePosition
-      .add(radial.multiplyScalar(radialOffsetRef.current))
-      .add(new THREE.Vector3(0, liftOffsetRef.current, 0));
+    const position = positionRef.current
+      .copy(basePosition)
+      .addScaledVector(radial, radialOffsetRef.current);
+    position.y += liftOffsetRef.current;
     shipPositionRef.current.copy(position);
 
     if (!groupRef.current) return;
@@ -137,10 +147,10 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
     groupRef.current.position.copy(position);
 
     // Dynamic 3D alignment to orbit path tangent
-    const lookMatrix = new THREE.Matrix4();
-    lookMatrix.lookAt(position, position.clone().add(tangent), new THREE.Vector3(0, 1, 0));
-    const targetQuaternion = new THREE.Quaternion().setFromRotationMatrix(lookMatrix);
-    groupRef.current.quaternion.copy(targetQuaternion);
+    lookTargetRef.current.copy(position).add(tangent);
+    lookMatrixRef.current.lookAt(position, lookTargetRef.current, upRef.current);
+    targetQuaternionRef.current.setFromRotationMatrix(lookMatrixRef.current);
+    groupRef.current.quaternion.copy(targetQuaternionRef.current);
 
     groupRef.current.scale.setScalar(visualScale * (1.0 + liftOffsetRef.current * 0.16));
 

@@ -20,7 +20,7 @@ interface GalaxyState {
   setActiveTheme: (theme: ThemeKey) => void;
   visitTheme: (theme: NonNullThemeKey) => void;
   setVisualMode: (mode: VisualMode) => void;
-  setPlanetPosition: (theme: NonNullThemeKey, position: [number, number, number]) => void;
+  setPlanetPosition: (theme: NonNullThemeKey, x: number, y: number, z: number) => void;
 }
 
 const readInitialVisualMode = (): VisualMode => {
@@ -40,7 +40,13 @@ export const useGalaxyStore = create<GalaxyState>((set) => ({
   lastVisitedTheme: null,
   completionPulseId: 0,
   visualMode: readInitialVisualMode(),
-  planetPositions: {},
+  planetPositions: {
+    identity: [0, 0, 0],
+    creations: [0, 0, 0],
+    stack: [0, 0, 0],
+    orbit: [0, 0, 0],
+    signal: [0, 0, 0],
+  },
   setViewState: (state) => set({ viewState: state }),
   setHoveredPlanet: (theme) => set({ hoveredPlanet: theme }),
   setActiveTheme: (theme) => set((state) => {
@@ -88,10 +94,20 @@ export const useGalaxyStore = create<GalaxyState>((set) => ({
 
     return { visualMode: mode };
   }),
-  setPlanetPosition: (theme, position) => set((state) => ({
-    planetPositions: {
-      ...state.planetPositions,
-      [theme]: position,
-    },
-  })),
+  setPlanetPosition: (theme, x, y, z) => set((state) => {
+    const position = state.planetPositions[theme];
+    if (!position) {
+      return {
+        planetPositions: {
+          ...state.planetPositions,
+          [theme]: [x, y, z],
+        },
+      };
+    }
+
+    position[0] = x;
+    position[1] = y;
+    position[2] = z;
+    return state;
+  }),
 }));

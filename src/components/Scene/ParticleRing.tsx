@@ -95,6 +95,8 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
   const { viewState, visualMode } = useGalaxyStore();
   const localTime = useRef(0);
   const tempMastPos = useMemo(() => new THREE.Vector3(), []);
+  const mastOffset = useMemo(() => new THREE.Vector3(0, 0.39, 0), []);
+  const manualTarget = useMemo(() => new THREE.Vector3(), []);
 
   const handleManualMeteor = (event: { point: THREE.Vector3; stopPropagation: () => void }) => {
     if (!groupRef.current) return;
@@ -103,12 +105,13 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
     if (localTime.current < nextManualMeteorAt.current) return;
 
     event.stopPropagation();
-    const target = groupRef.current.worldToLocal(event.point.clone());
+    const target = manualTarget.copy(event.point);
+    groupRef.current.worldToLocal(target);
     target.y = 0.02;
     manualMeteorId.current += 1;
     manualMeteorQueueRef.current.push({
       id: manualMeteorId.current,
-      target,
+      target: target.clone(),
     });
     nextManualMeteorAt.current = localTime.current + 2.9;
   };
@@ -156,7 +159,7 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
       // Update starlight world position and twinkling light strength inside the shader
       if (groupRef.current) {
         // Reconstruct mast-top Morning Star position in local coordinates, then convert to world coordinates
-        tempMastPos.copy(shipPositionRef.current).add(new THREE.Vector3(0, 0.39, 0));
+        tempMastPos.copy(shipPositionRef.current).add(mastOffset);
         groupRef.current.localToWorld(tempMastPos);
         materialRef.current.uniforms.uShipPos.value.copy(tempMastPos);
       }

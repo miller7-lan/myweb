@@ -1,23 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Gauge, Moon, Sparkles, type LucideIcon } from 'lucide-react';
 import { useGalaxyStore, type NonNullThemeKey, type VisualMode } from '../../store/useGalaxyStore';
 import { themes } from '../../data/themes';
 
 const announcements = [
   {
-    code: 'SEC-LOCK',
-    title: '公网安全加固',
-    detail: '联系表单加入限流、来源校验和安全响应头。',
+    code: 'PERF',
+    title: '场景性能优化',
+    detail: '优化动画帧内的数据同步，减少不必要的 React / Zustand 更新。',
   },
   {
-    code: 'RELEASE',
-    title: '下载校验上线',
-    detail: '软件发行页新增 SHA-256，方便核对安装包。',
+    code: 'GC',
+    title: '内存分配收敛',
+    detail: '复用星球、流星、飞船和鼠标光源计算中的临时对象，降低 GC 抖动。',
   },
   {
-    code: 'METEOR',
-    title: '流星冲击优化',
-    detail: '多流星命中时波纹改为叠加扩散，不再硬刷新。',
+    code: 'VISUAL',
+    title: '效果保持不变',
+    detail: '保留当前视觉效果、交互节奏和动效参数，仅做底层稳定性清理。',
   },
 ];
 
@@ -35,6 +35,11 @@ const visualModes: Array<{
 export const UIOverlay: React.FC = () => {
   const { viewState, hoveredPlanet, visitedThemes, visitSequence, lastVisitedTheme, completionPulseId, visualMode, setVisualMode, setViewState, setHoveredPlanet, setActiveTheme } = useGalaxyStore();
   const [announcementOpen, setAnnouncementOpen] = useState(false);
+  const [announcementClosing, setAnnouncementClosing] = useState(false);
+  const [isMobilePortrait, setIsMobilePortrait] = useState(false);
+  const announcementButtonRef = useRef<HTMLButtonElement>(null);
+  const announcementPanelRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<number | null>(null);
   const isVisible = viewState === 'HOME' || viewState === 'HOVER_PLANET';
   const focusedTheme = hoveredPlanet ? themes[hoveredPlanet] : null;
   const lastVisited = lastVisitedTheme ? themes[lastVisitedTheme] : null;
@@ -55,7 +60,9 @@ export const UIOverlay: React.FC = () => {
       ? `ALL FIVE MODULES ONLINE · ${visitSequence.length}/5`
       : lastVisited
         ? `${lastVisited.title} · ${lastVisited.chineseName} · ${visitedCount}/5 MODULES SYNCED`
-        : 'ORBITING FIVE MODULES · 点击星球或导航进入档案';
+        : isMobilePortrait
+          ? 'FIVE SIGNALS ONLINE · 点击星球进入档案'
+          : 'ORBITING FIVE MODULES · 点击星球或导航进入档案';
   const mobileLabels: Record<string, string> = {
     identity: 'ID',
     creations: 'WORK',
@@ -71,6 +78,44 @@ export const UIOverlay: React.FC = () => {
     const nextMode = visualModes[(currentIndex + 1) % visualModes.length];
     setVisualMode(nextMode.key);
   };
+  const openAnnouncement = useCallback(() => {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setAnnouncementClosing(false);
+    setAnnouncementOpen(true);
+  }, []);
+  const closeAnnouncement = useCallback(() => {
+    if (!announcementOpen || announcementClosing) return;
+    setAnnouncementClosing(true);
+    closeTimerRef.current = window.setTimeout(() => {
+      setAnnouncementOpen(false);
+      setAnnouncementClosing(false);
+      closeTimerRef.current = null;
+    }, 360);
+  }, [announcementClosing, announcementOpen]);
+  const toggleAnnouncement = useCallback(() => {
+    if (announcementOpen) {
+      closeAnnouncement();
+    } else {
+      openAnnouncement();
+    }
+  }, [announcementOpen, closeAnnouncement, openAnnouncement]);
+
+  useEffect(() => {
+    const updateLayout = () => {
+      setIsMobilePortrait(window.innerWidth <= 768 && window.innerHeight > window.innerWidth);
+    };
+
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+    window.addEventListener('orientationchange', updateLayout);
+    return () => {
+      window.removeEventListener('resize', updateLayout);
+      window.removeEventListener('orientationchange', updateLayout);
+    };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -81,7 +126,7 @@ export const UIOverlay: React.FC = () => {
 
       if (event.key === 'Escape' && announcementOpen) {
         event.preventDefault();
-        setAnnouncementOpen(false);
+        closeAnnouncement();
         return;
       }
 
@@ -125,7 +170,24 @@ export const UIOverlay: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [announcementOpen, hoveredPlanet, setActiveTheme, setHoveredPlanet, setViewState, themeList, viewState]);
+  }, [announcementOpen, closeAnnouncement, hoveredPlanet, setActiveTheme, setHoveredPlanet, setViewState, themeList, viewState]);
+
+  useEffect(() => {
+    if (!announcementOpen || !announcementPanelRef.current || !announcementButtonRef.current) return;
+
+    const buttonRect = announcementButtonRef.current.getBoundingClientRect();
+    const panelRect = announcementPanelRef.current.getBoundingClientRect();
+    const originX = buttonRect.left + buttonRect.width / 2 - panelRect.left;
+    const originY = buttonRect.top + buttonRect.height / 2 - panelRect.top;
+    announcementPanelRef.current.style.setProperty('--announcement-origin-x', `${originX}px`);
+    announcementPanelRef.current.style.setProperty('--announcement-origin-y', `${originY}px`);
+  }, [announcementOpen]);
+
+  useEffect(() => () => {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+    }
+  }, []);
 
   return (
     <div className={`absolute inset-0 pointer-events-none transition-opacity duration-700 ${announcementOpen ? 'z-[140]' : 'z-10'} ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
@@ -188,7 +250,7 @@ export const UIOverlay: React.FC = () => {
         </ul>
       </nav>
 
-      <nav className="absolute bottom-4 left-0 flex w-full justify-center px-4 pointer-events-auto md:hidden">
+      <nav className={`absolute bottom-4 left-0 w-full justify-center px-4 pointer-events-auto md:hidden ${isMobilePortrait ? 'hidden' : 'flex'}`}>
         <ul className="hud-panel grid w-full max-w-[24rem] grid-cols-5 gap-1 rounded-3xl px-2 py-2">
           {themeList.map(theme => {
             const themeKey = theme.key as NonNullThemeKey;
@@ -247,9 +309,9 @@ export const UIOverlay: React.FC = () => {
         <span className="h-1.5 w-1.5 rounded-full bg-[var(--theme-color)] opacity-60 shadow-[0_0_8px_var(--theme-color)]" />
       </button>
 
-      <div className="absolute bottom-[6rem] left-1/2 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 text-center md:bottom-8 md:left-8 md:w-auto md:translate-x-0 md:text-left">
+      <div className={`absolute left-1/2 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 text-center md:bottom-8 md:left-8 md:w-auto md:translate-x-0 md:text-left ${isMobilePortrait ? 'bottom-6' : 'bottom-[6rem]'}`}>
         <div
-          className="hud-panel inline-flex flex-col items-center rounded-2xl px-5 py-3 transition-all duration-500 md:items-start"
+          className={`hud-panel inline-flex flex-col items-center rounded-2xl transition-all duration-500 md:items-start ${isMobilePortrait ? 'px-4 py-2.5 opacity-80' : 'px-5 py-3'}`}
           style={{
             ['--theme-color' as string]: hudThemeColor,
           }}
@@ -265,9 +327,10 @@ export const UIOverlay: React.FC = () => {
       </div>
 
       <button
+        ref={announcementButtonRef}
         type="button"
-        onClick={() => setAnnouncementOpen((open) => !open)}
-        className="hud-panel pointer-events-auto absolute right-4 top-4 flex items-center gap-2 rounded-full px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-gray-500 transition-all duration-300 hover:-translate-y-0.5 hover:text-gray-200 focus:outline-none focus-visible:text-white md:right-8 md:top-28"
+        onClick={toggleAnnouncement}
+        className={`hud-panel pointer-events-auto absolute right-4 top-4 flex items-center gap-2 rounded-full px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-gray-500 transition-all duration-300 hover:-translate-y-0.5 hover:text-gray-200 focus:outline-none focus-visible:text-white md:right-8 md:top-28 ${announcementOpen ? 'announcement-button-active text-gray-200' : ''}`}
         style={{
           ['--theme-color' as string]: hudThemeColor,
         }}
@@ -280,14 +343,15 @@ export const UIOverlay: React.FC = () => {
 
       {announcementOpen && (
         <div
-          className="pointer-events-auto absolute inset-0 z-[150] flex items-center justify-center px-4"
+          className={`announcement-backdrop pointer-events-auto absolute inset-0 z-[150] flex items-center justify-center px-4 ${announcementClosing ? 'is-closing' : 'is-opening'}`}
           role="dialog"
           aria-modal="true"
           aria-label="最近更新公告"
-          onClick={() => setAnnouncementOpen(false)}
+          onClick={closeAnnouncement}
         >
           <div
-            className="hud-panel relative z-[160] w-[min(34rem,calc(100vw-2rem))] rounded-[1.75rem] px-5 py-5 shadow-[0_0_80px_color-mix(in_srgb,var(--theme-color)_12%,transparent)] md:px-6 md:py-6"
+            ref={announcementPanelRef}
+            className={`announcement-card hud-panel relative z-[160] w-[min(34rem,calc(100vw-2rem))] rounded-[1.75rem] px-5 py-5 shadow-[0_0_80px_color-mix(in_srgb,var(--theme-color)_12%,transparent)] md:px-6 md:py-6 ${announcementClosing ? 'is-closing' : 'is-opening'}`}
             style={{
               ['--theme-color' as string]: hudThemeColor,
               ['--hud-x' as string]: '86%',
@@ -297,7 +361,7 @@ export const UIOverlay: React.FC = () => {
           >
             <button
               type="button"
-              onClick={() => setAnnouncementOpen(false)}
+              onClick={closeAnnouncement}
               className="absolute right-4 top-4 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.035] text-xs text-gray-500 transition-colors hover:text-white"
               aria-label="关闭公告"
             >
@@ -312,7 +376,7 @@ export const UIOverlay: React.FC = () => {
                     <span>Software Update</span>
                   </div>
                   <h2 className="text-2xl font-light tracking-wide text-gray-100 md:text-3xl">DAZZLE 更新说明</h2>
-                  <p className="mt-2 text-sm font-light leading-relaxed text-gray-500">版本 2026.05.20 · 公网发布准备</p>
+                  <p className="mt-2 text-sm font-light leading-relaxed text-gray-500">版本 2026.05.21 · 性能与稳定性优化</p>
                 </div>
                 <span className="mt-1 hidden rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-gray-400 sm:inline-flex">
                   Ready
@@ -342,7 +406,7 @@ export const UIOverlay: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setAnnouncementOpen(false)}
+                  onClick={closeAnnouncement}
                   className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-light tracking-[0.12em] text-gray-300 transition-colors hover:border-white/20 hover:text-white"
                 >
                   知道了

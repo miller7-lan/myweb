@@ -81,9 +81,13 @@ const TypewriterRole: React.FC<{
 
   useEffect(() => {
     if (isPinned) {
-      setRoleIndex(activeRoleIndex);
-      setCharCount(roles[activeRoleIndex].length);
-      setIsDeleting(false);
+      const timer = window.setTimeout(() => {
+        setRoleIndex(activeRoleIndex);
+        setCharCount(roles[activeRoleIndex].length);
+        setIsDeleting(false);
+      }, 0);
+
+      return () => window.clearTimeout(timer);
     }
   }, [activeRoleIndex, isPinned, roles]);
 
@@ -133,6 +137,95 @@ export const IdentityContent: React.FC = () => {
   const [isRolePinned, setIsRolePinned] = useState(false);
   const activeProfile = identityProfiles[activeRoleIndex];
   const ActiveIcon = activeProfile.icon;
+
+  const [isOverclocked, setIsOverclocked] = useState(false);
+  const [telemetry, setTelemetry] = useState({ freq: 3.4, temp: 40.2, load: 15 });
+  const [logs, setLogs] = useState<string[]>([
+    'Core initialized in safe mode.',
+    'Neural links active.',
+    'System standby. Click Core to Overclock.'
+  ]);
+
+  // Telemetry sensor fluctuation updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTelemetry(prev => {
+        if (isOverclocked) {
+          const targetFreq = 7.5 + Math.random() * 0.45;
+          const targetTemp = 81 + Math.random() * 5;
+          const targetLoad = Math.floor(91 + Math.random() * 8);
+          return {
+            freq: prev.freq * 0.85 + targetFreq * 0.15,
+            temp: prev.temp * 0.92 + targetTemp * 0.08,
+            load: targetLoad > 100 ? 100 : targetLoad
+          };
+        } else {
+          const targetFreq = 3.3 + Math.random() * 0.22;
+          const targetTemp = 38.5 + Math.random() * 2.2;
+          const targetLoad = Math.floor(9 + Math.random() * 7);
+          return {
+            freq: prev.freq * 0.85 + targetFreq * 0.15,
+            temp: prev.temp * 0.92 + targetTemp * 0.08,
+            load: targetLoad
+          };
+        }
+      });
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [isOverclocked]);
+
+  // Rolling diagnostic logs in background
+  useEffect(() => {
+    let logIndex = 0;
+    const idleLogs = [
+      'Scanning cognitive mapping pathways...',
+      'Memory sync: 100% integrity.',
+      'Uplink signal strength excellent.',
+      'Core thermal sensors running normal.',
+      'Identity registry loaded successfully.'
+    ];
+    const overclockLogs = [
+      'WARNING: Thermal threshold elevated!',
+      'Boost protocol: Active.',
+      'Focus buffer overloaded: 98% efficiency.',
+      'Compiling mental workflows at 5x speed.',
+      'All background threads fully prioritized.',
+      'Warning: Energy draw at maximum level.'
+    ];
+
+    const logInterval = setInterval(() => {
+      const activePool = isOverclocked ? overclockLogs : idleLogs;
+      const randomMsg = activePool[logIndex % activePool.length];
+      logIndex++;
+      const timeStr = new Date().toTimeString().split(' ')[0];
+      setLogs(prev => [...prev.slice(-2), `[${timeStr}] ${randomMsg}`]);
+    }, isOverclocked ? 1500 : 3800);
+
+    return () => clearInterval(logInterval);
+  }, [isOverclocked]);
+
+  const toggleOverclock = () => {
+    setIsOverclocked(prev => {
+      const next = !prev;
+      const timeStr = new Date().toTimeString().split(' ')[0];
+      if (next) {
+        setLogs(prevLogs => [
+          ...prevLogs.slice(-1),
+          `[${timeStr}] ENGINE OVERCLOCK PROTOCOL INITIALIZED.`,
+          `[${timeStr}] STIMULATING NEURAL CORE COGNITION!`
+        ]);
+      } else {
+        setLogs(prevLogs => [
+          ...prevLogs.slice(-1),
+          `[${timeStr}] Overclock deactivated. Cooldown engaged.`,
+          `[${timeStr}] Re-entering baseline power levels.`
+        ]);
+      }
+      return next;
+    });
+  };
+
 
   const selectRole = (index: number) => {
     setActiveRoleIndex(index);
@@ -275,13 +368,86 @@ export const IdentityContent: React.FC = () => {
             })}
           </div>
 
-          <div className="relative mx-auto flex h-52 w-52 items-center justify-center">
-            <div className="absolute inset-0 rounded-full border border-white/10 border-dashed animate-[spin_20s_linear_infinite]" />
-            <div className="absolute inset-5 rounded-full border border-white/5 animate-[spin_15s_linear_infinite_reverse]" />
-            <div className="absolute inset-12 rounded-full border border-white/10 shadow-[inset_0_0_42px_rgba(255,255,255,0.04)]" />
-            <div className="hud-panel flex h-24 w-24 items-center justify-center rounded-full">
-              <Cpu size={32} className="text-gray-100" />
-              <Sparkles size={15} className="absolute right-8 top-8 text-gray-300" />
+          <div className="flex flex-col items-center">
+            <button
+              type="button"
+              onClick={toggleOverclock}
+              aria-label="Toggle Neural Overclock Mode"
+              className="group relative flex h-52 w-52 items-center justify-center rounded-full transition-transform active:scale-95 cursor-pointer outline-none focus:ring-1 focus:ring-[var(--theme-color)]/30"
+            >
+              {/* Inner glowing ripple on overclock */}
+              {isOverclocked && (
+                <div className="absolute inset-2 animate-ping rounded-full border border-[var(--theme-color)]/20 bg-[var(--theme-color)]/[0.01]" />
+              )}
+              {/* Rotating outer rings with dynamic speeds based on overclock state */}
+              <div 
+                className={`absolute inset-0 rounded-full border border-dashed transition-colors duration-500 ${isOverclocked ? 'border-[var(--theme-color)]/40' : 'border-white/10'}`} 
+                style={{
+                  animation: `spin ${isOverclocked ? '2.2s' : '20s'} linear infinite`
+                }}
+              />
+              <div 
+                className="absolute inset-5 rounded-full border border-white/5" 
+                style={{
+                  animation: `spin ${isOverclocked ? '1.5s' : '15s'} linear infinite reverse`
+                }}
+              />
+              <div className={`absolute inset-12 rounded-full border transition-all duration-500 ${isOverclocked ? 'border-[var(--theme-color)]/25 bg-black/10 shadow-[inset_0_0_32px_rgba(147,197,253,0.06)]' : 'border-white/10 bg-white/[0.01] shadow-[inset_0_0_42px_rgba(255,255,255,0.04)]'}`} />
+              
+              {/* Central Core */}
+              <div className={`hud-panel flex h-24 w-24 items-center justify-center rounded-full transition-all duration-500 ${isOverclocked ? 'border-[var(--theme-color)]/40 bg-[var(--theme-color)]/10 shadow-[0_0_35px_rgba(147,197,253,0.18)] text-[var(--theme-color)]' : 'text-gray-100'}`}>
+                <Cpu size={32} className={`transition-transform duration-500 ${isOverclocked ? 'scale-110 text-[var(--theme-color)] animate-[pulse_1s_infinite]' : ''}`} />
+                <Sparkles size={14} className={`absolute right-8 top-8 transition-colors duration-500 ${isOverclocked ? 'text-[var(--theme-color)] animate-pulse' : 'text-gray-400'}`} />
+              </div>
+
+              {/* Click to interactive tooltip */}
+              <div className="absolute -bottom-2 px-2.5 py-0.5 rounded-md border border-white/[0.06] bg-black/80 font-mono text-[9px] uppercase tracking-widest text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                {isOverclocked ? '点击降温' : '点击进行脑机超频'}
+              </div>
+            </button>
+          </div>
+
+          {/* Real-time Telemetry Dashboard */}
+          <div className="mt-8 border-t border-white/[0.06] pt-5">
+            {/* Elegant borderless horizontal dashboard strip */}
+            <div className="flex items-center justify-around py-3.5 bg-white/[0.015] rounded-xl border border-white/[0.03] text-center select-none mb-4">
+              <div className="flex-1 min-w-0">
+                <div className="text-[8px] uppercase tracking-wider text-gray-500 font-mono">主频 (Freq)</div>
+                <div className={`text-xs font-mono mt-1 tracking-tight transition-colors duration-300 font-semibold ${isOverclocked ? 'text-[var(--theme-color,#93c5fd)]' : 'text-gray-300'}`}>
+                  {telemetry.freq.toFixed(2)} GHz
+                </div>
+              </div>
+              <div className="h-6 w-px bg-white/[0.06] shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[8px] uppercase tracking-wider text-gray-500 font-mono">温度 (Temp)</div>
+                <div className={`text-xs font-mono mt-1 tracking-tight transition-colors duration-300 font-semibold ${isOverclocked ? 'text-[var(--theme-color,#93c5fd)]' : 'text-gray-300'}`}>
+                  {telemetry.temp.toFixed(1)} °C
+                </div>
+              </div>
+              <div className="h-6 w-px bg-white/[0.06] shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[8px] uppercase tracking-wider text-gray-500 font-mono">核心负载</div>
+                <div className={`text-xs font-mono mt-1 tracking-tight transition-colors duration-300 font-semibold ${isOverclocked ? 'text-[var(--theme-color,#93c5fd)]' : 'text-gray-300'}`}>
+                  {telemetry.load}%
+                </div>
+              </div>
+            </div>
+            
+            {/* Transparent projection terminal console */}
+            <div className="bg-white/[0.01] border border-white/[0.03] rounded-xl p-3 font-mono text-[9px] leading-relaxed text-gray-400 h-[84px] overflow-hidden flex flex-col justify-end">
+              <div className="text-gray-600 mb-1.5 border-b border-white/[0.03] pb-1 flex justify-between uppercase tracking-wider text-[8px] select-none">
+                <span>SYSTEM CONSOLE LOG</span>
+                <span className={`font-semibold tracking-widest ${isOverclocked ? 'text-[var(--theme-color,#93c5fd)] animate-pulse' : 'text-green-500/50'}`}>
+                  {isOverclocked ? '● CORE_OVERCLOCKED' : '● STABILIZED'}
+                </span>
+              </div>
+              <div className="space-y-0.5 select-none">
+                {logs.map((log, idx) => (
+                  <div key={idx} className={`truncate transition-colors duration-200 ${idx === logs.length - 1 ? (isOverclocked ? 'text-blue-200 font-medium' : 'text-gray-200') : 'text-gray-600'}`}>
+                    <span className={`opacity-60 mr-1.5 ${isOverclocked ? 'text-[var(--theme-color,#93c5fd)]' : 'text-[var(--theme-color)]'}`}>&gt;</span> {log}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

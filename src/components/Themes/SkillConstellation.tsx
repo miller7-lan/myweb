@@ -23,7 +23,7 @@ export const SkillConstellation: React.FC = () => {
   const dragDistance = useRef(0);
 
   const links = useMemo(() => {
-    const linesArr: { id: string; source: SkillNode; target: SkillNode; isMainBranch: boolean }[] = [];
+    const linesArr: { id: string; source: SkillNode; target: SkillNode; isMainBranch: boolean; isGuide: boolean }[] = [];
     skillsData.forEach(node => {
       node.links.forEach(linkId => {
         const target = skillsData.find(n => n.id === linkId);
@@ -32,7 +32,8 @@ export const SkillConstellation: React.FC = () => {
             id: `${node.id}-${target.id}`,
             source: node,
             target: target,
-            isMainBranch: node.id === 'core'
+            isMainBranch: node.id === 'core',
+            isGuide: target.type === 'skill' && target.status !== 'learned'
           });
         }
       });
@@ -69,16 +70,39 @@ export const SkillConstellation: React.FC = () => {
   const activeNode = selectedNode || hoveredNode;
   const activeBranchId = activeNode ? getBranchId(activeNode.id) : null;
 
-  const createPath = (x1: number, y1: number, x2: number, y2: number) => {
+  // Constellation geometry note:
+  // Learned skills use solid "star map" lines. Learning / locked skills use guide lines
+  // that stop before the actual node, so the visual reads as "outer point moving inward"
+  // instead of a line crossing through the point. Keep guide lines out of the draw-on
+  // stroke animation below; GSAP's strokeDasharray would otherwise overwrite the real
+  // SVG dash pattern and make dashed guides look solid.
+  const createPath = (x1: number, y1: number, x2: number, y2: number, isMainBranch: boolean) => {
     const dx = x2 - x1;
     const dy = y2 - y1;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const offset = dist * 0.15; 
+    if (dist === 0) return `M ${x1} ${y1} L ${x2} ${y2}`;
+
+    const offset = dist * (isMainBranch ? 0.055 : 0.14); 
     const nx = -dy / dist;
     const ny = dx / dist;
     const cx = x1 + dx * 0.5 + nx * offset;
     const cy = y1 + dy * 0.5 + ny * offset;
     return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+  };
+
+  const getGuideEndPoint = (target: SkillNode) => {
+    const radius = Math.sqrt(target.x * target.x + target.y * target.y);
+    if (radius === 0) return { x: target.x, y: target.y };
+
+    // The dashed guide's farthest point from the center is the learning node's
+    // closest breathing position, not the node center. This preserves the
+    // "from outside inward to the intersection" direction the layout depends on.
+    const guideRadius = Math.max(160, radius - 28);
+    const ratio = guideRadius / radius;
+    return {
+      x: target.x * ratio,
+      y: target.y * ratio,
+    };
   };
 
   // Wheel Zoom Listener
@@ -161,7 +185,8 @@ export const SkillConstellation: React.FC = () => {
   // GSAP Animations
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.set('.constellation-path', { strokeDasharray: 800, strokeDashoffset: 800, opacity: 0 });
+      gsap.set('.path-draw', { strokeDasharray: 800, strokeDashoffset: 800, opacity: 0 });
+      gsap.set('.path-guide', { strokeDashoffset: 0, opacity: 0 });
       gsap.set('.node-core', { scale: 0, opacity: 0 });
       gsap.set('.node-branch', { scale: 0, opacity: 0 });
       gsap.set('.node-skill-learned', { scale: 0, opacity: 0 });
@@ -175,16 +200,17 @@ export const SkillConstellation: React.FC = () => {
       tl.to('.path-main', { strokeDashoffset: 0, opacity: 1, duration: 1.2, stagger: 0.1 }, 0.6);
       tl.to('.node-branch', { scale: 1, opacity: 1, duration: 0.8, stagger: 0.1 }, 1.0);
       tl.to('.branch-label', { opacity: 0.6, y: 0, duration: 0.8, stagger: 0.1 }, 1.0);
-      tl.to('.path-sub', { strokeDashoffset: 0, opacity: 1, duration: 1.5, stagger: 0.05 }, 1.2);
+      tl.to('.path-sub.path-draw', { strokeDashoffset: 0, opacity: 1, duration: 1.5, stagger: 0.05 }, 1.2);
+      tl.to('.path-guide', { opacity: 1, duration: 1.0, stagger: 0.04 }, 1.35);
       tl.to('.node-skill-learned', { scale: 1, opacity: 1, duration: 0.8, stagger: 0.05 }, 1.4);
       tl.to('.node-skill-learning', { scale: 1, opacity: 1, duration: 0.8, stagger: 0.05 }, 1.7);
       tl.to('.node-skill-locked', { scale: 1, opacity: 0.5, duration: 1.0, stagger: 0.05 }, 2.0);
 
       gsap.to('.inner-circle-learning', {
-        scale: 1.25, opacity: 0.6, duration: 2.2, yoyo: true, repeat: -1, ease: "sine.inOut"
+        scale: 1.1, opacity: 0.48, duration: 2.8, yoyo: true, repeat: -1, ease: "sine.inOut"
       });
       gsap.to('.inner-circle-core', {
-        scale: 1.1, opacity: 0.8, duration: 3, yoyo: true, repeat: -1, ease: "sine.inOut"
+        scale: 1.05, opacity: 0.72, duration: 3.6, yoyo: true, repeat: -1, ease: "sine.inOut"
       });
     }, containerRef);
 
@@ -253,12 +279,17 @@ export const SkillConstellation: React.FC = () => {
             const bothLearned = link.source.status === 'learned' && link.target.status === 'learned';
             const anyLocked = link.source.status === 'locked' || link.target.status === 'locked';
             const isMain = link.isMainBranch;
+            const isGuide = link.isGuide;
             
             let strokeColor;
             let strokeWidth = isMain ? 1.5 : 1;
             let strokeDasharray = "none";
 
-            if (isHovered) {
+            if (isGuide) {
+              strokeColor = isHovered ? "rgba(190, 210, 255, 0.68)" : "rgba(160, 185, 245, 0.34)";
+              strokeWidth = isHovered ? 1.35 : 0.95;
+              strokeDasharray = "3 6";
+            } else if (isHovered) {
               strokeColor = "rgba(220, 230, 255, 0.8)";
               strokeWidth = isMain ? 2 : 1.5;
             } else if (bothLearned) {
@@ -267,14 +298,16 @@ export const SkillConstellation: React.FC = () => {
               strokeColor = "rgba(100, 100, 110, 0.2)";
               strokeDasharray = "4 4";
             } else {
-              strokeColor = "rgba(160, 190, 255, 0.25)";
+              strokeColor = "rgba(160, 190, 255, 0.18)";
             }
+
+            const guideEndPoint = isGuide ? getGuideEndPoint(link.target) : link.target;
 
             return (
               <path
                 key={link.id}
-                d={createPath(link.source.x, link.source.y, link.target.x, link.target.y)}
-                className={`constellation-path transition-all duration-300 ${isMain ? 'path-main' : 'path-sub'}`}
+                d={createPath(link.source.x, link.source.y, guideEndPoint.x, guideEndPoint.y, isMain)}
+                className={`constellation-path transition-all duration-300 ${isMain ? 'path-main' : 'path-sub'} ${isGuide ? 'path-guide' : 'path-draw'}`}
                 stroke={strokeColor}
                 strokeWidth={strokeWidth}
                 strokeDasharray={strokeDasharray}
@@ -332,6 +365,11 @@ export const SkillConstellation: React.FC = () => {
               else fill = "#ffffff";
             }
 
+            const labelMagnitude = Math.max(Math.sqrt(node.x * node.x + node.y * node.y), 1);
+            const labelX = node.x + (node.x / labelMagnitude) * 34;
+            const labelY = node.y + (node.y / labelMagnitude) * 20 - 5;
+            const labelAnchor = node.x > 0 ? "start" : "end";
+
             return (
               <g
                 key={node.id}
@@ -365,14 +403,20 @@ export const SkillConstellation: React.FC = () => {
 
                 {node.type === 'branch' && (
                   <text
-                    x={node.x + (node.x > 0 ? 15 : -15)}
-                    y={node.y - 5}
-                    textAnchor={node.x > 0 ? "start" : "end"}
-                    className="branch-label fill-gray-300 text-[10px] uppercase tracking-[0.2em] font-light pointer-events-none transition-opacity duration-300"
-                    style={{ opacity: (transform.scale < 0.85 && !isHovered) ? 0.3 : (isHovered ? 1 : 0.7) }}
+                    x={labelX}
+                    y={labelY}
+                    textAnchor={labelAnchor}
+                    className="branch-label fill-gray-100 text-[10px] uppercase tracking-[0.2em] font-light pointer-events-none transition-opacity duration-300"
+                    style={{
+                      opacity: (transform.scale < 0.85 && !isHovered) ? 0.55 : (isHovered ? 1 : 0.88),
+                      paintOrder: 'stroke',
+                      stroke: 'rgba(0,0,0,0.82)',
+                      strokeWidth: 2.2,
+                      filter: 'drop-shadow(0 0 8px rgba(220,230,255,0.18))',
+                    }}
                   >
                     {node.name}
-                    <tspan x={node.x + (node.x > 0 ? 15 : -15)} dy="14" className="fill-gray-500 text-[9px] tracking-widest">{node.zhName}</tspan>
+                    <tspan x={labelX} dy="14" className="fill-gray-300 text-[9px] tracking-widest">{node.zhName}</tspan>
                   </text>
                 )}
               </g>

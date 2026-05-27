@@ -76,7 +76,7 @@ export const TechDetailBubble: React.FC<TechDetailBubbleProps> = ({ node, onClos
       
       <div 
         ref={containerRef}
-        className="relative w-[calc(100vw-32px)] md:w-[500px] max-h-[75vh] overflow-y-auto rounded-[28px] p-6 md:p-8 pointer-events-auto scrollbar-hide"
+        className="relative w-[calc(100vw-32px)] md:w-[500px] max-h-[75vh] flex flex-col rounded-[28px] p-6 md:p-8 pointer-events-auto overflow-hidden"
         style={{
           background: 'radial-gradient(circle at top right, rgba(180,190,220,0.12), rgba(8,8,12,0.88))',
           border: '1px solid rgba(220,230,255,0.1)',
@@ -86,121 +86,123 @@ export const TechDetailBubble: React.FC<TechDetailBubbleProps> = ({ node, onClos
       >
         <button 
           onClick={handleClose}
-          className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors duration-300"
+          className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors duration-300 z-10"
         >
           <X size={18} />
         </button>
 
-        {node.type === 'branch' ? (
-          <div className="flex flex-col space-y-6">
-            <div className="stagger-item">
-              <h2 className="text-2xl font-light text-gray-100 tracking-widest mb-1">{node.zhName}</h2>
-              <div className="text-sm text-gray-400 tracking-wide">{node.name}</div>
-            </div>
-            
-            <div className="stagger-item text-xs text-gray-300 font-light leading-relaxed">
-              {node.summary || node.description}
-            </div>
+        <div className="flex-1 overflow-y-auto no-scrollbar pr-1">
+          {node.type === 'branch' ? (
+            <div className="flex flex-col space-y-6">
+              <div className="stagger-item">
+                <h2 className="text-2xl font-light text-gray-100 tracking-widest mb-1">{node.zhName}</h2>
+                <div className="text-sm text-gray-400 tracking-wide">{node.name}</div>
+              </div>
+              
+              <div className="stagger-item text-xs text-gray-300 font-light leading-relaxed">
+                {node.summary || node.description}
+              </div>
 
-            <div className="stagger-item grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-white/5 pt-4">
-              <div>
-                <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2 flex items-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#e0e5ff] shadow-[0_0_4px_#e0e5ff] mr-2" />已点亮
-                </h4>
-                <ul className="space-y-1.5">
-                  {getBranchSkills(node.id, 'learned').map(s => (
-                    <li key={s.id} className="text-xs text-gray-300 font-light">{s.name}</li>
+              <div className="stagger-item grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-white/5 pt-4">
+                <div>
+                  <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2 flex items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#e0e5ff] shadow-[0_0_4px_#e0e5ff] mr-2" />已点亮
+                  </h4>
+                  <ul className="space-y-1.5">
+                    {getBranchSkills(node.id, 'learned').map(s => (
+                      <li key={s.id} className="text-xs text-gray-300 font-light">{s.name}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2 flex items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#a0c0ff] shadow-[0_0_4px_#a0c0ff] mr-2" />学习中
+                  </h4>
+                  <ul className="space-y-1.5">
+                    {getBranchSkills(node.id, 'learning').map(s => (
+                      <li key={s.id} className="text-xs text-[#a0c0ff] font-light">{s.name}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2 flex items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#5a5a66] mr-2" />计划
+                  </h4>
+                  <ul className="space-y-1.5">
+                    {getBranchSkills(node.id, 'locked').map(s => (
+                      <li key={s.id} className="text-xs text-gray-500 font-light">{s.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="stagger-item border-t border-white/5 pt-4">
+                <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">相关项目 · Related Projects</h4>
+                <div className="flex flex-wrap gap-2">
+                  {node.relatedProjects?.map((proj, i) => (
+                    <span key={i} className="text-xs text-gray-400 bg-white/5 px-2 py-1 rounded-md">{proj}</span>
                   ))}
-                </ul>
+                </div>
               </div>
-              <div>
-                <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2 flex items-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#a0c0ff] shadow-[0_0_4px_#a0c0ff] mr-2" />学习中
-                </h4>
-                <ul className="space-y-1.5">
-                  {getBranchSkills(node.id, 'learning').map(s => (
-                    <li key={s.id} className="text-xs text-[#a0c0ff] font-light">{s.name}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2 flex items-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#5a5a66] mr-2" />计划
-                </h4>
-                <ul className="space-y-1.5">
-                  {getBranchSkills(node.id, 'locked').map(s => (
-                    <li key={s.id} className="text-xs text-gray-500 font-light">{s.name}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
 
-            <div className="stagger-item border-t border-white/5 pt-4">
-              <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">相关项目 · Related Projects</h4>
-              <div className="flex flex-wrap gap-2">
-                {node.relatedProjects?.map((proj, i) => (
-                  <span key={i} className="text-xs text-gray-400 bg-white/5 px-2 py-1 rounded-md">{proj}</span>
-                ))}
-              </div>
-            </div>
-
-            <div className="stagger-item border-t border-white/5 pt-4">
-              <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">下一步计划 · Next Steps</h4>
-              <ul className="space-y-1">
-                {node.nextSteps?.map((step, i) => (
-                  <li key={i} className="text-xs text-gray-400 font-light flex items-start">
-                    <span className="text-gray-600 mr-2">›</span> {step}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col space-y-5">
-            <div className="stagger-item pr-8">
-              <h2 className="text-2xl font-light text-gray-100 tracking-widest mb-1">{node.zhName}</h2>
-              <div className="text-sm text-gray-400 tracking-wide mb-3">{node.name}</div>
-              {renderStatusBadge(node.status)}
-            </div>
-
-            <div className="stagger-item text-xs text-gray-300 font-light leading-relaxed border-l-2 border-white/10 pl-3 py-1">
-              {node.description}
-            </div>
-
-            {node.practice && node.practice.length > 0 && (
-              <div className="stagger-item pt-2">
-                <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">实践 · Practice</h4>
-                <ul className="space-y-1.5">
-                  {node.practice.map((p, i) => (
+              <div className="stagger-item border-t border-white/5 pt-4">
+                <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">下一步计划 · Next Steps</h4>
+                <ul className="space-y-1">
+                  {node.nextSteps?.map((step, i) => (
                     <li key={i} className="text-xs text-gray-400 font-light flex items-start">
-                      <span className="text-gray-600 mr-2 text-[10px] mt-0.5">■</span> {p}
+                      <span className="text-gray-600 mr-2">›</span> {step}
                     </li>
                   ))}
                 </ul>
               </div>
-            )}
+            </div>
+          ) : (
+            <div className="flex flex-col space-y-5">
+              <div className="stagger-item pr-8">
+                <h2 className="text-2xl font-light text-gray-100 tracking-widest mb-1">{node.zhName}</h2>
+                <div className="text-sm text-gray-400 tracking-wide mb-3">{node.name}</div>
+                {renderStatusBadge(node.status)}
+              </div>
 
-            <div className="stagger-item pt-2 border-t border-white/5">
-              <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">相关项目 · Related Projects</h4>
-              <div className="flex flex-wrap gap-2">
-                {node.relatedProjects?.map((proj, i) => (
-                  <span key={i} className="text-[11px] text-gray-300 bg-white/5 border border-white/[0.05] px-2 py-1 rounded-md tracking-wide">{proj}</span>
-                ))}
+              <div className="stagger-item text-xs text-gray-300 font-light leading-relaxed border-l-2 border-white/10 pl-3 py-1">
+                {node.description}
+              </div>
+
+              {node.practice && node.practice.length > 0 && (
+                <div className="stagger-item pt-2">
+                  <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">实践 · Practice</h4>
+                  <ul className="space-y-1.5">
+                    {node.practice.map((p, i) => (
+                      <li key={i} className="text-xs text-gray-400 font-light flex items-start">
+                        <span className="text-gray-600 mr-2 text-[10px] mt-0.5">■</span> {p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="stagger-item pt-2 border-t border-white/5">
+                <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">相关项目 · Related Projects</h4>
+                <div className="flex flex-wrap gap-2">
+                  {node.relatedProjects?.map((proj, i) => (
+                    <span key={i} className="text-[11px] text-gray-300 bg-white/5 border border-white/[0.05] px-2 py-1 rounded-md tracking-wide">{proj}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="stagger-item pt-2 border-t border-white/5">
+                <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">下一步计划 · Next Steps</h4>
+                <ul className="space-y-1">
+                  {node.nextSteps?.map((step, i) => (
+                    <li key={i} className="text-xs text-gray-400 font-light flex items-start">
+                      <span className="text-gray-600 mr-2">›</span> {step}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
-
-            <div className="stagger-item pt-2 border-t border-white/5">
-              <h4 className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">下一步计划 · Next Steps</h4>
-              <ul className="space-y-1">
-                {node.nextSteps?.map((step, i) => (
-                  <li key={i} className="text-xs text-gray-400 font-light flex items-start">
-                    <span className="text-gray-600 mr-2">›</span> {step}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

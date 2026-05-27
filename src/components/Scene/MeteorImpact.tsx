@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability */
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -25,6 +26,8 @@ const easeOutCubic = (value: number) => 1 - Math.pow(1 - value, 3);
 const meteorParticleCount = 320;
 const maxMeteorSlots = 3;
 const shipSafeDistance = 1.55;
+const worldUp = new THREE.Vector3(0, 1, 0);
+const worldRight = new THREE.Vector3(1, 0, 0);
 
 const meteorVertexShader = `
 uniform vec3 uHead;
@@ -135,6 +138,10 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manu
   const queuedLaunches = useRef<number[]>([]);
   const slots = useRef<MeteorSlot[]>(Array.from({ length: maxMeteorSlots }, createMeteorSlot));
   const clock = useRef(0);
+  const safeTargetRef = useRef(new THREE.Vector3());
+  const fallbackTargetRef = useRef(new THREE.Vector3());
+  const safeDirectionRef = useRef(new THREE.Vector3());
+  const travelRef = useRef(new THREE.Vector3());
 
   const particleGeometry = useMemo(() => {
     const geometry = new THREE.BufferGeometry();
@@ -186,7 +193,7 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manu
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const angle = random() * Math.PI * 2;
       const radius = 5.6 + random() * 5.4;
-      const target = new THREE.Vector3(Math.cos(angle) * radius, 0.02, Math.sin(angle) * radius);
+      const target = safeTargetRef.current.set(Math.cos(angle) * radius, 0.02, Math.sin(angle) * radius);
       if (target.distanceTo(protectedPosition) >= shipSafeDistance) {
         return target;
       }
@@ -194,14 +201,14 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manu
 
     const fallbackAngle = Math.atan2(protectedPosition.z, protectedPosition.x) + Math.PI * (0.42 + random() * 0.28);
     const fallbackRadius = THREE.MathUtils.clamp(protectedPosition.length() + 1.2 + random() * 1.8, 5.6, 10.6);
-    return new THREE.Vector3(Math.cos(fallbackAngle) * fallbackRadius, 0.02, Math.sin(fallbackAngle) * fallbackRadius);
+    return fallbackTargetRef.current.set(Math.cos(fallbackAngle) * fallbackRadius, 0.02, Math.sin(fallbackAngle) * fallbackRadius);
   };
 
   const nudgeTargetAwayFromShip = (slot: MeteorSlot) => {
     const protectedPosition = protectedPositionRef.current;
     if (slot.target.distanceTo(protectedPosition) >= shipSafeDistance) return;
 
-    const safeDirection = slot.target.clone().sub(protectedPosition);
+    const safeDirection = safeDirectionRef.current.copy(slot.target).sub(protectedPosition);
     if (safeDirection.lengthSq() < 0.001) {
       safeDirection.set(-protectedPosition.z, 0, protectedPosition.x);
     }
@@ -209,9 +216,9 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manu
     slot.target.copy(protectedPosition).add(safeDirection.multiplyScalar(shipSafeDistance + 0.45));
     slot.target.y = 0.02;
     slot.direction.copy(slot.target).sub(slot.start).normalize();
-    slot.sideA.crossVectors(slot.direction, new THREE.Vector3(0, 1, 0));
+    slot.sideA.crossVectors(slot.direction, worldUp);
     if (slot.sideA.lengthSq() < 0.001) {
-      slot.sideA.crossVectors(slot.direction, new THREE.Vector3(1, 0, 0));
+      slot.sideA.crossVectors(slot.direction, worldRight);
     }
     slot.sideA.normalize();
     slot.sideB.crossVectors(slot.direction, slot.sideA).normalize();
@@ -219,8 +226,8 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manu
 
   const launchMeteor = (slot: MeteorSlot, manualTarget?: THREE.Vector3) => {
     const random = randomRef.current;
-    const target = manualTarget?.clone() ?? chooseSafeTarget();
-    const travel = new THREE.Vector3(
+    const target = manualTarget ?? chooseSafeTarget();
+    const travel = travelRef.current.set(
       -5.4 - random() * 2.2,
       2.3 + random() * 1.2,
       -2.2 + random() * 4.4
@@ -229,9 +236,9 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manu
     slot.target.copy(target);
     slot.start.copy(slot.target).add(travel.multiplyScalar(9.0 + random() * 2.2));
     slot.direction.copy(slot.target).sub(slot.start).normalize();
-    slot.sideA.crossVectors(slot.direction, new THREE.Vector3(0, 1, 0));
+    slot.sideA.crossVectors(slot.direction, worldUp);
     if (slot.sideA.lengthSq() < 0.001) {
-      slot.sideA.crossVectors(slot.direction, new THREE.Vector3(1, 0, 0));
+      slot.sideA.crossVectors(slot.direction, worldRight);
     }
     slot.sideA.normalize();
     slot.sideB.crossVectors(slot.direction, slot.sideA).normalize();
