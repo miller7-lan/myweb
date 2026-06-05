@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Brain, Code2, Cpu, Layers3, Lock, Rocket, ShieldCheck, Sparkles, Unlock, Wand2, type LucideIcon } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Award, Brain, Code2, Cpu, ExternalLink, Layers3, Lock, Medal, Rocket, ShieldCheck, Sparkles, Trophy, Unlock, Wand2, X, type LucideIcon } from 'lucide-react';
+import { useGalaxyStore } from '../../store/useGalaxyStore';
 
 const identityProfiles = [
   {
@@ -59,6 +61,99 @@ const currentMissions = [
   '继续沉淀 AI + OCR + 自动化在真实学生/办公场景里的小工具。',
   '把界面系统统一成安静、轻量、有一点宇宙感的个人产品语言。',
 ];
+
+const growthMilestones = [
+  {
+    stage: '河南大学校级赛',
+    award: '二等奖',
+    date: '2026.04',
+    certificate: '证书编号 2026150',
+  },
+  {
+    stage: '河南省级赛',
+    award: '二等奖',
+    date: '2026.05',
+    certificate: '证书编号 JSUSJDS20260129',
+  },
+];
+
+const growthCertificates = [
+  {
+    title: '河南大学校级赛二等奖',
+    src: '/certificates/computer-design-hnu-2026.jpg',
+    meta: '2026 年第 19 届中国大学生计算机设计大赛 · 校级赛',
+  },
+  {
+    title: '河南省级赛二等奖',
+    src: '/certificates/computer-design-henan-2026.jpg',
+    meta: '2026 年第 19 届中国大学生计算机设计大赛 · 河南省级赛',
+  },
+];
+
+const CertificateGallery: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+}> = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 py-8">
+      <button
+        type="button"
+        aria-label="关闭证书预览"
+        className="absolute inset-0 cursor-default bg-black/70 backdrop-blur-xl"
+        onClick={onClose}
+      />
+      <div
+        className="hud-panel relative z-10 flex max-h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] p-5 md:p-7"
+        style={{
+          ['--theme-color' as string]: '#f87171',
+          ['--hud-x' as string]: '50%',
+          ['--hud-y' as string]: '0%',
+        }}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="关闭证书预览"
+          className="absolute right-5 top-5 z-10 rounded-full border border-white/10 bg-black/40 p-2 text-gray-400 transition-colors hover:text-white"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="mb-5 pr-12">
+          <div className="hud-kicker mb-3">
+            <span className="hud-dot" />
+            <span>Certificate Gallery</span>
+          </div>
+          <h3 className="text-2xl font-light tracking-wide text-white">获奖证书</h3>
+          <p className="mt-2 text-sm font-light leading-relaxed text-gray-400">
+            《面向视障与老年群体的胸挂式智能设备》从校级赛走到河南省级赛的最近成果。
+          </p>
+        </div>
+
+        <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto no-scrollbar lg:grid-cols-2">
+          {growthCertificates.map((certificate) => (
+            <figure key={certificate.title} className="scan-card overflow-hidden p-3">
+              <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-black/30">
+                <img
+                  src={certificate.src}
+                  alt={certificate.title}
+                  className="h-auto w-full object-contain"
+                />
+              </div>
+              <figcaption className="px-1 pt-4">
+                <div className="text-sm font-light text-gray-100">{certificate.title}</div>
+                <div className="mt-1 text-[11px] font-light tracking-wide text-gray-500">{certificate.meta}</div>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
 
 const TypewriterRole: React.FC<{
   isPinned: boolean;
@@ -135,6 +230,8 @@ const TypewriterRole: React.FC<{
 export const IdentityContent: React.FC = () => {
   const [activeRoleIndex, setActiveRoleIndex] = useState(0);
   const [isRolePinned, setIsRolePinned] = useState(false);
+  const [isCertificateGalleryOpen, setIsCertificateGalleryOpen] = useState(false);
+  const setActiveTheme = useGalaxyStore((state) => state.setActiveTheme);
   const activeProfile = identityProfiles[activeRoleIndex];
   const ActiveIcon = activeProfile.icon;
 
@@ -232,7 +329,13 @@ export const IdentityContent: React.FC = () => {
     setIsRolePinned(true);
   };
 
+  const openAwardProject = () => {
+    window.sessionStorage.setItem('preferredCreationProject', '视觉识别系统 3.0');
+    setActiveTheme('creations');
+  };
+
   return (
+    <>
     <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-[1.04fr_0.96fr] xl:gap-12">
       <div className="min-w-0">
         <div className="hud-panel inline-flex items-center gap-3 rounded-full px-4 py-2 text-xs text-gray-300 tracking-wider mb-8">
@@ -325,6 +428,75 @@ export const IdentityContent: React.FC = () => {
                 </span>
               ))}
             </div>
+          </div>
+        </div>
+
+        <div className="hud-panel mt-6 rounded-3xl p-6 md:p-7">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="hud-kicker mb-4">
+                <span className="hud-dot" />
+                <span>Recent Growth</span>
+              </div>
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[var(--theme-color)] shadow-[0_0_28px_rgba(248,113,113,0.14)]">
+                  <Trophy size={24} />
+                </span>
+                <div>
+                  <h2 className="text-2xl font-light tracking-wide text-white">个人成长经历</h2>
+                  <p className="mt-1 text-xs uppercase tracking-[0.2em] text-gray-500">Awarded Project · IoT Application</p>
+                </div>
+              </div>
+              <p className="text-sm font-light leading-relaxed text-gray-400">
+                《面向视障与老年群体的胸挂式智能设备》在 2026 年第 19 届中国大学生计算机设计大赛中连续获得校级赛与河南省级赛二等奖。这个节点把边缘视觉、设备协同和真实使用场景连接到了一起。
+              </p>
+            </div>
+
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={openAwardProject}
+                className="hud-chip hover:text-white"
+              >
+                <ExternalLink size={13} />
+                <span>查看关联作品</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCertificateGalleryOpen(true)}
+                className="hud-chip hover:text-white"
+              >
+                <Award size={13} />
+                <span>查看证书</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+            {growthMilestones.map((milestone, index) => (
+              <button
+                key={milestone.stage}
+                type="button"
+                onClick={() => setIsCertificateGalleryOpen(true)}
+                aria-label={`查看${milestone.stage}${milestone.award}证书`}
+                className="scan-card group p-4 text-left focus:outline-none focus:ring-1 focus:ring-[var(--theme-color)]/35"
+              >
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-200 transition-colors group-hover:text-white">
+                      <Medal size={18} />
+                    </span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-gray-600">Step {String(index + 1).padStart(2, '0')}</span>
+                  </div>
+                  <span className="rounded-full border border-[var(--theme-color)]/20 bg-[var(--theme-color)]/10 px-3 py-1 text-[11px] text-gray-200 transition-colors group-hover:border-[var(--theme-color)]/35 group-hover:text-white">
+                    {milestone.award}
+                  </span>
+                </div>
+                <div className="mb-1 text-base font-light tracking-wide text-white">{milestone.stage}</div>
+                <div className="mb-3 text-[11px] uppercase tracking-[0.18em] text-gray-500">{milestone.date}</div>
+                <div className="text-xs font-light leading-relaxed text-gray-500">{milestone.certificate}</div>
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -483,5 +655,10 @@ export const IdentityContent: React.FC = () => {
         </div>
       </div>
     </div>
+    <CertificateGallery
+      isOpen={isCertificateGalleryOpen}
+      onClose={() => setIsCertificateGalleryOpen(false)}
+    />
+    </>
   );
 };

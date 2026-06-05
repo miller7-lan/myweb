@@ -20,22 +20,23 @@ type Project = {
 const projects: Project[] = [
   {
     title: '视觉识别系统 3.0',
-    subtitle: 'K210 YOLO2 Tiny Obstacle Detection',
+    subtitle: 'Awarded Wearable Assistive IoT Device',
     icon: Eye,
-    desc: '面向 K210/CanMV 的单类障碍物识别项目，用于判断前方是否存在障碍物，并为后续雷达距离融合和语音播报预留接口。',
+    desc: '面向视障与老年群体的胸挂式智能设备项目，以 K210/CanMV 边缘视觉识别为核心，判断前方障碍物，并为雷达距离融合和语音播报预留接口。',
     requirements: [
+      '围绕胸挂式辅助设备构建可部署的障碍物识别链路',
       '训练并转换适配 K210 的 YOLO2 Tiny kmodel',
       '识别目标聚焦为单类 obstacle，降低边缘设备推理负担',
-      '保留数据集、训练、导出和设备端脚本的复现文档',
+      '在计算机设计大赛场景中说明物联网应用价值和后续设备协同方案',
     ],
-    problem: '把“能不能看见障碍物”这个比赛需求拆成可训练、可部署、可交付的边缘视觉链路。',
+    problem: '把“能不能提前感知障碍物”这个真实辅助场景，拆成可训练、可部署、可展示的边缘视觉与物联网设备方案。',
     design: [
       '用单类 obstacle 降低标注和推理复杂度',
       '把训练、模型转换和设备端脚本拆成可复现文档',
-      '为雷达距离融合与扬声器播报预留后续接口',
+      '为胸挂式硬件形态、雷达距离融合与扬声器播报预留后续接口',
     ],
-    techStack: ['Python', 'YOLO2 Tiny', 'K210', 'CanMV', 'FastAPI', 'Pydantic'],
-    highlights: ['边缘视觉', '模型转换', '设备协同'],
+    techStack: ['Python', 'YOLO2 Tiny', 'K210', 'CanMV', 'IoT', 'Assistive Tech'],
+    highlights: ['河南省级赛二等奖', '边缘视觉', '胸挂式设备'],
   },
   {
     title: 'Dazzle Secretary Pro',
@@ -380,6 +381,19 @@ export const CreationsContent: React.FC = () => {
       ...project.design,
     ].join(' ').toLowerCase().includes(normalizedQuery))
     : projects;
+
+  useEffect(() => {
+    const preferredProject = window.sessionStorage.getItem('preferredCreationProject');
+    if (!preferredProject) {
+      return;
+    }
+
+    const project = projects.find((item) => item.title === preferredProject);
+    window.sessionStorage.removeItem('preferredCreationProject');
+    if (project) {
+      setSelectedProject(project);
+    }
+  }, []);
 
   const openReleasePage = (target: NonNullable<Project['releaseTarget']>) => {
     window.sessionStorage.setItem('preferredOrbitTab', target);
