@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Award, Brain, Code2, Cpu, ExternalLink, Layers3, Lock, Medal, Rocket, ShieldCheck, Sparkles, Trophy, Unlock, Wand2, X, type LucideIcon } from 'lucide-react';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
@@ -94,27 +94,58 @@ const CertificateGallery: React.FC<{
   isOpen: boolean;
   onClose: () => void;
 }> = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
+  const [shouldRender, setShouldRender] = useState(isOpen);
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      setIsClosing(false);
+    } else if (shouldRender) {
+      setIsClosing(true);
+      const timer = window.setTimeout(() => {
+        setShouldRender(false);
+        setIsClosing(false);
+      }, 320);
+
+      return () => window.clearTimeout(timer);
+    }
+  }, [isOpen, shouldRender]);
+
+  const requestClose = useCallback(() => {
+    if (!isClosing) {
+      onClose();
+    }
+  }, [isClosing, onClose]);
+
+  if (!shouldRender) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 py-8">
+    <div
+      className={`certificate-backdrop fixed inset-0 z-[90] flex items-center justify-center px-4 py-8 ${isClosing ? 'is-closing' : 'is-opening'}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="获奖证书"
+      onClick={requestClose}
+    >
       <button
         type="button"
         aria-label="关闭证书预览"
-        className="absolute inset-0 cursor-default bg-black/70 backdrop-blur-xl"
-        onClick={onClose}
+        className="absolute inset-0 cursor-default"
+        onClick={requestClose}
       />
       <div
-        className="hud-panel relative z-10 flex max-h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] p-5 md:p-7"
+        className={`certificate-card hud-panel relative z-10 flex max-h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] p-5 md:p-7 ${isClosing ? 'is-closing' : 'is-opening'}`}
         style={{
           ['--theme-color' as string]: '#f87171',
           ['--hud-x' as string]: '50%',
           ['--hud-y' as string]: '0%',
         }}
+        onClick={(event) => event.stopPropagation()}
       >
         <button
           type="button"
-          onClick={onClose}
+          onClick={requestClose}
           aria-label="关闭证书预览"
           className="absolute right-5 top-5 z-10 rounded-full border border-white/10 bg-black/40 p-2 text-gray-400 transition-colors hover:text-white"
         >
