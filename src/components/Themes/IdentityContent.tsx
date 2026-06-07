@@ -75,6 +75,12 @@ const growthMilestones = [
     date: '2026.05',
     certificate: '证书编号 JSUSJDS20260129',
   },
+  {
+    stage: '全国大学生英语竞赛(NECCS)',
+    award: '优秀奖',
+    date: '2026.05',
+    certificate: '河南省赛区优秀奖',
+  },
 ];
 
 const growthCertificates = [
@@ -88,6 +94,11 @@ const growthCertificates = [
     src: '/certificates/computer-design-henan-2026.jpg',
     meta: '2026 年第 19 届中国大学生计算机设计大赛 · 河南省级赛',
   },
+  {
+    title: '全国大学生英语竞赛优秀奖',
+    src: '/certificates/english-competition-henan-2026.jpg',
+    meta: '2026 年全国大学生英语竞赛(NECCS) · 河南省赛区',
+  },
 ];
 
 const CertificateGallery: React.FC<{
@@ -99,16 +110,22 @@ const CertificateGallery: React.FC<{
 
   useEffect(() => {
     if (isOpen) {
-      setShouldRender(true);
-      setIsClosing(false);
+      const timer = window.setTimeout(() => {
+        setShouldRender(true);
+        setIsClosing(false);
+      }, 0);
+      return () => window.clearTimeout(timer);
     } else if (shouldRender) {
-      setIsClosing(true);
+      const closingTimer = window.setTimeout(() => setIsClosing(true), 0);
       const timer = window.setTimeout(() => {
         setShouldRender(false);
         setIsClosing(false);
       }, 320);
 
-      return () => window.clearTimeout(timer);
+      return () => {
+        window.clearTimeout(closingTimer);
+        window.clearTimeout(timer);
+      };
     }
   }, [isOpen, shouldRender]);
 
@@ -159,7 +176,7 @@ const CertificateGallery: React.FC<{
           </div>
           <h3 className="text-2xl font-light tracking-wide text-white">获奖证书</h3>
           <p className="mt-2 text-sm font-light leading-relaxed text-gray-400">
-            《面向视障与老年群体的胸挂式智能设备》从校级赛走到河南省级赛的最近成果。
+            近期在专业计算机设计大赛与全国大学生英语竞赛中取得的获奖成果。
           </p>
         </div>
 
@@ -410,7 +427,7 @@ export const IdentityContent: React.FC = () => {
           {activeProfile.line}
         </p>
 
-        <div className="hud-panel rounded-3xl p-7 text-gray-300 font-light leading-relaxed">
+        <div className="hud-panel rounded-3xl p-7 text-gray-300 font-light leading-relaxed" data-guide-id="identity-profile">
           <div className="hud-kicker">
             <span className="hud-dot" />
             <span>ENGINEER PROFILE</span>
@@ -462,7 +479,7 @@ export const IdentityContent: React.FC = () => {
           </div>
         </div>
 
-        <div className="hud-panel mt-6 rounded-3xl p-6 md:p-7">
+        <div className="hud-panel mt-6 rounded-3xl p-6 md:p-7" data-guide-id="identity-growth">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <div className="hud-kicker mb-4">
@@ -533,7 +550,7 @@ export const IdentityContent: React.FC = () => {
       </div>
 
       <div className="min-w-0 space-y-5">
-        <div className="hud-panel relative overflow-hidden rounded-[32px] p-6 md:p-7">
+        <div className="hud-panel relative overflow-hidden rounded-[32px] p-6 md:p-7" data-guide-id="identity-modules">
           <div className="absolute right-6 top-6 text-[10px] uppercase tracking-[0.24em] text-gray-600">CORE MAP</div>
           <div className="hud-kicker mb-6">
             <span className="hud-dot" />
@@ -577,6 +594,7 @@ export const IdentityContent: React.FC = () => {
               onClick={toggleOverclock}
               aria-label="Toggle Neural Overclock Mode"
               className="group relative flex h-52 w-52 items-center justify-center rounded-full transition-transform active:scale-95 cursor-pointer outline-none focus:ring-1 focus:ring-[var(--theme-color)]/30"
+              data-guide-id="identity-overclock"
             >
               {/* Inner glowing ripple on overclock */}
               {isOverclocked && (
@@ -668,7 +686,7 @@ export const IdentityContent: React.FC = () => {
           })}
         </div>
 
-        <div className="hud-panel rounded-3xl p-6">
+        <div className="hud-panel rounded-3xl p-6" data-guide-id="identity-missions">
           <div className="hud-kicker mb-5">
             <span className="hud-dot" />
             <span>Current Missions</span>

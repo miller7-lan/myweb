@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { GalaxyScene } from './components/Scene/GalaxyScene';
 import { UIOverlay } from './components/UI/UIOverlay';
 import { ThemeOverlay } from './components/UI/ThemeOverlay';
+import { GuidePet } from './components/UI/GuidePet';
 import { useGalaxyStore } from './store/useGalaxyStore';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
       </Canvas>
       <UIOverlay />
       <ThemeOverlay />
+      <GuidePet />
     </div>
   );
 }

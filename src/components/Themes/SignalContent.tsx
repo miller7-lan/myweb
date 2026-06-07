@@ -303,7 +303,7 @@ export const SignalContent: React.FC = () => {
             <div className="space-y-6 relative z-10">
               
               {/* Open Channels Section */}
-              <section>
+              <section data-guide-id="signal-open-channels">
                 <div className="mb-4 flex items-center gap-3">
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-gray-300 shadow-[inset_0_0_12px_rgba(255,255,255,0.02)]">
                     <MessageSquareText size={18} />
@@ -324,7 +324,7 @@ export const SignalContent: React.FC = () => {
               </section>
 
               {/* Boundaries Section */}
-              <section className="border-t border-white/[0.06] pt-5">
+              <section className="border-t border-white/[0.06] pt-5" data-guide-id="signal-boundaries">
                 <div className="mb-4 flex items-center gap-3">
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-gray-400 shadow-[inset_0_0_12px_rgba(255,255,255,0.02)]">
                     <ShieldCheck size={18} />
@@ -345,7 +345,7 @@ export const SignalContent: React.FC = () => {
               </section>
 
               {/* Core Info Grid */}
-              <section className="grid gap-3 border-t border-white/[0.06] pt-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <section className="grid gap-3 border-t border-white/[0.06] pt-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" data-guide-id="signal-contact-info">
                 <div className="flex items-center gap-3 rounded-2xl border border-white/[0.03] bg-white/[0.015] hover:bg-white/[0.03] hover:border-white/[0.06] transition-all px-4 py-3 group select-none">
                   <Mail size={16} className="shrink-0 text-gray-500 group-hover:text-[var(--theme-color,#93c5fd)] transition-colors" />
                   <div className="min-w-0">
@@ -469,7 +469,7 @@ export const SignalContent: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   
                   {/* Name field */}
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2" data-guide-id="contact-name">
                     <label className="text-xs uppercase tracking-widest text-gray-500 font-mono" htmlFor="contact-name">
                       姓名 / Name
                     </label>
@@ -490,7 +490,7 @@ export const SignalContent: React.FC = () => {
                   </div>
 
                   {/* Email field */}
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2" data-guide-id="contact-email">
                     <label className="text-xs uppercase tracking-widest text-gray-500 font-mono" htmlFor="contact-email">
                       你的邮箱 / Email
                     </label>
@@ -513,7 +513,7 @@ export const SignalContent: React.FC = () => {
                 </div>
 
                 {/* Subject field */}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2" data-guide-id="contact-subject">
                   <label className="text-xs uppercase tracking-widest text-gray-500 font-mono" htmlFor="contact-subject">
                     主题 / Subject
                   </label>
@@ -545,7 +545,7 @@ export const SignalContent: React.FC = () => {
                 />
 
                 {/* Message field */}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2" data-guide-id="contact-message">
                   <label className="text-xs uppercase tracking-widest text-gray-500 font-mono" htmlFor="contact-message">
                     消息 / Message
                   </label>
@@ -672,6 +672,7 @@ export const SignalContent: React.FC = () => {
                     ${isSending 
                       ? 'bg-white/10 text-gray-400 border border-white/10' 
                       : 'bg-gradient-to-r from-[color-mix(in_srgb,var(--theme-color,#93c5fd)_28%,transparent)] to-[color-mix(in_srgb,var(--theme-color,#93c5fd)_10%,transparent)] text-white border border-[var(--theme-color,#93c5fd)]/40 hover:border-[var(--theme-color,#93c5fd)]/80 shadow-[0_0_20px_rgba(147,197,253,0.06)] hover:shadow-[0_0_30px_color-mix(in_srgb,var(--theme-color,#93c5fd)_22%,transparent)] hover:-translate-y-0.5'}`}
+                  data-guide-id="signal-submit"
                 >
                   {/* Corner tech ticks */}
                   <span className="absolute top-1 left-1 w-1.5 h-1.5 border-t border-l border-white/20 group-hover:border-[var(--theme-color)]/60 transition-colors" />

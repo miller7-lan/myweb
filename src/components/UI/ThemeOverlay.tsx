@@ -134,9 +134,9 @@ export const ThemeOverlay: React.FC = () => {
       </div>
 
       {/* Scrollable Container */}
-      <div className="absolute inset-0 pointer-events-auto overflow-y-auto z-30 flex flex-col pt-36 md:pt-44">
+      <div className="absolute inset-0 pointer-events-auto overflow-y-auto z-30 flex flex-col pt-36 md:pt-44" data-guide-scroll-container="theme">
         <div className="w-full max-w-6xl mx-auto px-8 md:px-16 flex flex-col flex-1 min-h-full pb-24">
-          <div className="theme-content opacity-0 flex-1">
+          <div className="theme-content opacity-0 flex-1" data-guide-id={activeTheme ? `theme-${activeTheme}` : undefined}>
             {renderContent()}
           </div>
         </div>

@@ -14,6 +14,21 @@ export const SkillConstellation: React.FC = () => {
     selectedNodeRef.current = selectedNode;
   }, [selectedNode]);
 
+  useEffect(() => {
+    const handleGuideOpen = (event: WindowEventMap['galaxy-guide-open']) => {
+      const action = event.detail.target.openAction;
+      if (action?.type !== 'select-skill') return;
+      const node = skillsData.find((item) => item.id === action.value);
+      if (node) {
+        setSelectedNode(node);
+        setHoveredNode(null);
+      }
+    };
+
+    window.addEventListener('galaxy-guide-open', handleGuideOpen);
+    return () => window.removeEventListener('galaxy-guide-open', handleGuideOpen);
+  }, []);
+
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   // Map Pan & Zoom state
@@ -374,6 +389,7 @@ export const SkillConstellation: React.FC = () => {
               <g
                 key={node.id}
                 className={outerClass}
+                data-guide-id={`skill-${node.id}`}
                 onMouseEnter={() => !selectedNode && setHoveredNode(node)}
                 onMouseLeave={() => !selectedNode && setHoveredNode(null)}
                 onClick={(e) => {
