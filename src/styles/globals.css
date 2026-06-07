@@ -504,6 +504,1135 @@ canvas {
     opacity: 0;
   }
 
+  .guide-pet-shell {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 4.25rem;
+    height: 6.25rem;
+    z-index: 120;
+    display: block;
+    pointer-events: none;
+    color: rgb(229 231 235);
+    will-change: transform;
+  }
+
+  .guide-pet-shell.is-theme {
+    bottom: auto;
+  }
+
+  .guide-pet-shell.is-dragging {
+    user-select: none;
+  }
+
+  .guide-pet-avatar,
+  .guide-pet-panel,
+  .guide-pet-bubble {
+    pointer-events: auto;
+  }
+
+  .guide-pet-avatar {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 3.9375rem;
+    height: 6rem;
+    border: 0;
+    background: transparent;
+    color: rgb(229 231 235);
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    filter: drop-shadow(0 0 18px color-mix(in srgb, var(--theme-color, #e2e8f0) 26%, transparent));
+    animation: guide-pet-float 4.8s steps(4, end) infinite;
+    cursor: grab;
+    touch-action: none;
+    transform-origin: 50% 88%;
+  }
+
+  .guide-pet-shell.is-dragging .guide-pet-avatar {
+    cursor: grabbing;
+    animation: none;
+    filter:
+      drop-shadow(0 0 20px color-mix(in srgb, var(--theme-color, #e2e8f0) 36%, transparent))
+      drop-shadow(0 16px 22px rgba(0,0,0,0.34));
+  }
+
+  .guide-pet-shell.is-dragging.drag-left .guide-pet-avatar {
+    animation: none;
+  }
+
+  .guide-pet-shell.is-dragging.drag-right .guide-pet-avatar {
+    animation: none;
+  }
+
+  .guide-pet-sprite {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-image: url('/pets/guide-pet-boy-sheet.png');
+    background-repeat: no-repeat;
+    background-size: 400% 100%;
+    background-position: 0 0;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .guide-pet-avatar.action-micro .guide-pet-sprite {
+    animation: guide-pet-micro 420ms steps(2, end) both;
+  }
+
+  .guide-pet-avatar.action-wave .guide-pet-sprite {
+    animation: guide-pet-wave 1.35s steps(4, end) both;
+  }
+
+  .guide-pet-avatar.action-scan .guide-pet-sprite {
+    animation: guide-pet-scan 1.55s steps(3, end) both;
+  }
+
+  .guide-pet-shell.is-dragging .guide-pet-sprite {
+    background-image: url('/pets/guide-pet-boy-run-sheet.png');
+    animation: guide-pet-run 320ms steps(1, end) infinite;
+  }
+
+  .guide-pet-shell.is-dragging.drag-left .guide-pet-sprite {
+    background-image: url('/pets/guide-pet-boy-run-left-sheet.png');
+  }
+
+  .guide-pet-shell.is-dragging.drag-right .guide-pet-sprite {
+    background-image: url('/pets/guide-pet-boy-run-sheet.png');
+  }
+
+  .guide-pet-avatar:focus-visible {
+    outline: 1px solid color-mix(in srgb, var(--theme-color, #e2e8f0) 65%, white 10%);
+    outline-offset: 0.35rem;
+  }
+
+  /*
+   * Legacy CSS-drawn pet parts are no longer rendered; the current pet uses
+   * an image-generated pixel sprite sheet in public/pets/guide-pet-boy-sheet.png.
+   */
+  .guide-pet-antenna {
+    position: absolute;
+    left: 2.1rem;
+    top: 0.05rem;
+    width: 0.55rem;
+    height: 0.85rem;
+    background: #d8dee9;
+    box-shadow:
+      0 -0.35rem 0 -0.12rem var(--theme-color, #e2e8f0),
+      0 -0.35rem 12px color-mix(in srgb, var(--theme-color, #e2e8f0) 70%, transparent);
+  }
+
+  .guide-pet-head {
+    position: absolute;
+    left: 0.7rem;
+    top: 0.72rem;
+    width: 3.35rem;
+    height: 2.35rem;
+    border: 2px solid rgba(255,255,255,0.52);
+    border-radius: 0.35rem;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04)),
+      #9aa3af;
+    box-shadow:
+      inset 0 -0.45rem 0 rgba(0,0,0,0.18),
+      0.22rem 0.22rem 0 rgba(0,0,0,0.38),
+      0 0 20px color-mix(in srgb, var(--theme-color, #e2e8f0) 14%, transparent);
+  }
+
+  .guide-pet-head::before {
+    content: "";
+    position: absolute;
+    inset: 0.42rem 0.38rem;
+    border: 1px solid rgba(0,0,0,0.38);
+    border-radius: 0.2rem;
+    background: rgba(2, 2, 4, 0.68);
+  }
+
+  .guide-pet-eye {
+    position: absolute;
+    z-index: 1;
+    top: 1.05rem;
+    width: 0.42rem;
+    height: 0.42rem;
+    background: var(--theme-color, #e2e8f0);
+    box-shadow: 0 0 10px var(--theme-color, #e2e8f0);
+    animation: guide-pet-blink 5.6s steps(1, end) infinite;
+  }
+
+  .guide-pet-eye.left {
+    left: 1.35rem;
+  }
+
+  .guide-pet-eye.right {
+    right: 1.35rem;
+  }
+
+  .guide-pet-body {
+    position: absolute;
+    left: 1.18rem;
+    top: 3.05rem;
+    display: flex;
+    width: 2.45rem;
+    height: 1.72rem;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255,255,255,0.46);
+    border-radius: 0.25rem;
+    background: #6f7a89;
+    box-shadow:
+      inset 0 -0.32rem 0 rgba(0,0,0,0.2),
+      0.18rem 0.18rem 0 rgba(0,0,0,0.34);
+  }
+
+  .guide-pet-body::before,
+  .guide-pet-body::after {
+    content: "";
+    position: absolute;
+    top: 0.25rem;
+    width: 0.42rem;
+    height: 1rem;
+    background: #8b95a3;
+    box-shadow: inset 0 -0.2rem 0 rgba(0,0,0,0.2);
+  }
+
+  .guide-pet-body::before {
+    left: -0.62rem;
+  }
+
+  .guide-pet-body::after {
+    right: -0.62rem;
+  }
+
+  .guide-pet-jet {
+    position: absolute;
+    bottom: 0.12rem;
+    width: 0.55rem;
+    height: 0.5rem;
+    background: color-mix(in srgb, var(--theme-color, #e2e8f0) 70%, white 10%);
+    box-shadow: 0 0 14px var(--theme-color, #e2e8f0);
+    animation: guide-pet-jet 0.72s steps(2, end) infinite;
+  }
+
+  .guide-pet-jet.left {
+    left: 1.45rem;
+  }
+
+  .guide-pet-jet.right {
+    right: 1.45rem;
+  }
+
+  .guide-pet-avatar.mood-thinking .guide-pet-eye,
+  .guide-pet-avatar.mood-guiding .guide-pet-eye {
+    animation-duration: 1.4s;
+  }
+
+  .guide-pet-avatar.mood-success .guide-pet-head {
+    border-color: color-mix(in srgb, var(--theme-color, #e2e8f0) 68%, white 20%);
+  }
+
+  .guide-pet-bubble {
+    position: absolute;
+    right: -0.15rem;
+    bottom: calc(100% - 0.35rem);
+    width: min(18.5rem, calc(100vw - 2rem));
+    min-height: 5.25rem;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    animation: guide-pet-pop 260ms steps(3, end) both;
+    image-rendering: pixelated;
+    cursor: pointer;
+  }
+
+  .guide-pet-bubble-body {
+    position: relative;
+    width: 100%;
+    min-height: 4.35rem;
+    background: #050505;
+    padding: 0.95rem 2.35rem 1.05rem 1.15rem;
+    font-family: "Courier New", "Monaco", "Menlo", "Consolas", monospace;
+    text-rendering: geometricPrecision;
+    clip-path: polygon(
+      18px 0,
+      calc(100% - 18px) 0,
+      calc(100% - 18px) 6px,
+      calc(100% - 6px) 6px,
+      calc(100% - 6px) 18px,
+      100% 18px,
+      100% calc(100% - 18px),
+      calc(100% - 6px) calc(100% - 18px),
+      calc(100% - 6px) calc(100% - 6px),
+      calc(100% - 18px) calc(100% - 6px),
+      calc(100% - 18px) 100%,
+      18px 100%,
+      18px calc(100% - 6px),
+      6px calc(100% - 6px),
+      6px calc(100% - 18px),
+      0 calc(100% - 18px),
+      0 18px,
+      6px 18px,
+      6px 6px,
+      18px 6px
+    );
+    box-shadow: 0.45rem 0.45rem 0 rgba(0,0,0,0.32);
+  }
+
+  .guide-pet-bubble-body::after {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    background: #ffffff;
+    clip-path: polygon(
+      12px 0,
+      calc(100% - 12px) 0,
+      calc(100% - 12px) 6px,
+      100% 6px,
+      100% calc(100% - 12px),
+      calc(100% - 6px) calc(100% - 12px),
+      calc(100% - 6px) 100%,
+      12px 100%,
+      12px calc(100% - 6px),
+      0 calc(100% - 6px),
+      0 12px,
+      6px 12px,
+      6px 6px,
+      12px 6px
+    );
+    z-index: 0;
+  }
+
+  .guide-pet-bubble-body button,
+  .guide-pet-bubble-body span,
+  .guide-pet-bubble-body p {
+    position: relative;
+    z-index: 1;
+  }
+
+  .guide-pet-bubble-tail {
+    position: absolute;
+    right: 4.1rem;
+    bottom: -1.45rem;
+    width: 2.15rem;
+    height: 1.65rem;
+    z-index: 0;
+  }
+
+  .guide-pet-bubble-tail::before {
+    content: "";
+    position: absolute;
+    left: 0.35rem;
+    top: 0;
+    width: 1.55rem;
+    height: 1.15rem;
+    background: #050505;
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 42%,
+      72% 42%,
+      72% 72%,
+      48% 72%,
+      48% 100%,
+      24% 100%,
+      24% 72%,
+      0 72%
+    );
+  }
+
+  .guide-pet-bubble-tail::after {
+    content: "";
+    position: absolute;
+    left: 0.72rem;
+    top: 0;
+    width: 0.8rem;
+    height: 0.86rem;
+    background: #ffffff;
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 38%,
+      70% 38%,
+      70% 68%,
+      45% 68%,
+      45% 100%,
+      20% 100%,
+      20% 68%,
+      0 68%
+    );
+  }
+
+  .guide-pet-bubble.is-emoji {
+    width: 7.75rem;
+    min-height: 6.25rem;
+  }
+
+  .guide-pet-bubble.is-emoji .guide-pet-bubble-body {
+    display: flex;
+    min-height: 5.9rem;
+    align-items: center;
+    justify-content: center;
+    padding: 1.05rem;
+    clip-path: polygon(
+      30% 0,
+      70% 0,
+      70% 7%,
+      84% 7%,
+      84% 18%,
+      94% 18%,
+      94% 34%,
+      100% 34%,
+      100% 66%,
+      94% 66%,
+      94% 82%,
+      84% 82%,
+      84% 93%,
+      70% 93%,
+      70% 100%,
+      30% 100%,
+      30% 93%,
+      16% 93%,
+      16% 82%,
+      6% 82%,
+      6% 66%,
+      0 66%,
+      0 34%,
+      6% 34%,
+      6% 18%,
+      16% 18%,
+      16% 7%,
+      30% 7%
+    );
+  }
+
+  .guide-pet-bubble.is-emoji .guide-pet-bubble-body::after {
+    inset: 7px;
+    clip-path: polygon(
+      28% 0,
+      72% 0,
+      72% 8%,
+      86% 8%,
+      86% 20%,
+      96% 20%,
+      96% 36%,
+      100% 36%,
+      100% 64%,
+      96% 64%,
+      96% 80%,
+      86% 80%,
+      86% 92%,
+      72% 92%,
+      72% 100%,
+      28% 100%,
+      28% 92%,
+      14% 92%,
+      14% 80%,
+      4% 80%,
+      4% 64%,
+      0 64%,
+      0 36%,
+      4% 36%,
+      4% 20%,
+      14% 20%,
+      14% 8%,
+      28% 8%
+    );
+  }
+
+  .guide-pet-bubble.is-emoji .guide-pet-bubble-tail {
+    right: 1.55rem;
+    bottom: -1.65rem;
+  }
+
+  .guide-pet-bubble.is-emoji .pixel-emoji {
+    width: 3.35rem;
+    height: 3.35rem;
+    margin-left: 0;
+  }
+
+  .guide-pet-bubble p {
+    display: block;
+    margin-top: 0.55rem;
+    color: #111111;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.7;
+    letter-spacing: 0;
+    text-shadow:
+      1px 1px 0 rgba(255,255,255,0.72),
+      0 0 1px rgba(0,0,0,0.28);
+  }
+
+  .guide-pet-bubble {
+    width: min(var(--bubble-width, 14rem), calc(100vw - 1.5rem));
+    min-height: 0;
+    padding: 0;
+    color: #111111;
+    text-align: center;
+    filter: drop-shadow(0.18rem 0.18rem 0 rgba(0,0,0,0.4));
+  }
+
+  .guide-pet-bubble.bubble-left {
+    right: -0.15rem;
+    left: auto;
+  }
+
+  .guide-pet-bubble.bubble-right {
+    right: auto;
+    left: 0.45rem;
+  }
+
+  .guide-pet-bubble-body {
+    display: flex;
+    min-height: 0;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    clip-path: none;
+    padding: 0.78rem 1rem 0.95rem;
+    box-shadow: none;
+  }
+
+  .guide-pet-bubble-body::after {
+    content: none;
+  }
+
+  .guide-pet-bubble-frame {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    image-rendering: pixelated;
+    shape-rendering: crispEdges;
+    pointer-events: none;
+  }
+
+  .guide-pet-frame-shadow {
+    fill: rgba(0, 0, 0, 0.22);
+  }
+
+  .guide-pet-frame-border {
+    fill: #050505;
+  }
+
+  .guide-pet-frame-fill {
+    fill: #ffffff;
+  }
+
+  .guide-pet-bubble-body button,
+  .guide-pet-bubble-body span,
+  .guide-pet-bubble-body p {
+    position: relative;
+    z-index: 1;
+  }
+
+  .guide-pet-bubble.is-text .guide-pet-bubble-body,
+  .guide-pet-bubble.is-mixed .guide-pet-bubble-body {
+    min-height: 3.55rem;
+  }
+
+  .guide-pet-bubble.is-emoji {
+    width: min(var(--bubble-width, 6.25rem), calc(100vw - 1.5rem));
+    min-height: 0;
+  }
+
+  .guide-pet-bubble.is-emoji .guide-pet-bubble-body {
+    display: flex;
+    min-height: 4rem;
+    align-items: center;
+    justify-content: center;
+    clip-path: none;
+    padding: 0.7rem;
+  }
+
+  .guide-pet-bubble.is-emoji .guide-pet-bubble-body::after {
+    content: none;
+  }
+
+  .guide-pet-bubble.is-emoji .pixel-emoji {
+    width: 2.15rem;
+    height: 2.15rem;
+    margin-left: 0;
+  }
+
+  .guide-pet-bubble p {
+    max-width: 100%;
+    margin-top: 0;
+    font-size: 0.62rem;
+    line-height: 1.42;
+    word-break: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+
+  .guide-pet-bubble-kicker {
+    font-size: 0.58rem;
+  }
+
+  .guide-pet-bubble-close {
+    right: 0.55rem;
+    top: 0.63rem;
+    width: 1.08rem;
+    height: 1.08rem;
+    background: #ffffff;
+    box-shadow:
+      inset 0 0 0 2px #050505,
+      2px 2px 0 #f87171;
+  }
+
+  .pixel-emoji-char {
+    display: inline-grid;
+    place-items: center;
+    background-image: none !important;
+    color: #050505;
+    font-size: 1rem;
+    font-weight: 900;
+    line-height: 1;
+    text-shadow: 1px 0 0 #050505, 0 1px 0 #050505;
+  }
+
+  .guide-pet-bubble.is-emoji .pixel-emoji-char {
+    color: #ffd91a;
+    font-size: 2rem;
+    text-shadow:
+      2px 0 0 #050505,
+      -2px 0 0 #050505,
+      0 2px 0 #050505,
+      0 -2px 0 #050505;
+  }
+
+  .pixel-emoji {
+    position: relative;
+    display: inline-block;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-left: 0.45em;
+    vertical-align: -0.22em;
+    image-rendering: pixelated;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+
+  .pixel-emoji-smile {
+    background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M5 1h6v1h2v2h2v6h-2v2h-2v2H5v-2H3v-2H1V5h2V3h2V1z" fill="%23ffd91a"/><path d="M5 0h6v1H5V0zm6 1h2v2h-2V1zm2 2h2v2h-2V3zm2 2h1v6h-1V5zm-1 6h-2v2h2v-2zm-2 2h-2v2h2v-2zm-2 2H5v1h6v-1zM5 15H3v-2h2v2zm-2-2H1v-2h2v2zM1 11H0V5h1v6zm0-6h2V3H1v2zm2-2h2V1H3v2z" fill="%23050505"/><rect x="5" y="5" width="2" height="3" fill="%23050505"/><rect x="9" y="5" width="2" height="3" fill="%23050505"/><path d="M4 10h1v1h6v-1h1v2h-1v-1H5v1H4v-2z" fill="%23050505"/></svg>');
+  }
+
+  .pixel-emoji-cool {
+    background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M5 1h6v1h2v2h2v6h-2v2h-2v2H5v-2H3v-2H1V5h2V3h2V1z" fill="%23ffd91a"/><path d="M5 0h6v1H5V0zm6 1h2v2h-2V1zm2 2h2v2h-2V3zm2 2h1v6h-1V5zm-1 6h-2v2h2v-2zm-2 2h-2v2h2v-2zm-2 2H5v1h6v-1zM5 15H3v-2h2v2zm-2-2H1v-2h2v2zM1 11H0V5h1v6zm0-6h2V3H1v2zm2-2h2V1H3v2z" fill="%23050505"/><path d="M3 5h10v2H3V5z" fill="%23050505"/><path d="M4 7h3v1H4V7zm5 0h3v1H9V7z" fill="%23050505"/><rect x="4" y="5" width="1" height="1" fill="%23ffffff"/><rect x="9" y="5" width="1" height="1" fill="%23ffffff"/><path d="M5 11h6v1H5v-1z" fill="%23050505"/></svg>');
+  }
+
+  .pixel-emoji-heart {
+    background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M2 4h12v4H2zm1 4h10v1H3zm1 1h8v1H4zm1 1h6v1H5zm1 1h4v1H6zm1 1h2v1H7z" fill="%23ff2d3d"/><path d="M4 0h2v1H4zm4 0h2v1H8zm-5 1h1v1H3zm4 0h1v1H7zm2 0h1v1H9zm3 0h1v1h-1zm-10 2h1v1H2zm4 0h1v1H6zm2 0h1v1H8zm4 0h1v1h-1zm-11 1h1v3H1zm13 0h1v3h-1zm-1 3h1v1h-1zm-11 0h1v1H2zm1 1h1v1H3zm9 0h1v1h-1zm-8 1h1v1H4zm7 0h1v1H9zm-6 1h1v1H5zm5 0h1v1H8zm-4 1h1v1H6zm3 0h1v1H8zm-2 1h2v1H7z" fill="%23050505"/></svg>');
+  }
+
+  .pixel-emoji-star {
+    background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M7 1h2v1H7zm0 14h2v1H7zm-3-1h1v1H4zm7 0h1v1h-1zm-5 1h2v1H6zm-3-4h1v1H3zm9 0h1v1h-1zm-2 2h1v1h-1zm-5 0h1v1H5zm-4-6h1v1H1zm13 0h1v1h-1zm-12 2h1v1H2zm11 0h1v1h-1zm-9 2h1v1H3zm7 0h1v1h-1zm-1-8h1v1H8zm-2 0h1v1H6zm-2 1h1v1H4zm7 0h1v1h-1zm-5-2h2v1H6zm-3 4h1v1H3zm9 0h1v1h-1z" fill="%23050505"/><path d="M5 4h6v1H5zm-1 1h8v1H4zm-1 1h10v1H3zm0 1h10v1H3zm1 1h8v1H4zm1 1h6v1H5zm1 1h4v1H6zm1 1h2v1H7z" fill="%23ffd91a"/></svg>');
+  }
+
+  .pixel-emoji-sparkle {
+    background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M7 0h2v2H7zm0 12h2v2H7zm-5-7h2v2H2zm10 0h2v2h-2zm-3-3h1v1H9zm-3 0h1v1H6zm-1 1h1v1H5zm5 0h1v1h-1zm-4 5h1v1H6zm3 0h1v1H9zm-4 1h1v1H5zm5 0h1v1h-1z" fill="%23050505"/><path d="M6 3h4v1H6zm-1 1h6v1H5zm-1 1h8v1H4zm0 1h8v1H4zm1 1h6v1H5zm1 1h4v1H6z" fill="%23ffe766"/></svg>');
+  }
+
+  .guide-pet-bubble-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: #3f3f46;
+    font-family: "Courier New", "Monaco", "Menlo", "Consolas", monospace;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-shadow: 1px 1px 0 #ffffff;
+  }
+
+  .guide-pet-bubble-close {
+    position: absolute;
+    right: 0.72rem;
+    top: 0.72rem;
+    display: flex;
+    width: 1.35rem;
+    height: 1.35rem;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 0;
+    background: #ffffff;
+    color: #18181b;
+    box-shadow:
+      inset 0 0 0 2px #050505,
+      3px 3px 0 #f87171;
+    transition: background 120ms steps(2, end), color 120ms steps(2, end), transform 120ms steps(2, end);
+  }
+
+  .guide-pet-bubble-close:hover {
+    background: #f87171;
+    color: #050505;
+    transform: translate(-1px, -1px);
+  }
+
+  .guide-pet-panel {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    width: min(31rem, calc(100vw - 2rem));
+    max-height: min(82vh, 38rem);
+    overflow-y: auto;
+    border: 0;
+    border-radius: 0;
+    background:
+      linear-gradient(180deg, #ffffff, #f4f4f5),
+      #ffffff;
+    padding: 1.15rem;
+    transform: translate3d(-50%, -50%, 0);
+    box-shadow:
+      0 0 0 2px #ffffff,
+      0 0 0 6px #050505,
+      0.55rem 0.55rem 0 rgba(0,0,0,0.58),
+      0 0 26px color-mix(in srgb, var(--theme-color, #e2e8f0) 16%, transparent);
+    animation: guide-pet-panel-pop 220ms steps(3, end) both;
+    font-family: "Courier New", "Monaco", "Menlo", "Consolas", monospace;
+    z-index: 119;
+    pointer-events: auto;
+  }
+
+  .guide-pet-panel.scan-card {
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 0.5rem;
+    background-color: rgba(8, 9, 13, 0.82);
+    background-image:
+      linear-gradient(to right, color-mix(in srgb, var(--theme-color, #93c5fd) 60%, white 10%) 18px, transparent 18px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--theme-color, #93c5fd) 60%, white 10%) 18px, transparent 18px),
+      linear-gradient(to left, color-mix(in srgb, var(--theme-color, #93c5fd) 60%, white 10%) 18px, transparent 18px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--theme-color, #93c5fd) 60%, white 10%) 18px, transparent 18px),
+      linear-gradient(to right, color-mix(in srgb, var(--theme-color, #93c5fd) 60%, white 10%) 18px, transparent 18px),
+      linear-gradient(to top, color-mix(in srgb, var(--theme-color, #93c5fd) 60%, white 10%) 18px, transparent 18px),
+      linear-gradient(to left, color-mix(in srgb, var(--theme-color, #93c5fd) 60%, white 10%) 18px, transparent 18px),
+      linear-gradient(to top, color-mix(in srgb, var(--theme-color, #93c5fd) 60%, white 10%) 18px, transparent 18px),
+      radial-gradient(circle at 84% 12%, color-mix(in srgb, var(--theme-color, #93c5fd) 20%, transparent), transparent 32%),
+      linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.018));
+    background-position:
+      top left, top left,
+      top right, top right,
+      bottom left, bottom left,
+      bottom right, bottom right,
+      0 0, 0 0;
+    background-repeat: no-repeat;
+    background-size:
+      18px 1px, 1px 18px,
+      18px 1px, 1px 18px,
+      18px 1px, 1px 18px,
+      18px 1px, 1px 18px,
+      100% 100%, 100% 100%;
+    padding: 1rem;
+    color: rgb(229 231 235);
+    box-shadow:
+      0 18px 54px rgba(0,0,0,0.48),
+      0 0 36px color-mix(in srgb, var(--theme-color, #93c5fd) 10%, transparent),
+      inset 0 1px 0 rgba(255,255,255,0.09),
+      inset 0 0 42px rgba(255,255,255,0.026);
+    backdrop-filter: blur(20px) saturate(1.15);
+  }
+
+  .guide-pet-panel.scan-card:hover,
+  .guide-pet-panel.scan-card:focus-visible {
+    transform: translate3d(-50%, -50%, 0);
+    background-size:
+      18px 1px, 1px 18px,
+      18px 1px, 1px 18px,
+      18px 1px, 1px 18px,
+      18px 1px, 1px 18px,
+      100% 100%, 100% 100%;
+  }
+
+  .guide-pet-panel.scan-card::before {
+    display: none;
+  }
+
+  .guide-pet-panel-head {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.8rem;
+    border-bottom: 1px solid rgba(255,255,255,0.075);
+    padding-bottom: 0.72rem;
+  }
+
+  .guide-pet-panel-head h2 {
+    margin-top: 0.28rem;
+    color: #ffffff;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-shadow: none;
+  }
+
+  .guide-pet-panel-head button,
+  .guide-pet-form button,
+  .guide-pet-chips button,
+  .guide-pet-matches button,
+  .guide-pet-related button {
+    border: 0;
+    background: rgba(255,255,255,0.055);
+    color: rgb(229 231 235);
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.12),
+      0 0 16px color-mix(in srgb, var(--theme-color, #93c5fd) 7%, transparent);
+    transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease;
+  }
+
+  .guide-pet-panel-head button {
+    display: flex;
+    width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.45rem;
+  }
+
+  .guide-pet-chat {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    max-height: 9.75rem;
+    flex-direction: column;
+    gap: 0.46rem;
+    overflow-y: auto;
+    padding-right: 0.2rem;
+  }
+
+  .guide-pet-line {
+    width: fit-content;
+    max-width: 92%;
+    border: 0;
+    border-radius: 0.45rem;
+    padding: 0.55rem 0.68rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    line-height: 1.45;
+    letter-spacing: 0;
+    text-shadow: none;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.11),
+      0 8px 20px rgba(0,0,0,0.16);
+  }
+
+  .guide-pet-line.pet {
+    background: rgba(255,255,255,0.075);
+    color: rgb(229 231 235);
+  }
+
+  .guide-pet-line.user {
+    align-self: flex-end;
+    background: color-mix(in srgb, var(--theme-color, #e2e8f0) 18%, rgba(255,255,255,0.08));
+    color: #ffffff;
+  }
+
+  .guide-pet-chips,
+  .guide-pet-matches,
+  .guide-pet-related {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.42rem;
+    margin-top: 0.75rem;
+  }
+
+  .guide-pet-chips button,
+  .guide-pet-related button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 0.42rem;
+    padding: 0.42rem 0.58rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-shadow: none;
+  }
+
+  .guide-pet-chips button:hover,
+  .guide-pet-related button:hover,
+  .guide-pet-matches button:hover,
+  .guide-pet-panel-head button:hover,
+  .guide-pet-form button:hover {
+    background: color-mix(in srgb, var(--theme-color, #e2e8f0) 18%, #ffffff);
+    color: #050505;
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--theme-color, #e2e8f0) 42%, rgba(255,255,255,0.16)),
+      0 10px 22px color-mix(in srgb, var(--theme-color, #e2e8f0) 14%, rgba(0,0,0,0.28));
+  }
+
+  .guide-pet-form {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.55rem;
+    margin-top: 0.82rem;
+    border: 0;
+    border-radius: 0.48rem;
+    background: rgba(0,0,0,0.38);
+    padding: 0.46rem 0.48rem 0.46rem 0.72rem;
+    color: rgb(229 231 235);
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.14),
+      0 0 18px color-mix(in srgb, var(--theme-color, #93c5fd) 8%, transparent);
+  }
+
+  .guide-pet-form:focus-within {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--theme-color, #e2e8f0) 36%, rgba(255,255,255,0.14)),
+      0 0 22px color-mix(in srgb, var(--theme-color, #e2e8f0) 12%, transparent);
+  }
+
+  .guide-pet-form input {
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-family: "Courier New", "Monaco", "Menlo", "Consolas", monospace;
+    font-weight: 600;
+    outline: none;
+  }
+
+  .guide-pet-form input::placeholder {
+    color: rgb(156 163 175);
+  }
+
+  .guide-pet-form button {
+    display: flex;
+    width: 1.9rem;
+    height: 1.9rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.42rem;
+  }
+
+  .guide-pet-matches {
+    display: grid;
+    gap: 0.38rem;
+    margin-top: 0.55rem;
+  }
+
+  .guide-pet-matches-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    color: rgb(156 163 175);
+    font-family: "Courier New", "Monaco", "Menlo", "Consolas", monospace;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  .guide-pet-matches-head code {
+    min-width: 0;
+    overflow: hidden;
+    color: color-mix(in srgb, var(--theme-color, #e2e8f0) 82%, #ffffff 10%);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .guide-pet-matches button {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.55rem;
+    border-radius: 0.46rem;
+    padding: 0.48rem 0.56rem;
+    text-align: left;
+  }
+
+  .guide-pet-match-score {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 1.55rem;
+    border-radius: 0.35rem;
+    background: color-mix(in srgb, var(--theme-color, #e2e8f0) 20%, rgba(255,255,255,0.08));
+    color: #ffffff;
+    font-family: "Courier New", "Monaco", "Menlo", "Consolas", monospace;
+    font-size: 0.64rem;
+    font-weight: 800;
+  }
+
+  .guide-pet-match-main {
+    min-width: 0;
+  }
+
+  .guide-pet-match-main strong,
+  .guide-pet-match-main small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .guide-pet-match-main strong {
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
+  .guide-pet-match-main small,
+  .guide-pet-match-theme,
+  .guide-pet-match-empty {
+    color: rgb(156 163 175);
+    font-size: 0.6rem;
+    font-weight: 700;
+  }
+
+  .guide-pet-match-theme {
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+
+  .guide-pet-match-empty {
+    border-radius: 0.42rem;
+    background: rgba(255,255,255,0.045);
+    padding: 0.58rem 0.65rem;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.09);
+  }
+
+  .guide-pet-related {
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding-top: 0.72rem;
+  }
+
+  .guide-target-active {
+    position: relative;
+    outline: 1px solid color-mix(in srgb, var(--theme-color, #e2e8f0) 70%, white 10%) !important;
+    outline-offset: 0.35rem;
+    filter: drop-shadow(0 0 18px color-mix(in srgb, var(--theme-color, #e2e8f0) 36%, transparent));
+    animation: guide-target-scan 1.05s steps(4, end) 3;
+  }
+
+  .guide-target-active::after {
+    content: "";
+    position: absolute;
+    inset: -0.45rem;
+    border: 1px solid color-mix(in srgb, var(--theme-color, #e2e8f0) 45%, transparent);
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.08),
+      0 0 28px color-mix(in srgb, var(--theme-color, #e2e8f0) 24%, transparent);
+  }
+
+  @keyframes guide-pet-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-0.35rem); }
+  }
+
+  @keyframes guide-pet-blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    94%, 96% { transform: scaleY(0.18); }
+  }
+
+  @keyframes guide-pet-jet {
+    0%, 100% { opacity: 0.42; transform: translateY(0); }
+    50% { opacity: 0.9; transform: translateY(0.18rem); }
+  }
+
+  @keyframes guide-pet-micro {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(0, -0.12rem); }
+  }
+
+  @keyframes guide-pet-wave {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    28% { transform: translate(-0.12rem, -0.18rem) rotate(-2deg); }
+    58% { transform: translate(0.14rem, -0.08rem) rotate(2deg); }
+    82% { transform: translate(-0.06rem, -0.12rem) rotate(-1deg); }
+  }
+
+  @keyframes guide-pet-scan {
+    0%, 100% { transform: translateX(0) scale(1); filter: saturate(1); }
+    34% { transform: translateX(-0.1rem) scale(1.015); filter: saturate(1.25); }
+    68% { transform: translateX(0.12rem) scale(0.995); filter: saturate(1.12); }
+  }
+
+  @keyframes guide-pet-run {
+    0% {
+      background-position: 0 0;
+    }
+    25% {
+      background-position: 33.333% 0;
+    }
+    50% {
+      background-position: 66.666% 0;
+    }
+    75% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: 0 0;
+    }
+  }
+
+  @keyframes guide-pet-sprite-action {
+    0%, 68% {
+      background-position: 0 0;
+    }
+    72%, 77% {
+      background-position: 33.333% 0;
+    }
+    81%, 87% {
+      background-position: 66.666% 0;
+    }
+    91%, 96% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: 0 0;
+    }
+  }
+
+  @keyframes guide-pet-pop {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes guide-pet-panel-pop {
+    from {
+      opacity: 0;
+      transform: translate3d(-50%, calc(-50% + 0.6rem), 0) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(-50%, -50%, 0) scale(1);
+    }
+  }
+
+  @keyframes guide-target-scan {
+    0%, 100% {
+      outline-offset: 0.35rem;
+    }
+    50% {
+      outline-offset: 0.6rem;
+    }
+  }
+
   /* Custom high-tech tinted scrollbars */
   .overflow-y-auto {
     scrollbar-width: thin;
@@ -577,11 +1706,50 @@ canvas {
     box-shadow: 0 0 10px var(--theme-color, #e2e8f0);
   }
 
+  [data-visual-mode="silent"] .guide-pet-avatar {
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--theme-color, #e2e8f0) 16%, transparent));
+  }
+
   [data-visual-mode="silent"] *,
   [data-visual-mode="silent"] *::before,
   [data-visual-mode="silent"] *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  @media (max-width: 768px) {
+    .guide-pet-shell {
+      width: 3.75rem;
+      height: 5.625rem;
+    }
+
+    .guide-pet-shell.is-theme {
+      bottom: auto;
+    }
+
+    .guide-pet-avatar {
+      width: 3.5rem;
+      height: 5.333rem;
+      transform-origin: bottom right;
+    }
+
+    .guide-pet-panel {
+      width: min(21.5rem, calc(100vw - 1rem));
+      max-height: min(72vh, 34rem);
+      overflow-y: auto;
+    }
+
+    .guide-pet-bubble {
+      width: min(var(--bubble-width, 14rem), calc(100vw - 1rem));
+    }
+
+    .guide-pet-bubble.is-emoji {
+      width: min(var(--bubble-width, 6rem), calc(100vw - 1rem));
+    }
+
+    .guide-pet-chat {
+      max-height: 8.5rem;
+    }
   }
 
   /* Drifting space coordinate grid for subpage backdrop depth */

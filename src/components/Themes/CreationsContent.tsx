@@ -215,6 +215,14 @@ const projects: Project[] = [
   },
 ];
 
+const projectGuideIds: Record<string, string> = {
+  '视觉识别系统 3.0': 'project-vision',
+  'Dazzle Secretary Pro': 'project-secretary',
+  '利润助手': 'project-profit',
+  '本机检测': 'project-monitor',
+  '内网穿透控制台': 'project-tunnel',
+};
+
 const ProjectDetailBubble: React.FC<{
   project: Project | null;
   onClose: () => void;
@@ -261,6 +269,7 @@ const ProjectDetailBubble: React.FC<{
       <div
         ref={containerRef}
         className="hud-panel relative w-[calc(100vw-32px)] md:w-[600px] max-h-[75vh] flex flex-col rounded-[28px] p-6 md:p-8 pointer-events-auto overflow-hidden"
+        data-guide-id="project-detail"
         style={{
           ['--theme-color' as string]: '#93c5fd',
           ['--hud-x' as string]: '92%',
@@ -391,8 +400,24 @@ export const CreationsContent: React.FC = () => {
     const project = projects.find((item) => item.title === preferredProject);
     window.sessionStorage.removeItem('preferredCreationProject');
     if (project) {
-      setSelectedProject(project);
+      const timer = window.setTimeout(() => setSelectedProject(project), 0);
+      return () => window.clearTimeout(timer);
     }
+  }, []);
+
+  useEffect(() => {
+    const handleGuideOpen = (event: WindowEventMap['galaxy-guide-open']) => {
+      const action = event.detail.target.openAction;
+      if (action?.type !== 'open-project') return;
+      const project = projects.find((item) => item.title === action.value);
+      if (project) {
+        setSearchQuery('');
+        setSelectedProject(project);
+      }
+    };
+
+    window.addEventListener('galaxy-guide-open', handleGuideOpen);
+    return () => window.removeEventListener('galaxy-guide-open', handleGuideOpen);
   }, []);
 
   const openReleasePage = (target: NonNullable<Project['releaseTarget']>) => {
@@ -412,7 +437,7 @@ export const CreationsContent: React.FC = () => {
         <p className="text-lg md:text-xl text-gray-400 font-light">只展示项目能力与设计取舍，不提供下载入口。</p>
       </div>
 
-      <div className="hud-panel mb-8 flex flex-col gap-4 rounded-3xl p-4 md:flex-row md:items-center md:justify-between">
+      <div className="hud-panel mb-8 flex flex-col gap-4 rounded-3xl p-4 md:flex-row md:items-center md:justify-between" data-guide-id="creations-search">
         <label className="relative flex min-h-12 flex-1 items-center">
           <Search size={18} className="absolute left-4 text-gray-500" />
           <input
@@ -448,6 +473,7 @@ export const CreationsContent: React.FC = () => {
               key={project.title}
               onClick={() => setSelectedProject(project)}
               className="scan-card group min-h-[23rem] text-left p-7 md:p-8 backdrop-blur-md focus:outline-none"
+              data-guide-id={projectGuideIds[project.title]}
               style={{ ['--theme-color' as string]: '#93c5fd' }}
             >
               <div className="absolute right-6 top-6 text-[10px] font-light tracking-[0.24em] text-gray-600 transition-colors group-hover:text-blue-200/70">

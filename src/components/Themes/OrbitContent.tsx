@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDownToLine, Bot, Calculator, Cpu, Database, HardDrive, Monitor, Network, Search, type LucideIcon } from 'lucide-react';
 
 type ReleaseKey = 'secretary' | 'tunnel' | 'profit' | 'localMonitor' | 'next';
@@ -185,6 +185,20 @@ export const OrbitContent: React.FC = () => {
   const [pingResults, setPingResults] = useState<Record<string, number>>({});
   const [eccentricity, setEccentricity] = useState(1.0);
 
+  useEffect(() => {
+    const handleGuideOpen = (event: WindowEventMap['galaxy-guide-open']) => {
+      const action = event.detail.target.openAction;
+      if (action?.type !== 'select-release') return;
+      if (releases.some((release) => release.key === action.value)) {
+        setSearchQuery('');
+        setActiveRelease(action.value as ReleaseKey);
+      }
+    };
+
+    window.addEventListener('galaxy-guide-open', handleGuideOpen);
+    return () => window.removeEventListener('galaxy-guide-open', handleGuideOpen);
+  }, []);
+
   const runOrbitPing = () => {
     setIsScanning(true);
     setPingResults({});
@@ -238,7 +252,7 @@ export const OrbitContent: React.FC = () => {
         <p className="text-lg md:text-xl text-gray-400 font-light">沿发行轨道检索、选择并下载开箱即用的本机应用。</p>
       </div>
 
-      <div className="hud-panel mb-6 flex flex-col gap-4 rounded-3xl p-4 md:flex-row md:items-center md:justify-between">
+      <div className="hud-panel mb-6 flex flex-col gap-4 rounded-3xl p-4 md:flex-row md:items-center md:justify-between" data-guide-id="orbit-search">
         <label className="relative flex min-h-12 flex-1 items-center">
           <Search size={18} className="absolute left-4 text-gray-500" />
           <input
@@ -284,6 +298,7 @@ export const OrbitContent: React.FC = () => {
                       onClick={() => setActiveRelease(item.key)}
                       aria-pressed={isActive}
                       className={`group relative w-[18rem] shrink-0 pt-10 text-left md:w-1/3 ${isActive ? 'text-white' : 'text-gray-400'}`}
+                      data-guide-id={`release-${item.key}`}
                     >
                       <div className="absolute left-1/2 top-0 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-[#07070b] shadow-[0_0_22px_rgba(196,181,253,0.12)] transition-transform duration-300 group-hover:scale-110">
                         <span className={`h-2.5 w-2.5 rounded-full bg-[var(--theme-color)] shadow-[0_0_16px_var(--theme-color)] transition-transform ${isActive ? 'scale-125' : 'scale-90 opacity-60'}`} />
@@ -333,7 +348,7 @@ export const OrbitContent: React.FC = () => {
             left: filteredReleases.length > 0 ? `${((activeNodeIndex + 0.5) / filteredReleases.length) * 100}%` : '50%',
           }}
         />
-        <div className="hud-panel rounded-2xl p-6 mb-8">
+        <div className="hud-panel rounded-2xl p-6 mb-8" data-guide-id={`release-${activeItem.key}-detail`}>
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-gray-100">
@@ -353,7 +368,7 @@ export const OrbitContent: React.FC = () => {
           <p className="mb-6 max-w-3xl text-sm font-light leading-relaxed text-gray-400">{activeItem.body}</p>
 
           {activeItem.primaryDownload && (
-            <a href={activeItem.primaryDownload.href} download className="inline-flex items-center gap-3 bg-white text-black px-6 py-4 rounded-full font-medium hover:bg-gray-200 transition-colors md:px-8">
+            <a href={activeItem.primaryDownload.href} download className="inline-flex items-center gap-3 bg-white text-black px-6 py-4 rounded-full font-medium hover:bg-gray-200 transition-colors md:px-8" data-guide-id="release-download-primary">
               <ArrowDownToLine size={20} />
               <span>{activeItem.primaryDownload.label}</span>
             </a>
@@ -370,7 +385,7 @@ export const OrbitContent: React.FC = () => {
           )}
 
           {activeDownloads.length > 0 && (
-            <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+            <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4" data-guide-id="release-checksum">
               <div className="hud-kicker mb-3">
                 <span className="hud-dot" />
                 <span>SHA-256 校验</span>
@@ -390,7 +405,7 @@ export const OrbitContent: React.FC = () => {
         </div>
 
         {activeItem.specs && (
-          <>
+          <div data-guide-id="release-specs">
             <h3 className="text-xl text-gray-200 font-light mb-6">系统要求</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {activeItem.specs.map((spec) => {
@@ -404,11 +419,11 @@ export const OrbitContent: React.FC = () => {
                 );
               })}
             </div>
-          </>
+          </div>
         )}
 
         {activeItem.scenes && (
-          <>
+          <div data-guide-id="release-scenes">
             <h3 className="text-xl text-gray-200 font-light mb-6">节点说明</h3>
             <ul className="space-y-4 text-gray-300 font-light">
               {activeItem.scenes.map((scene) => (
@@ -418,11 +433,11 @@ export const OrbitContent: React.FC = () => {
                 </li>
               ))}
             </ul>
-          </>
+          </div>
         )}
 
         {/* Orbit Diagnostics and Gravitational Calibration Control */}
-        <div className="hud-panel rounded-3xl p-6 mt-8 relative overflow-hidden">
+        <div className="hud-panel rounded-3xl p-6 mt-8 relative overflow-hidden" data-guide-id="release-diagnostics">
           {/* Subtle radar circular line animations when scanning */}
           {isScanning && (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-[var(--theme-color,#93c5fd)]/10 animate-[ping_1.6s_infinite] pointer-events-none" />
