@@ -103,10 +103,13 @@ const growthCertificates = [
 
 const CertificateGallery: React.FC<{
   isOpen: boolean;
+  activeIndex: number;
+  onActiveIndexChange: (index: number) => void;
   onClose: () => void;
-}> = ({ isOpen, onClose }) => {
+}> = ({ isOpen, activeIndex, onActiveIndexChange, onClose }) => {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isClosing, setIsClosing] = useState(false);
+  const activeCertificate = growthCertificates[activeIndex] ?? growthCertificates[0];
 
   useEffect(() => {
     if (isOpen) {
@@ -174,28 +177,47 @@ const CertificateGallery: React.FC<{
             <span className="hud-dot" />
             <span>Certificate Gallery</span>
           </div>
-          <h3 className="text-2xl font-light tracking-wide text-white">获奖证书</h3>
+          <h3 className="text-2xl font-light tracking-wide text-white">获奖证书 · {String(activeIndex + 1).padStart(2, '0')}</h3>
           <p className="mt-2 text-sm font-light leading-relaxed text-gray-400">
-            近期在专业计算机设计大赛与全国大学生英语竞赛中取得的获奖成果。
+            每张奖状单独展示，便于查看证书内容与获奖信息。
           </p>
         </div>
 
-        <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto no-scrollbar lg:grid-cols-2">
-          {growthCertificates.map((certificate) => (
-            <figure key={certificate.title} className="scan-card overflow-hidden p-3">
-              <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-black/30">
-                <img
-                  src={certificate.src}
-                  alt={certificate.title}
-                  className="h-auto w-full object-contain"
-                />
-              </div>
-              <figcaption className="px-1 pt-4">
-                <div className="text-sm font-light text-gray-100">{certificate.title}</div>
-                <div className="mt-1 text-[11px] font-light tracking-wide text-gray-500">{certificate.meta}</div>
-              </figcaption>
-            </figure>
-          ))}
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+          <div className="flex shrink-0 gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="切换证书">
+            {growthCertificates.map((certificate, index) => {
+              const isActive = index === activeIndex;
+
+              return (
+                <button
+                  key={certificate.title}
+                  type="button"
+                  onClick={() => onActiveIndexChange(index)}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-xs font-light transition-colors ${
+                    isActive
+                      ? 'border-[var(--theme-color)]/45 bg-[var(--theme-color)]/15 text-white'
+                      : 'border-white/[0.08] bg-white/[0.03] text-gray-500 hover:border-white/15 hover:text-gray-200'
+                  }`}
+                >
+                  {certificate.title}
+                </button>
+              );
+            })}
+          </div>
+
+          <figure className="scan-card flex min-h-0 flex-1 flex-col overflow-hidden p-3 md:p-4">
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-white/[0.06] bg-black/30">
+              <img
+                src={activeCertificate.src}
+                alt={activeCertificate.title}
+                className="max-h-full w-full object-contain"
+              />
+            </div>
+            <figcaption className="shrink-0 px-1 pt-4">
+              <div className="text-base font-light text-gray-100">{activeCertificate.title}</div>
+              <div className="mt-1 text-[11px] font-light tracking-wide text-gray-500">{activeCertificate.meta}</div>
+            </figcaption>
+          </figure>
         </div>
       </div>
     </div>,
@@ -279,6 +301,7 @@ export const IdentityContent: React.FC = () => {
   const [activeRoleIndex, setActiveRoleIndex] = useState(0);
   const [isRolePinned, setIsRolePinned] = useState(false);
   const [isCertificateGalleryOpen, setIsCertificateGalleryOpen] = useState(false);
+  const [selectedCertificateIndex, setSelectedCertificateIndex] = useState(0);
   const setActiveTheme = useGalaxyStore((state) => state.setActiveTheme);
   const activeProfile = identityProfiles[activeRoleIndex];
   const ActiveIcon = activeProfile.icon;
@@ -380,6 +403,11 @@ export const IdentityContent: React.FC = () => {
   const openAwardProject = () => {
     window.sessionStorage.setItem('preferredCreationProject', '视觉识别系统 3.0');
     setActiveTheme('creations');
+  };
+
+  const openCertificateGallery = (index = 0) => {
+    setSelectedCertificateIndex(index);
+    setIsCertificateGalleryOpen(true);
   };
 
   return (
@@ -511,7 +539,7 @@ export const IdentityContent: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setIsCertificateGalleryOpen(true)}
+                onClick={() => openCertificateGallery(0)}
                 className="hud-chip hover:text-white"
               >
                 <Award size={13} />
@@ -525,7 +553,7 @@ export const IdentityContent: React.FC = () => {
               <button
                 key={milestone.stage}
                 type="button"
-                onClick={() => setIsCertificateGalleryOpen(true)}
+                onClick={() => openCertificateGallery(index)}
                 aria-label={`查看${milestone.stage}${milestone.award}证书`}
                 className="scan-card group p-4 text-left focus:outline-none focus:ring-1 focus:ring-[var(--theme-color)]/35"
               >
@@ -706,6 +734,8 @@ export const IdentityContent: React.FC = () => {
     </div>
     <CertificateGallery
       isOpen={isCertificateGalleryOpen}
+      activeIndex={selectedCertificateIndex}
+      onActiveIndexChange={setSelectedCertificateIndex}
       onClose={() => setIsCertificateGalleryOpen(false)}
     />
     </>
