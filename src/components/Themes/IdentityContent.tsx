@@ -142,7 +142,7 @@ const CertificateGallery: React.FC<{
 
   return createPortal(
     <div
-      className={`certificate-backdrop fixed inset-0 z-[90] flex items-center justify-center px-4 py-8 ${isClosing ? 'is-closing' : 'is-opening'}`}
+      className={`certificate-backdrop fixed inset-0 z-[90] flex items-center justify-center px-4 py-4 ${isClosing ? 'is-closing' : 'is-opening'}`}
       role="dialog"
       aria-modal="true"
       aria-label="获奖证书"
@@ -155,7 +155,7 @@ const CertificateGallery: React.FC<{
         onClick={requestClose}
       />
       <div
-        className={`certificate-card hud-panel relative z-10 flex max-h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] p-5 md:p-7 ${isClosing ? 'is-closing' : 'is-opening'}`}
+        className={`certificate-card hud-panel relative z-10 flex h-[min(92vh,58rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] p-5 md:p-7 ${isClosing ? 'is-closing' : 'is-opening'}`}
         style={{
           ['--theme-color' as string]: '#f87171',
           ['--hud-x' as string]: '50%',
@@ -210,7 +210,7 @@ const CertificateGallery: React.FC<{
               <img
                 src={activeCertificate.src}
                 alt={activeCertificate.title}
-                className="max-h-full w-full object-contain"
+                className="h-full max-h-full w-full max-w-full object-contain"
               />
             </div>
             <figcaption className="shrink-0 px-1 pt-4">
