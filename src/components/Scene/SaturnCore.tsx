@@ -11,9 +11,10 @@ interface SaturnCoreProps {
   mousePosRef: React.RefObject<THREE.Vector3>;
   mouseScreenPosRef: React.RefObject<THREE.Vector2>;
   screenAspect: number;
+  isMobilePortrait: boolean;
 }
 
-export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreenPosRef, screenAspect }) => {
+export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreenPosRef, screenAspect, isMobilePortrait }) => {
   const groupRef = useRef<THREE.Group>(null);
   const pointsRef = useRef<THREE.Points>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
@@ -100,6 +101,10 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
     const isLockingPlanet = Boolean(hoveredPlanet) && (viewState === 'HOME' || viewState === 'HOVER_PLANET');
     const motionScale = visualMode === 'silent' ? 0.12 : visualMode === 'focus' ? 0.42 : 1;
     const opacityBase = visualMode === 'silent' ? 0.46 : visualMode === 'focus' ? 0.72 : 1;
+    const coreParticleSize = isMobilePortrait
+      ? visualMode === 'silent' ? 1.02 : visualMode === 'focus' ? 1.22 : 1.42
+      : visualMode === 'silent' ? 3.2 : visualMode === 'focus' ? 3.8 : 4.5;
+    const mobileOpacityScale = isMobilePortrait ? 0.62 : 1;
 
     if (viewState !== 'THEME') {
       localTime.current += delta * motionScale;
@@ -117,10 +122,10 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
       materialRef.current.uniforms.uMousePos.value.copy(mousePosRef.current);
       materialRef.current.uniforms.uMouseScreenPos.value.copy(mouseScreenPosRef.current);
       materialRef.current.uniforms.uAspect.value = screenAspect;
-      materialRef.current.uniforms.uParticleSize.value = visualMode === 'silent' ? 3.2 : visualMode === 'focus' ? 3.8 : 4.5;
+      materialRef.current.uniforms.uParticleSize.value = coreParticleSize;
       materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.lerp(
         materialRef.current.uniforms.uOpacity.value,
-        (isLockingPlanet ? 0.58 : 1.0) * opacityBase,
+        (isLockingPlanet ? 0.58 : 1.0) * opacityBase * mobileOpacityScale,
         0.08
       );
       // Removed opacity overwrite here because we use AdditiveBlending and don't natively support opacity on ShaderMaterial this way without another uniform, but keeping structure valid

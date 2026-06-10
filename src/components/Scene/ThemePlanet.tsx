@@ -440,10 +440,16 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       materialRef.current.uniforms.uAspect.value = screenAspect;
       if (viewState === 'HOME' || viewState === 'HOVER_PLANET') {
         const defaultParticleSize = visualMode === 'silent' ? 3.0 : visualMode === 'focus' ? 3.45 : 4.0;
-        materialRef.current.uniforms.uParticleSize.value = defaultParticleSize + portraitProgress * 0.35;
+        const portraitParticleSize = visualMode === 'silent' ? 1.02 : visualMode === 'focus' ? 1.2 : 1.42;
+        materialRef.current.uniforms.uParticleSize.value = THREE.MathUtils.lerp(
+          defaultParticleSize,
+          portraitParticleSize,
+          portraitProgress
+        );
         // Scale down particle opacity when hovered/focused to prevent additive blending blowout (white burnout)
         const baseOpacity = visualMode === 'silent' ? 0.56 : visualMode === 'focus' ? 0.74 : 1.0;
-        const targetOpacity = baseOpacity * (highlighted ? 0.38 : 0.82);
+        const mobileOpacityScale = THREE.MathUtils.lerp(1, 0.62, portraitProgress);
+        const targetOpacity = baseOpacity * (highlighted ? 0.38 : 0.82) * mobileOpacityScale;
         materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.lerp(
           materialRef.current.uniforms.uOpacity.value,
           targetOpacity,
