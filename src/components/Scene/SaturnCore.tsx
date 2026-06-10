@@ -17,9 +17,10 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
   const groupRef = useRef<THREE.Group>(null);
   const pointsRef = useRef<THREE.Points>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
-  const { viewState, hoveredPlanet, visitedThemes, completionPulseId, visualMode } = useGalaxyStore();
+  const { viewState, hoveredPlanet, visitedThemes, completionPulseId, visualMode, triggerCoreFirework } = useGalaxyStore();
   const [completionGlow, setCompletionGlow] = useState(false);
   const isVisible = viewState === 'HOME' || viewState === 'HOVER_PLANET';
+  const canTriggerFirework = isVisible && visualMode !== 'silent';
   const isComplete = Object.values(visitedThemes).filter(Boolean).length === 5;
   const lockedColor = completionGlow ? '#f8fafc' : hoveredPlanet ? themes[hoveredPlanet].color : '#e2e8f0';
   const shownCompletionPulseId = useRef(0);
@@ -153,10 +154,18 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
         position={[0, 0.12, 0]}
         center
         zIndexRange={[100, 0]}
-        style={{ pointerEvents: 'none' }}
+        style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
       >
-        <div
-          className={`flex flex-col items-center justify-center rounded-full border px-6 py-2.5 text-gray-200 backdrop-blur-sm transition-all duration-500 ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
+        <button
+          type="button"
+          onClick={() => {
+            if (canTriggerFirework) triggerCoreFirework();
+          }}
+          disabled={!canTriggerFirework}
+          aria-label="触发 Dazzle 星座烟花"
+          className={`flex flex-col items-center justify-center rounded-full border px-6 py-2.5 text-gray-200 backdrop-blur-sm transition-all duration-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/45 ${
+            isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+          } ${canTriggerFirework ? 'cursor-pointer hover:scale-105 active:scale-95' : 'cursor-default'}`}
           style={{
             background: completionGlow
               ? 'radial-gradient(circle at center, rgba(248,250,252,0.22), rgba(248,113,113,0.12) 22%, rgba(147,197,253,0.12) 42%, rgba(196,181,253,0.1) 62%, rgba(2,2,4,0.22) 82%)'
@@ -173,7 +182,7 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
           >
             Dazzle
           </span>
-        </div>
+        </button>
       </Html>
     </group>
   );

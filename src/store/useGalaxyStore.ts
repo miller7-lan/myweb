@@ -13,12 +13,14 @@ interface GalaxyState {
   visitSequence: NonNullThemeKey[];
   lastVisitedTheme: ThemeKey;
   completionPulseId: number;
+  coreFireworkId: number;
   visualMode: VisualMode;
   planetPositions: Partial<Record<NonNullThemeKey, [number, number, number]>>;
   setViewState: (state: ViewState) => void;
   setHoveredPlanet: (theme: ThemeKey) => void;
   setActiveTheme: (theme: ThemeKey) => void;
   visitTheme: (theme: NonNullThemeKey) => void;
+  triggerCoreFirework: () => void;
   setVisualMode: (mode: VisualMode) => void;
   setPlanetPosition: (theme: NonNullThemeKey, x: number, y: number, z: number) => void;
 }
@@ -39,6 +41,7 @@ export const useGalaxyStore = create<GalaxyState>((set) => ({
   visitSequence: [],
   lastVisitedTheme: null,
   completionPulseId: 0,
+  coreFireworkId: 0,
   visualMode: readInitialVisualMode(),
   planetPositions: {
     identity: [0, 0, 0],
@@ -87,6 +90,7 @@ export const useGalaxyStore = create<GalaxyState>((set) => ({
       completionPulseId: !wasComplete && isComplete ? state.completionPulseId + 1 : state.completionPulseId,
     };
   }),
+  triggerCoreFirework: () => set((state) => ({ coreFireworkId: state.coreFireworkId + 1 })),
   setVisualMode: (mode) => set(() => {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('galaxy-visual-mode', mode);

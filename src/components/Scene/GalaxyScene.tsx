@@ -7,6 +7,7 @@ import { ParticleRing } from './ParticleRing';
 import { ThemePlanet } from './ThemePlanet';
 import { BackgroundStars } from './BackgroundStars';
 import { LockBeam } from './LockBeam';
+import { ConstellationFireworks } from './ConstellationFireworks';
 import { themes } from '../../data/themes';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 
@@ -109,6 +110,7 @@ export const GalaxyScene: React.FC = () => {
           mouseScreenPosRef={mouseScreenPos}
           screenAspect={size.width / size.height}
         />
+        <ConstellationFireworks isMobilePortrait={isMobilePortrait} />
       </group>
       
       {/* Planets are outside galaxyGroup so they don't fade/shrink with it */}
