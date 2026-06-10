@@ -87,10 +87,26 @@ void main() {
   float dist = length(xy);
   if (dist > 0.5) discard;
   float core = exp(-dist * dist * 22.0);
-  float halo = exp(-dist * dist * 4.2) * 0.48;
+  float halo = exp(-dist * dist * 3.2) * 0.72;
   float alpha = (core + halo) * vAlpha;
-  vec3 color = mix(uColor * 0.75, vec3(1.0), core * 0.55);
+  vec3 color = mix(uColor * 0.92, vec3(1.0), core * 0.68);
+  color += uColor * halo * 0.35;
   gl_FragColor = vec4(color, alpha);
+}
+`;
+
+const starGlowFragmentShader = `
+uniform vec3 uColor;
+varying float vAlpha;
+
+void main() {
+  vec2 xy = gl_PointCoord.xy - vec2(0.5);
+  float dist = length(xy);
+  if (dist > 0.5) discard;
+  float glow = exp(-dist * dist * 5.2);
+  float rim = exp(-dist * dist * 1.7) * 0.34;
+  float alpha = (glow * 0.5 + rim) * vAlpha;
+  gl_FragColor = vec4(mix(uColor, vec3(1.0), 0.18), alpha);
 }
 `;
 
@@ -99,6 +115,7 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
   const viewState = useGalaxyStore((state) => state.viewState);
   const visualMode = useGalaxyStore((state) => state.visualMode);
   const pointsRefs = useRef<Array<THREE.Object3D | null>>([]);
+  const glowRefs = useRef<Array<THREE.Object3D | null>>([]);
   const lineRefs = useRef<Array<THREE.Object3D | null>>([]);
   const trailRefs = useRef<Array<THREE.Object3D | null>>([]);
   const flashRefs = useRef<Array<THREE.Mesh | null>>([]);
@@ -134,6 +151,16 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
   const pointMaterials = useMemo(() => uniforms.map((slotUniforms) => new THREE.ShaderMaterial({
     vertexShader: starVertexShader,
     fragmentShader: starFragmentShader,
+    uniforms: slotUniforms,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    depthTest: false,
+  })), [uniforms]);
+
+  const glowMaterials = useMemo(() => uniforms.map((slotUniforms) => new THREE.ShaderMaterial({
+    vertexShader: starVertexShader,
+    fragmentShader: starGlowFragmentShader,
     uniforms: slotUniforms,
     transparent: true,
     blending: THREE.AdditiveBlending,
@@ -203,6 +230,7 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
 
     slots.current.forEach((slot, index) => {
       const points = pointsRefs.current[index];
+      const glow = glowRefs.current[index];
       const lines = lineRefs.current[index];
       const trail = trailRefs.current[index];
       const flash = flashRefs.current[index];
@@ -219,6 +247,7 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
 
       if (!slot.active || opacityScale <= 0) {
         if (points) points.visible = false;
+        if (glow) glow.visible = false;
         if (lines) lines.visible = false;
         if (trail) trail.visible = false;
         if (flash) flash.visible = false;
@@ -234,7 +263,7 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
       const fadeOut = 1 - clamp01((burstAge - 1.18) / 0.62);
       const alpha = fadeOut * opacityScale;
       const spread = easeOutBack(spreadProgress);
-      const lineAlpha = easeOutCubic(lineProgress) * alpha * 0.72;
+      const lineAlpha = easeOutCubic(lineProgress) * alpha * 0.92;
       const launchHead = origin.clone().lerp(slot.burst, easeOutCubic(launchProgress));
       const positions = pointGeometry.getAttribute('position') as THREE.BufferAttribute;
       const alphas = pointGeometry.getAttribute('aAlpha') as THREE.BufferAttribute;
@@ -247,8 +276,8 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
         for (let starIndex = 0; starIndex < maxStars; starIndex += 1) {
           const offset = starIndex === 0 ? 0 : (starIndex - 1) * 0.018;
           positions.setXYZ(starIndex, launchHead.x, launchHead.y - offset, launchHead.z);
-          alphas.setX(starIndex, starIndex < 3 ? opacityScale * (0.95 - starIndex * 0.22) : 0);
-          sizes.setX(starIndex, starIndex === 0 ? 9.5 : 5.8);
+          alphas.setX(starIndex, starIndex < 3 ? opacityScale * (1.18 - starIndex * 0.24) : 0);
+          sizes.setX(starIndex, starIndex === 0 ? 12.5 : 7.4);
         }
 
         const tailStart = origin.clone().lerp(launchHead, clamp01(launchProgress - 0.32));
@@ -259,9 +288,10 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
         sizes.needsUpdate = true;
         trailPositions.needsUpdate = true;
         lineMaterial.opacity = 0;
-        trailMaterial.opacity = Math.sin(launchProgress * Math.PI) * 0.78 * opacityScale;
+        trailMaterial.opacity = Math.sin(launchProgress * Math.PI) * 1.0 * opacityScale;
 
         if (points) points.visible = true;
+        if (glow) glow.visible = true;
         if (lines) lines.visible = false;
         if (trail) trail.visible = trailMaterial.opacity > 0.02;
         if (flash) flash.visible = false;
@@ -282,8 +312,8 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
         livePositions[starIndex] = world;
 
         positions.setXYZ(starIndex, world.x, world.y, world.z);
-        alphas.setX(starIndex, visible ? alpha * twinkle : 0);
-        sizes.setX(starIndex, visible ? (9.4 + starIndex % 3) * (0.76 + spreadProgress * 0.54) : 0);
+        alphas.setX(starIndex, visible ? alpha * Math.min(1.22, twinkle + 0.18) : 0);
+        sizes.setX(starIndex, visible ? (14.4 + starIndex % 3) * (0.82 + spreadProgress * 0.62) : 0);
       }
 
       let lineCursor = 0;
@@ -307,19 +337,21 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
       trailMaterial.opacity = 0;
 
       if (points) points.visible = alpha > 0.02;
+      if (glow) glow.visible = alpha > 0.02;
       if (lines) lines.visible = lineAlpha > 0.02;
       if (trail) trail.visible = false;
       if (flash) {
         const flashProgress = clamp01(burstAge / 0.44);
         flash.visible = alpha > 0.02 && flashProgress < 1;
         flash.position.copy(slot.burst);
-        flash.scale.setScalar(0.3 + flashProgress * 3.7);
-        flashMaterial.opacity = (1 - flashProgress) * 0.48 * opacityScale;
+        flash.scale.setScalar(0.36 + flashProgress * 4.2);
+        flashMaterial.opacity = (1 - flashProgress) * 0.66 * opacityScale;
       }
 
       if (slot.age > 2.58) {
         slot.active = false;
         if (points) points.visible = false;
+        if (glow) glow.visible = false;
         if (lines) lines.visible = false;
         if (trail) trail.visible = false;
         if (flash) flash.visible = false;
@@ -332,11 +364,18 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
       {pointGeometries.map((pointGeometry, index) => (
         <React.Fragment key={index}>
           <points
+            ref={(element) => { glowRefs.current[index] = element; }}
+            geometry={pointGeometry}
+            material={glowMaterials[index]}
+            visible={false}
+            renderOrder={79}
+          />
+          <points
             ref={(element) => { pointsRefs.current[index] = element; }}
             geometry={pointGeometry}
             material={pointMaterials[index]}
             visible={false}
-            renderOrder={80}
+            renderOrder={83}
           />
           <lineSegments
             ref={(element) => { lineRefs.current[index] = element; }}
