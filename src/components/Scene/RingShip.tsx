@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 import { createSeededRandom } from '../../utils/random';
@@ -21,6 +21,7 @@ const impactRadius = 6.8;
 const baseFlowVelocity = 0.108; // 20% higher than the ring's rotation speed (0.09)
 
 export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shipPositionRef }) => {
+  const { size } = useThree();
   const groupRef = useRef<THREE.Group>(null);
   const drawingRef = useRef<THREE.Group>(null);
   const starCoreRef = useRef<THREE.Mesh>(null);
@@ -52,6 +53,7 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
   const upRef = useRef(new THREE.Vector3(0, 1, 0));
   const targetQuaternionRef = useRef(new THREE.Quaternion());
   const { viewState, visualMode } = useGalaxyStore();
+  const isMobilePortrait = size.width <= 768 && size.height > size.width;
 
   useFrame((_, delta) => {
     const visible = viewState === 'HOME' || viewState === 'HOVER_PLANET';
@@ -59,7 +61,7 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
     const motionScale = visualMode === 'silent' ? 0.32 : visualMode === 'focus' ? 0.62 : 1;
     
     // Increased base scale by 20% (from 0.95 to 1.14)
-    const visualScale = (visualMode === 'silent' ? 0.66 : visualMode === 'focus' ? 0.78 : 1) * 1.14;
+    const visualScale = (visualMode === 'silent' ? 0.66 : visualMode === 'focus' ? 0.78 : 1) * 1.14 * (isMobilePortrait ? 2.15 : 1);
     const ringTime = ringTimeRef.current;
     const random = randomRef.current;
 
@@ -162,11 +164,13 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
     // Twinkling Morning Star & its dynamic physical light source
     if (starCoreRef.current) {
       const starScale = 1.0 + Math.sin(ringTime * 6.5) * 0.22;
-      starCoreRef.current.scale.setScalar(starScale);
+      starCoreRef.current.scale.setScalar(starScale * (isMobilePortrait ? 0.66 : 1));
     }
     if (starLightRef.current) {
       const pulse = 0.72 + Math.sin(ringTime * 6.5) * 0.28;
-      starLightRef.current.intensity = (visualMode === 'silent' ? 1.8 : visualMode === 'focus' ? 3.6 : 5.5) * pulse;
+      const mobileLightScale = isMobilePortrait ? 0.28 : 1;
+      starLightRef.current.intensity = (visualMode === 'silent' ? 1.8 : visualMode === 'focus' ? 3.6 : 5.5) * pulse * mobileLightScale;
+      starLightRef.current.distance = isMobilePortrait ? 1.35 : 2.5;
     }
 
     // Fusion Core Reactor
@@ -192,8 +196,8 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
         <pointLight 
           ref={starLightRef} 
           position={[0, 0.39, -0.04]} 
-          intensity={5.5} 
-          distance={2.5} 
+          intensity={isMobilePortrait ? 1.5 : 5.5} 
+          distance={isMobilePortrait ? 1.35 : 2.5} 
           color="#fde68a" 
         />
 

@@ -216,8 +216,8 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
     slot.spin = (Math.random() - 0.5) * 0.38;
     slot.tint.copy(tint);
     slot.burst.set(
-      (Math.random() - 0.5) * (isMobilePortrait ? 2.3 : 3.2),
-      isMobilePortrait ? 2.18 + Math.random() * 0.5 : 2.75 + Math.random() * 0.95,
+      (Math.random() - 0.5) * (isMobilePortrait ? 5.2 : 3.2),
+      isMobilePortrait ? 5.25 + Math.random() * 1.15 : 2.75 + Math.random() * 0.95,
       (Math.random() - 0.5) * 0.48
     );
     slot.depths = Array.from({ length: maxStars }, () => (Math.random() - 0.5) * 0.34);
@@ -225,7 +225,7 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
 
   useFrame((_, delta) => {
     clock.current += delta;
-    const globalScale = isMobilePortrait ? 1.46 : 2.18;
+    const globalScale = isMobilePortrait ? 4.6 : 2.18;
     const opacityScale = visualMode === 'focus' ? 0.58 : visualMode === 'silent' ? 0 : 1;
 
     slots.current.forEach((slot, index) => {
@@ -277,7 +277,7 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
           const offset = starIndex === 0 ? 0 : (starIndex - 1) * 0.018;
           positions.setXYZ(starIndex, launchHead.x, launchHead.y - offset, launchHead.z);
           alphas.setX(starIndex, starIndex < 3 ? opacityScale * (0.96 - starIndex * 0.2) : 0);
-          sizes.setX(starIndex, starIndex === 0 ? 9.2 : 5.2);
+          sizes.setX(starIndex, starIndex === 0 ? (isMobilePortrait ? 6.8 : 9.2) : (isMobilePortrait ? 3.8 : 5.2));
         }
 
         const tailStart = origin.clone().lerp(launchHead, clamp01(launchProgress - 0.32));
@@ -313,7 +313,8 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
 
         positions.setXYZ(starIndex, world.x, world.y, world.z);
         alphas.setX(starIndex, visible ? alpha * Math.min(1.0, twinkle + 0.08) : 0);
-        sizes.setX(starIndex, visible ? (8.8 + starIndex % 3) * (0.8 + spreadProgress * 0.42) : 0);
+        const starSize = (isMobilePortrait ? 5.7 : 8.8) + (starIndex % 3) * (isMobilePortrait ? 0.5 : 1);
+        sizes.setX(starIndex, visible ? starSize * (0.8 + spreadProgress * 0.42) : 0);
       }
 
       let lineCursor = 0;

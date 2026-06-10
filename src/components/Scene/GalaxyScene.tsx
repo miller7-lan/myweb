@@ -104,6 +104,7 @@ export const GalaxyScene: React.FC = () => {
           mousePosRef={mousePos}
           mouseScreenPosRef={mouseScreenPos}
           screenAspect={size.width / size.height}
+          isMobilePortrait={isMobilePortrait}
         />
         <ParticleRing
           mousePosRef={mousePos}

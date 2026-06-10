@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/immutability */
 import React, { useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 import { createSeededRandom } from '../../utils/random';
@@ -38,6 +38,9 @@ uniform vec3 uSideB;
 uniform float uProgress;
 uniform float uTime;
 uniform float uOpacity;
+uniform float uSizeScale;
+uniform float uTrailScale;
+uniform float uBeamScale;
 
 attribute float aTrail;
 attribute float aAngle;
@@ -51,8 +54,8 @@ varying float vAlpha;
 void main() {
   float gather = pow(uProgress, 1.85);
   float headWeight = 1.0 - aTrail;
-  float trailLength = mix(4.7, 3.0, gather);
-  float beamWidth = mix(0.34, 0.11, gather);
+  float trailLength = mix(4.7, 3.0, gather) * uTrailScale;
+  float beamWidth = mix(0.34, 0.11, gather) * uBeamScale;
   float taper = mix(0.28, 1.0, aTrail);
   float shimmer = sin(uTime * (7.0 + aFlicker * 8.0) + aAngle) * 0.5 + 0.5;
 
@@ -65,7 +68,7 @@ void main() {
 
   vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
   gl_Position = projectionMatrix * mvPosition;
-  gl_PointSize = aSize * mix(1.65, 0.82, aTrail) * (30.0 / -mvPosition.z) * (1.0 + shimmer * 0.18);
+  gl_PointSize = aSize * uSizeScale * mix(1.65, 0.82, aTrail) * (30.0 / -mvPosition.z) * (1.0 + shimmer * 0.18);
 
   float flightFade = sin(clamp(uProgress, 0.0, 1.0) * 3.14159265);
   float tailFade = smoothstep(1.0, 0.1, aTrail);
@@ -125,10 +128,14 @@ const createMeteorUniforms = () => ({
   uProgress: { value: 0 },
   uTime: { value: 0 },
   uOpacity: { value: 0 },
+  uSizeScale: { value: 1 },
+  uTrailScale: { value: 1 },
+  uBeamScale: { value: 1 },
   uColor: { value: new THREE.Color('#dbe7ff') },
 });
 
 export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manualMeteorQueueRef, protectedPositionRef }) => {
+  const { size } = useThree();
   const particlesRefs = useRef<Array<THREE.Object3D | null>>([]);
   const flashRefs = useRef<Array<THREE.Mesh | null>>([]);
   const { viewState, visualMode } = useGalaxyStore();
@@ -138,6 +145,7 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manu
   const queuedLaunches = useRef<number[]>([]);
   const slots = useRef<MeteorSlot[]>(Array.from({ length: maxMeteorSlots }, createMeteorSlot));
   const clock = useRef(0);
+  const isMobilePortrait = size.width <= 768 && size.height > size.width;
   const safeTargetRef = useRef(new THREE.Vector3());
   const fallbackTargetRef = useRef(new THREE.Vector3());
   const safeDirectionRef = useRef(new THREE.Vector3());
@@ -257,6 +265,9 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manu
     slotUniforms.uProgress.value = progress;
     slotUniforms.uTime.value = clock.current;
     slotUniforms.uOpacity.value = opacity;
+    slotUniforms.uSizeScale.value = isMobilePortrait ? 0.42 : 1;
+    slotUniforms.uTrailScale.value = isMobilePortrait ? 0.72 : 1;
+    slotUniforms.uBeamScale.value = isMobilePortrait ? 0.48 : 1;
     const points = particlesRefs.current[index];
     if (points) points.visible = opacity > 0.01;
   };
@@ -277,8 +288,9 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manu
 
   useFrame((_, delta) => {
     const canRun = visualMode !== 'silent' && (viewState === 'HOME' || viewState === 'HOVER_PLANET');
-    const meteorOpacity = visualMode === 'focus' ? 0.48 : 0.95;
-    const impactStrength = visualMode === 'focus' ? 0.48 : 1.15;
+    const mobileMeteorScale = isMobilePortrait ? 0.54 : 1;
+    const meteorOpacity = (visualMode === 'focus' ? 0.48 : 0.95) * mobileMeteorScale;
+    const impactStrength = (visualMode === 'focus' ? 0.48 : 1.15) * (isMobilePortrait ? 0.46 : 1);
     clock.current += delta;
 
     if (!canRun) {
@@ -348,9 +360,9 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manu
         const progress = Math.min(slot.phaseTime / 0.52, 1);
         const flash = flashRefs.current[index];
         if (flash) {
-          flash.scale.setScalar(0.4 + progress * 2.8);
+          flash.scale.setScalar((0.4 + progress * 2.8) * (isMobilePortrait ? 0.52 : 1));
           const material = flash.material as THREE.MeshBasicMaterial;
-          material.opacity = (1 - progress) * 0.42;
+          material.opacity = (1 - progress) * (isMobilePortrait ? 0.2 : 0.42);
         }
         if (progress >= 1) {
           slot.phase = 'idle';

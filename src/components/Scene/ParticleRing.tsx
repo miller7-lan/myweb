@@ -1,5 +1,5 @@
 import React, { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { particleVertexShader, particleFragmentShader } from '../../shaders/particles';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
@@ -14,6 +14,7 @@ interface ParticleRingProps {
 }
 
 export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseScreenPosRef, screenAspect }) => {
+  const { size } = useThree();
   const groupRef = useRef<THREE.Group>(null);
   const pointsRef = useRef<THREE.Points>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
@@ -93,6 +94,7 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
   }), []);
 
   const { viewState, visualMode } = useGalaxyStore();
+  const isMobilePortrait = size.width <= 768 && size.height > size.width;
   const localTime = useRef(0);
   const tempMastPos = useMemo(() => new THREE.Vector3(), []);
   const mastOffset = useMemo(() => new THREE.Vector3(0, 0.39, 0), []);
@@ -153,8 +155,12 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
       materialRef.current.uniforms.uMousePos.value.copy(mousePosRef.current);
       materialRef.current.uniforms.uMouseScreenPos.value.copy(mouseScreenPosRef.current);
       materialRef.current.uniforms.uAspect.value = screenAspect;
-      materialRef.current.uniforms.uParticleSize.value = visualMode === 'silent' ? 2.25 : visualMode === 'focus' ? 2.85 : 3.5;
-      materialRef.current.uniforms.uOpacity.value = visualMode === 'silent' ? 0.34 : visualMode === 'focus' ? 0.62 : 1;
+      materialRef.current.uniforms.uParticleSize.value = isMobilePortrait
+        ? visualMode === 'silent' ? 0.78 : visualMode === 'focus' ? 0.96 : 1.15
+        : visualMode === 'silent' ? 2.25 : visualMode === 'focus' ? 2.85 : 3.5;
+      materialRef.current.uniforms.uOpacity.value = (
+        visualMode === 'silent' ? 0.34 : visualMode === 'focus' ? 0.62 : 1
+      ) * (isMobilePortrait ? 0.48 : 1);
 
       // Update starlight world position and twinkling light strength inside the shader
       if (groupRef.current) {
@@ -164,7 +170,7 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
         materialRef.current.uniforms.uShipPos.value.copy(tempMastPos);
       }
       const pulse = 0.72 + Math.sin(localTime.current * 6.5) * 0.28;
-      materialRef.current.uniforms.uShipLightStrength.value = pulse;
+      materialRef.current.uniforms.uShipLightStrength.value = pulse * (isMobilePortrait ? 0.18 : 1);
     }
   });
 
