@@ -86,11 +86,12 @@ void main() {
   vec2 xy = gl_PointCoord.xy - vec2(0.5);
   float dist = length(xy);
   if (dist > 0.5) discard;
-  float core = exp(-dist * dist * 22.0);
-  float halo = exp(-dist * dist * 3.2) * 0.72;
-  float alpha = (core + halo) * vAlpha;
-  vec3 color = mix(uColor * 0.92, vec3(1.0), core * 0.68);
-  color += uColor * halo * 0.35;
+  float core = exp(-dist * dist * 46.0);
+  float halo = exp(-dist * dist * 8.5) * 0.24;
+  float rayX = smoothstep(0.024, 0.0, abs(xy.y)) * smoothstep(0.5, 0.08, abs(xy.x)) * 0.42;
+  float rayY = smoothstep(0.024, 0.0, abs(xy.x)) * smoothstep(0.5, 0.08, abs(xy.y)) * 0.42;
+  float alpha = (core + halo + rayX + rayY) * vAlpha;
+  vec3 color = mix(uColor * 0.86, vec3(1.0), core * 0.78 + (rayX + rayY) * 0.28);
   gl_FragColor = vec4(color, alpha);
 }
 `;
@@ -103,10 +104,9 @@ void main() {
   vec2 xy = gl_PointCoord.xy - vec2(0.5);
   float dist = length(xy);
   if (dist > 0.5) discard;
-  float glow = exp(-dist * dist * 5.2);
-  float rim = exp(-dist * dist * 1.7) * 0.34;
-  float alpha = (glow * 0.5 + rim) * vAlpha;
-  gl_FragColor = vec4(mix(uColor, vec3(1.0), 0.18), alpha);
+  float glow = exp(-dist * dist * 8.5);
+  float alpha = glow * vAlpha * 0.38;
+  gl_FragColor = vec4(mix(uColor, vec3(1.0), 0.12), alpha);
 }
 `;
 
@@ -263,7 +263,7 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
       const fadeOut = 1 - clamp01((burstAge - 1.18) / 0.62);
       const alpha = fadeOut * opacityScale;
       const spread = easeOutBack(spreadProgress);
-      const lineAlpha = easeOutCubic(lineProgress) * alpha * 0.92;
+      const lineAlpha = easeOutCubic(lineProgress) * alpha * 0.58;
       const launchHead = origin.clone().lerp(slot.burst, easeOutCubic(launchProgress));
       const positions = pointGeometry.getAttribute('position') as THREE.BufferAttribute;
       const alphas = pointGeometry.getAttribute('aAlpha') as THREE.BufferAttribute;
@@ -276,8 +276,8 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
         for (let starIndex = 0; starIndex < maxStars; starIndex += 1) {
           const offset = starIndex === 0 ? 0 : (starIndex - 1) * 0.018;
           positions.setXYZ(starIndex, launchHead.x, launchHead.y - offset, launchHead.z);
-          alphas.setX(starIndex, starIndex < 3 ? opacityScale * (1.18 - starIndex * 0.24) : 0);
-          sizes.setX(starIndex, starIndex === 0 ? 12.5 : 7.4);
+          alphas.setX(starIndex, starIndex < 3 ? opacityScale * (0.96 - starIndex * 0.2) : 0);
+          sizes.setX(starIndex, starIndex === 0 ? 9.2 : 5.2);
         }
 
         const tailStart = origin.clone().lerp(launchHead, clamp01(launchProgress - 0.32));
@@ -288,7 +288,7 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
         sizes.needsUpdate = true;
         trailPositions.needsUpdate = true;
         lineMaterial.opacity = 0;
-        trailMaterial.opacity = Math.sin(launchProgress * Math.PI) * 1.0 * opacityScale;
+        trailMaterial.opacity = Math.sin(launchProgress * Math.PI) * 0.62 * opacityScale;
 
         if (points) points.visible = true;
         if (glow) glow.visible = true;
@@ -312,8 +312,8 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
         livePositions[starIndex] = world;
 
         positions.setXYZ(starIndex, world.x, world.y, world.z);
-        alphas.setX(starIndex, visible ? alpha * Math.min(1.22, twinkle + 0.18) : 0);
-        sizes.setX(starIndex, visible ? (14.4 + starIndex % 3) * (0.82 + spreadProgress * 0.62) : 0);
+        alphas.setX(starIndex, visible ? alpha * Math.min(1.0, twinkle + 0.08) : 0);
+        sizes.setX(starIndex, visible ? (8.8 + starIndex % 3) * (0.8 + spreadProgress * 0.42) : 0);
       }
 
       let lineCursor = 0;
@@ -344,8 +344,8 @@ export const ConstellationFireworks: React.FC<ConstellationFireworksProps> = ({ 
         const flashProgress = clamp01(burstAge / 0.44);
         flash.visible = alpha > 0.02 && flashProgress < 1;
         flash.position.copy(slot.burst);
-        flash.scale.setScalar(0.36 + flashProgress * 4.2);
-        flashMaterial.opacity = (1 - flashProgress) * 0.66 * opacityScale;
+        flash.scale.setScalar(0.32 + flashProgress * 3.2);
+        flashMaterial.opacity = (1 - flashProgress) * 0.36 * opacityScale;
       }
 
       if (slot.age > 2.58) {
