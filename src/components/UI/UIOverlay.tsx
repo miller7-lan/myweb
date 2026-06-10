@@ -192,7 +192,7 @@ export const UIOverlay: React.FC = () => {
   return (
     <div className={`absolute inset-0 pointer-events-none transition-opacity duration-700 ${announcementOpen ? 'z-[140]' : 'z-10'} ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
       <nav className="absolute top-0 left-0 hidden w-full p-8 md:flex justify-center pointer-events-auto">
-        <ul className="hud-panel flex max-w-[calc(100vw-2rem)] items-center gap-1 overflow-x-auto rounded-full px-3 py-2 md:gap-2 md:px-4">
+        <ul className="hud-panel no-scrollbar flex max-w-[calc(100vw-2rem)] items-center gap-1 overflow-x-auto rounded-full px-3 py-2 md:gap-2 md:px-4">
           {themeList.map(theme => {
             const themeKey = theme.key as NonNullThemeKey;
             const visited = Boolean(visitedThemes[themeKey]);

@@ -88,16 +88,22 @@ const growthCertificates = [
     title: '河南大学校级赛二等奖',
     src: '/certificates/computer-design-hnu-2026.jpg',
     meta: '2026 年第 19 届中国大学生计算机设计大赛 · 校级赛',
+    width: 1854,
+    height: 1280,
   },
   {
     title: '河南省级赛二等奖',
     src: '/certificates/computer-design-henan-2026.jpg',
     meta: '2026 年第 19 届中国大学生计算机设计大赛 · 河南省级赛',
+    width: 1835,
+    height: 1280,
   },
   {
     title: '全国大学生英语竞赛优秀奖',
     src: '/certificates/english-competition-henan-2026.jpg',
     meta: '2026 年全国大学生英语竞赛(NECCS) · 河南省赛区',
+    width: 724,
+    height: 1024,
   },
 ];
 
@@ -110,6 +116,8 @@ const CertificateGallery: React.FC<{
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isClosing, setIsClosing] = useState(false);
   const activeCertificate = growthCertificates[activeIndex] ?? growthCertificates[0];
+  const activeAspectRatio = `${activeCertificate.width} / ${activeCertificate.height}`;
+  const isPortraitCertificate = activeCertificate.height > activeCertificate.width;
 
   useEffect(() => {
     if (isOpen) {
@@ -155,7 +163,9 @@ const CertificateGallery: React.FC<{
         onClick={requestClose}
       />
       <div
-        className={`certificate-card hud-panel relative z-10 flex h-[min(92vh,58rem)] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] p-5 md:p-7 ${isClosing ? 'is-closing' : 'is-opening'}`}
+        className={`certificate-card hud-panel relative z-10 flex h-[min(96vh,64rem)] w-full flex-col overflow-hidden rounded-[28px] p-4 md:p-6 ${
+          isPortraitCertificate ? 'max-w-3xl' : 'max-w-[72rem]'
+        } ${isClosing ? 'is-closing' : 'is-opening'}`}
         style={{
           ['--theme-color' as string]: '#f87171',
           ['--hud-x' as string]: '50%',
@@ -172,19 +182,19 @@ const CertificateGallery: React.FC<{
           <X size={18} />
         </button>
 
-        <div className="mb-5 pr-12">
-          <div className="hud-kicker mb-3">
+        <div className="mb-3 pr-12">
+          <div className="hud-kicker mb-2">
             <span className="hud-dot" />
             <span>Certificate Gallery</span>
           </div>
-          <h3 className="text-2xl font-light tracking-wide text-white">获奖证书 · {String(activeIndex + 1).padStart(2, '0')}</h3>
-          <p className="mt-2 text-sm font-light leading-relaxed text-gray-400">
+          <h3 className="text-xl font-light tracking-wide text-white md:text-2xl">获奖证书 · {String(activeIndex + 1).padStart(2, '0')}</h3>
+          <p className="mt-1.5 text-xs font-light leading-relaxed text-gray-400 md:text-sm">
             每张奖状单独展示，便于查看证书内容与获奖信息。
           </p>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-          <div className="flex shrink-0 gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="切换证书">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+          <div className="flex shrink-0 gap-2 overflow-x-auto no-scrollbar" aria-label="切换证书">
             {growthCertificates.map((certificate, index) => {
               const isActive = index === activeIndex;
 
@@ -205,15 +215,22 @@ const CertificateGallery: React.FC<{
             })}
           </div>
 
-          <figure className="scan-card flex min-h-0 flex-1 flex-col overflow-hidden p-3 md:p-4">
-            <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-white/[0.06] bg-black/30">
-              <img
-                src={activeCertificate.src}
-                alt={activeCertificate.title}
-                className="h-full max-h-full w-full max-w-full object-contain"
-              />
+          <figure className="scan-card flex min-h-0 flex-1 flex-col items-center overflow-hidden p-2 md:p-3">
+            <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden rounded-2xl border border-white/[0.06] bg-black/30 p-2 md:p-3">
+              <div
+                className={`overflow-hidden rounded-xl bg-white shadow-[0_18px_50px_rgba(0,0,0,0.35)] ${
+                  isPortraitCertificate ? 'h-full max-h-full' : 'w-full max-w-full'
+                }`}
+                style={{ aspectRatio: activeAspectRatio }}
+              >
+                <img
+                  src={activeCertificate.src}
+                  alt={activeCertificate.title}
+                  className="h-full w-full object-contain"
+                />
+              </div>
             </div>
-            <figcaption className="shrink-0 px-1 pt-4">
+            <figcaption className="w-full shrink-0 px-1 pt-3">
               <div className="text-base font-light text-gray-100">{activeCertificate.title}</div>
               <div className="mt-1 text-[11px] font-light tracking-wide text-gray-500">{activeCertificate.meta}</div>
             </figcaption>

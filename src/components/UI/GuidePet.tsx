@@ -36,6 +36,11 @@ type DragState = {
   moved: boolean;
 };
 
+type PanelLaunch = {
+  x: number;
+  y: number;
+};
+
 type GuideSearchMatch = {
   target: GuideTarget;
   score: number;
@@ -113,6 +118,9 @@ const readPetPosition = () => {
 const normalizeQuery = (value: string) =>
   value.trim().toLowerCase().replace(/\s+/g, ' ');
 
+const queryTokens = (value: string) =>
+  normalizeQuery(value).split(/\s+/).filter((part) => part.length > 0);
+
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const parseGuideRegex = (query: string) => {
@@ -162,6 +170,12 @@ const scoreTarget = (target: GuideTarget, query: string): GuideSearchMatch => {
   let score = haystack.includes(normalized) ? 12 : 0;
   if (score) reasons.push('完整短语');
 
+  const tokens = queryTokens(query);
+  if (tokens.length > 1 && tokens.every((token) => haystack.includes(token))) {
+    score += 18 + tokens.length * 4;
+    reasons.push('深度匹配');
+  }
+
   if (regexInfo) {
     fields.forEach((field) => {
       if (regexInfo.regex.test(field.value)) {
@@ -184,9 +198,9 @@ const scoreTarget = (target: GuideTarget, query: string): GuideSearchMatch => {
     }
   });
 
-  normalized.split(/\s+/).forEach((part) => {
+  tokens.forEach((part) => {
     if (part.length > 1 && haystack.includes(part)) {
-      score += 2;
+      score += 4;
       reasons.push(part);
     }
   });
@@ -270,12 +284,15 @@ export const GuidePet: React.FC = () => {
   const { viewState, activeTheme, hoveredPlanet, visualMode, setActiveTheme, setViewState } = useGalaxyStore();
   const [panelOpen, setPanelOpen] = useState(false);
   const [bubbleVisible, setBubbleVisible] = useState(false);
+  const [bubbleClosing, setBubbleClosing] = useState(false);
   const [bubbleText, setBubbleText] = useState(() => petPrompts[0].text);
   const [bubbleEmoji, setBubbleEmoji] = useState<PixelEmoji | null>(null);
   const [bubbleMode, setBubbleMode] = useState<BubbleMode>('text');
   const [inputValue, setInputValue] = useState('');
   const [mood, setMood] = useState<PetMood>('idle');
   const [petPosition, setPetPosition] = useState<PetPosition>(() => readPetPosition());
+  const [panelLaunch, setPanelLaunch] = useState<PanelLaunch>({ x: 0, y: 0 });
+  const [panelClosing, setPanelClosing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragDirection, setDragDirection] = useState<DragDirection>('idle');
   const [frameIndex, setFrameIndex] = useState(0);
@@ -285,6 +302,8 @@ export const GuidePet: React.FC = () => {
   ]);
   const idleTimerRef = useRef<number | null>(null);
   const bubbleTimerRef = useRef<number | null>(null);
+  const panelOpenTimerRef = useRef<number | null>(null);
+  const panelCloseTimerRef = useRef<number | null>(null);
   const dragStateRef = useRef<DragState | null>(null);
   const suppressNextClickRef = useRef(false);
   const visibleTheme = activeTheme ?? hoveredPlanet;
@@ -307,6 +326,19 @@ export const GuidePet: React.FC = () => {
   }, [inputValue]);
   const queryPattern = useMemo(() => parseGuideRegex(inputValue)?.source ?? null, [inputValue]);
 
+  const hideBubble = (force = false) => {
+    if (!force && !bubbleVisible && !bubbleClosing) return;
+    if (bubbleTimerRef.current) {
+      window.clearTimeout(bubbleTimerRef.current);
+      bubbleTimerRef.current = null;
+    }
+    setBubbleClosing(true);
+    window.setTimeout(() => {
+      setBubbleVisible(false);
+      setBubbleClosing(false);
+    }, 220);
+  };
+
   const showBubble = (
     text: string,
     emoji: PixelEmoji | null = occasionalPixelEmoji(),
@@ -320,13 +352,25 @@ export const GuidePet: React.FC = () => {
     setBubbleText(mode === 'mixed' ? shortBubbleText(text) : text);
     setBubbleEmoji(mode === 'emoji' ? emoji ?? randomPixelEmoji() : emoji);
     setBubbleMode(mode);
+    setBubbleClosing(false);
     setBubbleVisible(true);
     if (autoHideMs > 0) {
       bubbleTimerRef.current = window.setTimeout(() => {
-        setBubbleVisible(false);
+        hideBubble(true);
         bubbleTimerRef.current = null;
       }, autoHideMs);
     }
+  };
+
+  const closePanel = () => {
+    if (!panelOpen || panelClosing) return;
+    if (panelCloseTimerRef.current) window.clearTimeout(panelCloseTimerRef.current);
+    setPanelClosing(true);
+    panelCloseTimerRef.current = window.setTimeout(() => {
+      setPanelOpen(false);
+      setPanelClosing(false);
+      panelCloseTimerRef.current = null;
+    }, 360);
   };
 
   const showIdleBubble = (text: string) => {
@@ -339,7 +383,7 @@ export const GuidePet: React.FC = () => {
   };
 
   useEffect(() => {
-    setBubbleVisible(false);
+    hideBubble();
   }, [activeTheme]);
 
   useEffect(() => {
@@ -347,7 +391,7 @@ export const GuidePet: React.FC = () => {
     if (visualMode !== 'silent') return;
 
     idleTimerRef.current = window.setInterval(() => {
-      setBubbleVisible(false);
+      hideBubble();
     }, 9000);
 
     return () => {
@@ -358,6 +402,8 @@ export const GuidePet: React.FC = () => {
   useEffect(() => {
     return () => {
       if (bubbleTimerRef.current) window.clearTimeout(bubbleTimerRef.current);
+      if (panelOpenTimerRef.current) window.clearTimeout(panelOpenTimerRef.current);
+      if (panelCloseTimerRef.current) window.clearTimeout(panelCloseTimerRef.current);
     };
   }, []);
 
@@ -576,7 +622,7 @@ export const GuidePet: React.FC = () => {
 
     setMood('guiding');
     showBubble(`正在定位：${target.label}`, 'sparkle', 'mixed');
-    setPanelOpen(false);
+    closePanel();
 
     const themeReady = await ensureTheme(target.theme);
     if (!themeReady) {
@@ -686,7 +732,7 @@ export const GuidePet: React.FC = () => {
     };
     setIsDragging(true);
     setDragDirection('idle');
-    setBubbleVisible(false);
+    hideBubble();
   };
 
   const moveDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -732,7 +778,7 @@ export const GuidePet: React.FC = () => {
     };
     setIsDragging(true);
     setDragDirection('idle');
-    setBubbleVisible(false);
+    hideBubble();
 
     const handleMove = (moveEvent: MouseEvent) => {
       const dragState = dragStateRef.current;
@@ -769,21 +815,35 @@ export const GuidePet: React.FC = () => {
       return;
     }
 
-    setPanelOpen(false);
+    closePanel();
     showIdleBubble(currentPrompt(useGalaxyStore.getState().activeTheme));
   };
 
-  const openPanelFromBubble = () => {
-    setPanelOpen(true);
-    setBubbleVisible(false);
+  const openPanelFromBubble = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setPanelLaunch({
+      x: rect.left + rect.width / 2 - window.innerWidth / 2,
+      y: rect.top + rect.height / 2 - window.innerHeight / 2,
+    });
+    setPanelClosing(false);
+    hideBubble(true);
+    if (panelOpenTimerRef.current) window.clearTimeout(panelOpenTimerRef.current);
+    panelOpenTimerRef.current = window.setTimeout(() => {
+      setPanelOpen(true);
+      panelOpenTimerRef.current = null;
+    }, 120);
   };
 
   const panel = panelOpen ? (
     <div
-      className="guide-pet-panel scan-card"
+      className={`guide-pet-panel scan-card ${panelClosing ? 'is-closing' : 'is-opening'}`}
       role="dialog"
       aria-label="网页宠物导览助手"
-      style={{ ['--theme-color' as string]: themeColor }}
+      style={{
+        ['--theme-color' as string]: themeColor,
+        ['--guide-panel-launch-x' as string]: `${panelLaunch.x}px`,
+        ['--guide-panel-launch-y' as string]: `${panelLaunch.y}px`,
+      }}
     >
       <div className="guide-pet-panel-head">
         <div>
@@ -793,7 +853,7 @@ export const GuidePet: React.FC = () => {
           </span>
           <h2>太空小助手</h2>
         </div>
-        <button type="button" onClick={() => setPanelOpen(false)} aria-label="最小化导览助手">
+        <button type="button" onClick={closePanel} aria-label="最小化导览助手">
           <Minus size={16} />
         </button>
       </div>
@@ -899,10 +959,10 @@ export const GuidePet: React.FC = () => {
           transform: `translate3d(${petPosition.x}px, ${petPosition.y}px, 0)`,
         }}
       >
-        {bubbleVisible && !panelOpen && (
+        {(bubbleVisible || bubbleClosing) && (!panelOpen || bubbleClosing) && (
           <button
             type="button"
-            className={`guide-pet-bubble is-${bubbleMode} bubble-${bubbleSide}`}
+            className={`guide-pet-bubble is-${bubbleMode} bubble-${bubbleSide} ${bubbleClosing ? 'is-closing' : 'is-opening'}`}
             onClick={openPanelFromBubble}
             aria-label="打开网页宠物导览助手"
             style={{ ['--bubble-width' as string]: `${bubbleWidth}rem` }}
