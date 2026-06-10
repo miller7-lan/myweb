@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDownToLine, Bot, Calculator, Cpu, Database, HardDrive, Monitor, Network, Search, type LucideIcon } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ArrowDownToLine, Bot, Calculator, CheckCircle2, Cpu, Database, HardDrive, Monitor, Network, Search, X, type LucideIcon } from 'lucide-react';
 
 type ReleaseKey = 'secretary' | 'tunnel' | 'profit' | 'localMonitor' | 'next';
 
@@ -32,10 +33,17 @@ type ReleaseItem = {
   keywords: string[];
 };
 
+type DownloadNotice = {
+  label: string;
+  releaseTitle: string;
+};
+
 const legacyDownload = (path: string) =>
   `https://dazzle-galaxy-show.netlify.app${encodeURI(path)}`;
 const githubAsset = (path: string) =>
   `https://github.com/miller7-lan/myweb/raw/main/${encodeURI(path)}`;
+const normalizeSearch = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+const searchTokens = (value: string) => normalizeSearch(value).split(/\s+/).filter(Boolean);
 
 const releases: ReleaseItem[] = [
   {
@@ -184,6 +192,7 @@ export const OrbitContent: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [pingResults, setPingResults] = useState<Record<string, number>>({});
   const [eccentricity, setEccentricity] = useState(1.0);
+  const [downloadNotice, setDownloadNotice] = useState<DownloadNotice | null>(null);
 
   useEffect(() => {
     const handleGuideOpen = (event: WindowEventMap['galaxy-guide-open']) => {
@@ -198,6 +207,12 @@ export const OrbitContent: React.FC = () => {
     window.addEventListener('galaxy-guide-open', handleGuideOpen);
     return () => window.removeEventListener('galaxy-guide-open', handleGuideOpen);
   }, []);
+
+  useEffect(() => {
+    if (!downloadNotice) return;
+    const timer = window.setTimeout(() => setDownloadNotice(null), 3600);
+    return () => window.clearTimeout(timer);
+  }, [downloadNotice]);
 
   const runOrbitPing = () => {
     setIsScanning(true);
@@ -216,21 +231,35 @@ export const OrbitContent: React.FC = () => {
     });
   };
 
+  const showDownloadNotice = (download: { label: string }) => {
+    setDownloadNotice({
+      label: download.label.replace(/^下载\s*/, ''),
+      releaseTitle: activeItem.title,
+    });
+  };
 
-  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  const normalizedQuery = normalizeSearch(searchQuery);
+  const normalizedQueryTokens = useMemo(() => searchTokens(searchQuery), [searchQuery]);
   const filteredReleases = useMemo(() => {
     if (!normalizedQuery) return releases;
-    return releases.filter((release) => [
-      release.title,
-      release.subtitle,
-      release.date,
-      release.body,
-      release.status,
-      release.platform,
-      ...release.keywords,
-      ...(release.scenes ?? []),
-    ].join(' ').toLowerCase().includes(normalizedQuery));
-  }, [normalizedQuery]);
+    return releases.filter((release) => {
+      const haystack = [
+        release.title,
+        release.subtitle,
+        release.date,
+        release.body,
+        release.status,
+        release.platform,
+        release.primaryDownload?.label ?? '',
+        ...(release.links ?? []).map((link) => link.label),
+        ...release.keywords,
+        ...(release.scenes ?? []),
+      ].join(' ').toLowerCase();
+
+      return haystack.includes(normalizedQuery) || normalizedQueryTokens.every((token) => haystack.includes(token));
+    });
+  }, [normalizedQuery, normalizedQueryTokens]);
 
   const storedActiveItem = releases.find((release) => release.key === activeRelease) ?? releases[0];
   const activeItem = filteredReleases.find((release) => release.key === storedActiveItem.key) ?? filteredReleases[0] ?? storedActiveItem;
@@ -243,6 +272,38 @@ export const OrbitContent: React.FC = () => {
 
   return (
     <div className="w-full">
+      {downloadNotice && createPortal(
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[150] flex justify-center px-4">
+          <div
+            className="download-thanks-panel pointer-events-auto hud-panel flex w-full max-w-md items-start gap-3 rounded-2xl p-4"
+            style={{ ['--theme-color' as string]: '#a78bfa' }}
+          >
+            <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--theme-color)]/25 bg-[var(--theme-color)]/10 text-[var(--theme-color)]">
+              <CheckCircle2 size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="hud-kicker mb-1">
+                <span className="hud-dot" />
+                <span>Download Started</span>
+              </div>
+              <div className="text-base font-light tracking-wide text-white">感谢下载</div>
+              <p className="mt-1 text-sm font-light leading-relaxed text-gray-400">
+                {downloadNotice.releaseTitle} · {downloadNotice.label}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDownloadNotice(null)}
+              aria-label="关闭下载提示"
+              className="rounded-full border border-white/10 bg-white/[0.03] p-2 text-gray-500 transition-colors hover:border-white/20 hover:text-white"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
       <div className="mb-10">
         <div className="hud-kicker mb-4">
           <span className="hud-dot" />
@@ -368,7 +429,13 @@ export const OrbitContent: React.FC = () => {
           <p className="mb-6 max-w-3xl text-sm font-light leading-relaxed text-gray-400">{activeItem.body}</p>
 
           {activeItem.primaryDownload && (
-            <a href={activeItem.primaryDownload.href} download className="inline-flex items-center gap-3 bg-white text-black px-6 py-4 rounded-full font-medium hover:bg-gray-200 transition-colors md:px-8" data-guide-id="release-download-primary">
+            <a
+              href={activeItem.primaryDownload.href}
+              download
+              onClick={() => showDownloadNotice(activeItem.primaryDownload!)}
+              className="inline-flex items-center gap-3 bg-white text-black px-6 py-4 rounded-full font-medium hover:bg-gray-200 transition-colors md:px-8"
+              data-guide-id="release-download-primary"
+            >
               <ArrowDownToLine size={20} />
               <span>{activeItem.primaryDownload.label}</span>
             </a>
@@ -377,7 +444,13 @@ export const OrbitContent: React.FC = () => {
           {activeItem.links && (
             <div className="mt-6 flex flex-wrap gap-4 text-sm text-gray-400">
               {activeItem.links.map((link) => (
-                <a key={link.href} href={link.href} download className="hover:text-white transition-colors underline underline-offset-4">
+                <a
+                  key={link.href}
+                  href={link.href}
+                  download
+                  onClick={() => showDownloadNotice(link)}
+                  className="hover:text-white transition-colors underline underline-offset-4"
+                >
                   {link.label}
                 </a>
               ))}
