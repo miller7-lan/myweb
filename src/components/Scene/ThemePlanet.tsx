@@ -17,13 +17,10 @@ interface ThemePlanetProps {
   layoutProgressRef: React.RefObject<{ value: number }>;
 }
 
-const portraitPlanetPositions: Record<string, [number, number, number]> = {
-  identity: [0, 6.72, 0.2],
-  creations: [-2.45, 4.22, 0],
-  stack: [2.45, 4.22, 0],
-  orbit: [-2.45, 1.72, 0],
-  signal: [2.45, 1.72, 0],
-};
+const portraitWheelCenterY = 4.48;
+const portraitWheelRadiusX = 2.46;
+const portraitWheelRadiusY = 2.62;
+const portraitWheelSpeed = 0.36;
 
 export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef, mouseScreenPosRef, screenAspect, isMobilePortrait, layoutProgressRef }) => {
   const groupRef = useRef<THREE.Group>(null);
@@ -366,8 +363,9 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     const portraitProgress = layoutProgressRef.current?.value ?? 0;
     const portraitMotionScale = THREE.MathUtils.lerp(1, 0.18, portraitProgress);
 
-    if (viewState !== 'THEME' && !shouldPauseOrbit) {
-      localTime.current += delta * motionScale * portraitMotionScale;
+    if (viewState !== 'THEME' && (!shouldPauseOrbit || portraitProgress > 0.65)) {
+      const ferrisMotionScale = THREE.MathUtils.lerp(motionScale, 0.82, portraitProgress);
+      localTime.current += delta * ferrisMotionScale * portraitMotionScale;
       
       if (pointsRef.current) {
         pointsRef.current.rotation.y -= delta * motionScale * 0.9 * THREE.MathUtils.lerp(1, 0.7, portraitProgress); // Planet own rotation
@@ -475,13 +473,23 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     const newY = y * cosT - z * sinT;
     const newZ = y * sinT + z * cosT;
     const orbitPos = orbitPositionRef.current.set(x, newY, newZ);
-    const portraitPosition = portraitPlanetPositions[String(themeDef.key)] ?? [0, 5, 0];
-    const portraitPos = portraitPositionRef.current.set(portraitPosition[0], portraitPosition[1], portraitPosition[2]);
+    const wheelAngle = -themeDef.orbitOffset + localTime.current * portraitWheelSpeed;
+    const wheelX = Math.sin(wheelAngle) * portraitWheelRadiusX;
+    const wheelY = portraitWheelCenterY + Math.cos(wheelAngle) * portraitWheelRadiusY;
+    const wheelZ = 0.2 - Math.cos(wheelAngle) * 0.18;
+    const portraitPos = portraitPositionRef.current.set(wheelX, wheelY, wheelZ);
     const homePos = blendedPositionRef.current.lerpVectors(orbitPos, portraitPos, portraitProgress);
 
     if (groupRef.current) {
       if (viewState === 'HOME' || viewState === 'HOVER_PLANET') {
         groupRef.current.position.copy(homePos);
+        if (portraitProgress > 0.01 && viewState === 'HOME' && !highlighted) {
+          const wheelDepthScale = 0.9 + ((portraitWheelCenterY - wheelY) / (portraitWheelRadiusY * 2) + 0.5) * 0.18;
+          const targetScale = THREE.MathUtils.lerp(1, wheelDepthScale, portraitProgress);
+          groupRef.current.scale.setScalar(THREE.MathUtils.lerp(groupRef.current.scale.x, targetScale, 0.045));
+        } else if (portraitProgress <= 0.01 && viewState === 'HOME' && !highlighted) {
+          groupRef.current.scale.setScalar(THREE.MathUtils.lerp(groupRef.current.scale.x, 1, 0.08));
+        }
       } else if (isReturning.current) {
         // Smoothly blend from the expanded position back to the active responsive layout.
         groupRef.current.position.lerpVectors(returnStartPosition.current, homePos, returnProgress.current.value);
