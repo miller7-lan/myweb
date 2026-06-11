@@ -124,7 +124,9 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
       materialRef.current.uniforms.uMouseScreenPos.value.copy(mouseScreenPosRef.current);
       materialRef.current.uniforms.uAspect.value = screenAspect;
       materialRef.current.uniforms.uParticleSize.value = coreParticleSize;
-      materialRef.current.uniforms.uFocusBoost.value = visualMode === 'focus' ? 3.06 : visualMode === 'silent' ? 0.12 : 2.21;
+      materialRef.current.uniforms.uFocusBoost.value = isMobilePortrait
+        ? visualMode === 'focus' ? 3.06 : visualMode === 'silent' ? 0.12 : 2.21
+        : visualMode === 'focus' ? 0.72 : visualMode === 'silent' ? 0.08 : 0.34;
       materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.lerp(
         materialRef.current.uniforms.uOpacity.value,
         (isLockingPlanet ? 0.58 : 1.0) * opacityBase * mobileOpacityScale,
