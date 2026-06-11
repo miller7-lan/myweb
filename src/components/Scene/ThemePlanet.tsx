@@ -60,7 +60,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     signal: { haloRadius: 0.94, haloTube: 0.018, glowRadius: 0.76, glowIdle: 0.065, glowHover: 0.26 },
   }[String(themeDef.key)] ?? { haloRadius: 0.94, haloTube: 0.014, glowRadius: 0.72, glowIdle: 0.045, glowHover: 0.2 };
   const softenedThemeColor = useMemo(
-    () => new THREE.Color(themeDef.color).lerp(new THREE.Color('#cbd5e1'), 0.34),
+    () => new THREE.Color(themeDef.color).lerp(new THREE.Color('#cbd5e1'), 0.16),
     [themeDef.color]
   );
   const softenedThemeHex = useMemo(() => `#${softenedThemeColor.getHexString()}`, [softenedThemeColor]);
@@ -298,7 +298,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       }
 
       gsap.to(materialRef.current.uniforms.uHoverBrightness, {
-        value: highlighted ? (visualMode === 'focus' ? 0.56 : 0.44) : 0.0,
+        value: highlighted ? (visualMode === 'focus' ? 0.68 : 0.56) : 0.0,
         duration: highlighted ? 0.2 : 1.35,
         ease: highlighted ? 'power2.out' : 'power2.inOut',
         overwrite: 'auto',
@@ -560,8 +560,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         <meshBasicMaterial
           color={softenedThemeHex}
           transparent
-          // Scaled down the glowing core's hover opacity by 0.32 so it highlights the theme color instead of burning out to white
-          opacity={(isHovered || isFocused ? shapeProfile.glowHover * 0.32 : isLastVisited ? shapeProfile.glowHover * 0.72 : isVisited ? shapeProfile.glowIdle * 1.35 : shapeProfile.glowIdle) * (visualMode === 'silent' ? 0.36 : visualMode === 'focus' ? 0.64 : 1)}
+          opacity={(isHovered || isFocused ? shapeProfile.glowHover * 0.48 : isLastVisited ? shapeProfile.glowHover * 0.72 : isVisited ? shapeProfile.glowIdle * 1.35 : shapeProfile.glowIdle) * (visualMode === 'silent' ? 0.36 : visualMode === 'focus' ? 0.64 : 1)}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
