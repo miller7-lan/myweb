@@ -97,13 +97,16 @@ void main() {
   float alpha = exp(-ll * ll * 16.0) * vAlpha;
   
   // Screen-space spotlight keeps a pure-white focus centered on the pointer.
+  const float pointerGlowRadius = 0.3; // Original 0.2 radius increased by 50%.
+  const float pointerWorldRadius = 6.3; // Original 4.2 radius increased by 50%.
+  const float shipGlowRadius = 2.9; // Original 1.45 Morning Star radius increased by 100%.
   vec2 screenDelta = (vScreenPos - uMouseScreenPos) * vec2(uAspect, 1.0);
   float screenDistance = length(screenDelta);
-  float screenFalloff = smoothstep(0.2, 0.0, screenDistance);
+  float screenFalloff = smoothstep(pointerGlowRadius, 0.0, screenDistance);
   float screenIntensity = clamp(pow(screenFalloff, 2.65) + pow(screenFalloff, 8.0) * 0.36, 0.0, 0.98);
   
   // Keep a subtle world-space falloff so nearby 3D particles still feel connected.
-  float worldIntensity = smoothstep(4.2, 0.0, vDistanceToMouse) * 0.14;
+  float worldIntensity = smoothstep(pointerWorldRadius, 0.0, vDistanceToMouse) * 0.14;
   float lightIntensity = clamp(screenIntensity * (1.0 + uFocusBoost * 0.42) + worldIntensity, 0.0, 1.0);
   
   vec3 pointerLightColor = vec3(1.0);
@@ -127,7 +130,7 @@ void main() {
   
   // Volumetric Lighting around the ship's mast-top twinkling Morning Star
   float distToShip = distance(vPosition, uShipPos);
-  float shipLightIntensity = smoothstep(1.45, 0.0, distToShip) * pow(1.0 - screenIntensity, 2.0);
+  float shipLightIntensity = smoothstep(shipGlowRadius, 0.0, distToShip) * (1.0 - screenIntensity);
   vec3 goldGlow = vec3(0.99, 0.88, 0.45) * shipLightIntensity * 1.15 * uShipLightStrength;
   finalColor += goldGlow;
   
