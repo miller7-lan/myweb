@@ -121,8 +121,8 @@ void main() {
   
   float pointerPurity = clamp(screenIntensity * (0.62 + uFocusBoost * 0.18), 0.0, 0.92);
   float themeMask = 1.0 - pointerPurity * 0.74;
-  vec3 finalColor = mix(uColor, uGlowColor, clamp(uHoverBrightness * 1.08 * themeMask, 0.0, 0.88));
-  finalColor += uGlowColor * uHoverBrightness * 0.18 * themeMask;
+  vec3 finalColor = mix(uColor, uGlowColor, clamp(uHoverBrightness * 1.22 * themeMask, 0.0, 0.94));
+  finalColor += uGlowColor * uHoverBrightness * 0.34 * themeMask;
   finalColor = mix(finalColor, pointerLightColor, effectiveLightIntensity * mix(0.62, 0.08, uIsHovered));
   finalColor += ambientLightColor * uFocusBoost * 0.08;
   finalColor += pointerLightColor * pointerSpot * (0.6 + uFocusBoost * 0.3);
