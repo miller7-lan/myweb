@@ -161,7 +161,7 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
         : visualMode === 'silent' ? 2.25 : visualMode === 'focus' ? 2.85 : 3.5;
       materialRef.current.uniforms.uFocusBoost.value = isMobilePortrait
         ? visualMode === 'focus' ? 3.06 : visualMode === 'silent' ? 0.12 : 2.33
-        : visualMode === 'focus' ? 0.78 : visualMode === 'silent' ? 0.08 : 0.38;
+        : visualMode === 'focus' ? 1.82 : visualMode === 'silent' ? 0.08 : 1.24;
       materialRef.current.uniforms.uOpacity.value = (
         visualMode === 'silent' ? 0.34 : visualMode === 'focus' ? 0.62 : 1
       ) * (isMobilePortrait ? 0.68 : 1);
