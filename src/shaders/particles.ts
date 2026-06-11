@@ -115,6 +115,7 @@ void main() {
   vec3 finalColor = mix(uColor, lightColor, effectiveLightIntensity);
   finalColor = mix(finalColor, uGlowColor, clamp(uHoverBrightness * 0.5, 0.0, 0.38));
   finalColor += uGlowColor * uHoverBrightness * 0.34;
+  finalColor += mix(vec3(0.56, 0.62, 0.72), lightColor, 0.46) * uFocusBoost * 0.2;
   finalColor += lightColor * screenIntensity * (0.42 + uFocusBoost * 0.38);
   finalColor += mix(vec3(0.65, 0.72, 0.82), uGlowColor, 0.28) * clamp(vImpactGlow * 0.62, 0.0, 0.72);
   
@@ -125,8 +126,9 @@ void main() {
   finalColor += goldGlow;
   
   float opacityBoost = shipLightIntensity * 1.2 * uShipLightStrength;
+  float ambientOpacityBoost = uFocusBoost * 0.28;
   float pointerOpacityBoost = screenIntensity * (0.58 + uFocusBoost * 0.52);
-  float finalOpacity = alpha * uOpacity * (1.0 + pointerOpacityBoost + clamp(vImpactGlow * 0.24, 0.0, 0.28) + opacityBoost);
+  float finalOpacity = alpha * uOpacity * (1.0 + ambientOpacityBoost + pointerOpacityBoost + clamp(vImpactGlow * 0.24, 0.0, 0.28) + opacityBoost);
   
   gl_FragColor = vec4(finalColor, finalOpacity);
 }
