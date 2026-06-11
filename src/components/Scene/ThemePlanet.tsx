@@ -449,7 +449,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         );
         materialRef.current.uniforms.uFocusBoost.value = visualMode === 'focus'
           ? highlighted ? 1.0 : 0.72
-          : visualMode === 'silent' ? 0.08 : highlighted ? 0.62 : 0.34;
+          : visualMode === 'silent' ? 0.12 : highlighted ? 0.82 : 0.7;
         // Scale down particle opacity when hovered/focused to prevent additive blending blowout (white burnout)
         const baseOpacity = visualMode === 'silent' ? 0.56 : visualMode === 'focus' ? 0.74 : 1.0;
         const mobileOpacityScale = THREE.MathUtils.lerp(1, 0.78, portraitProgress);
