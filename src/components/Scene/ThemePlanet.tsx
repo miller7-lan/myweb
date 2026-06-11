@@ -363,7 +363,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     const portraitProgress = layoutProgressRef.current?.value ?? 0;
     const portraitMotionScale = THREE.MathUtils.lerp(1, 0.18, portraitProgress);
 
-    if (viewState !== 'THEME' && (!shouldPauseOrbit || portraitProgress > 0.65)) {
+    if (viewState !== 'THEME' && !shouldPauseOrbit) {
       const ferrisMotionScale = THREE.MathUtils.lerp(motionScale, 0.82, portraitProgress);
       localTime.current += delta * ferrisMotionScale * portraitMotionScale;
       
