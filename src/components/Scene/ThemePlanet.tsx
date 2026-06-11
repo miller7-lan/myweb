@@ -446,8 +446,8 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
           portraitProgress
         );
         const desktopFocusBoost = visualMode === 'focus'
-          ? highlighted ? 1.0 : 0.72
-          : visualMode === 'silent' ? 0.08 : highlighted ? 0.62 : 0.34;
+          ? highlighted ? 2.05 : 1.48
+          : visualMode === 'silent' ? 0.08 : highlighted ? 1.55 : 1.12;
         const mobileFocusBoost = visualMode === 'focus'
           ? highlighted ? 3.06 : 2.21
           : visualMode === 'silent' ? 0.12 : highlighted ? 2.52 : 2.15;
