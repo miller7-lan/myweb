@@ -291,7 +291,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       gsap.killTweensOf(materialRef.current.uniforms.uColor.value);
       gsap.killTweensOf(materialRef.current.uniforms.uGlowColor.value);
 
-      // Set uIsHovered instantly without delay to suppress the spotlight on the very first frame
+      // Keep hover state instant so the shader can add themed brightness without losing pointer focus.
       materialRef.current.uniforms.uIsHovered.value = highlighted ? 1.0 : 0.0;
       
       const targetColor = highlighted ? softenedThemeColor.clone() : new THREE.Color('#a0a0ab');
@@ -301,7 +301,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       }
 
       gsap.to(materialRef.current.uniforms.uHoverBrightness, {
-        value: highlighted ? 0.36 : 0.0,
+        value: highlighted ? (visualMode === 'focus' ? 0.56 : 0.44) : 0.0,
         duration: highlighted ? 0.2 : 1.35,
         ease: highlighted ? 'power2.out' : 'power2.inOut',
         overwrite: 'auto',
@@ -328,7 +328,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       }
     }
 
-  }, [isHovered, isFocused, viewState, softenedThemeColor]);
+  }, [isHovered, isFocused, viewState, softenedThemeColor, visualMode]);
 
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
@@ -339,7 +339,8 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     uColor: { value: new THREE.Color('#a0a0ab') },
     uGlowColor: { value: new THREE.Color('#a0a0ab') },
     uHoverBrightness: { value: 0.0 },
-    uIsHovered: { value: 0.0 }, // Instant response on hover to damp spotlight
+    uIsHovered: { value: 0.0 },
+    uFocusBoost: { value: 0.0 },
     uOpacity: { value: 1.0 },
     uIntroProgress: { value: 0.0 },
     uImpactPoint: { value: new THREE.Vector3() },
@@ -446,6 +447,9 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
           portraitParticleSize,
           portraitProgress
         );
+        materialRef.current.uniforms.uFocusBoost.value = visualMode === 'focus'
+          ? highlighted ? 1.0 : 0.72
+          : visualMode === 'silent' ? 0.08 : highlighted ? 0.62 : 0.34;
         // Scale down particle opacity when hovered/focused to prevent additive blending blowout (white burnout)
         const baseOpacity = visualMode === 'silent' ? 0.56 : visualMode === 'focus' ? 0.74 : 1.0;
         const mobileOpacityScale = THREE.MathUtils.lerp(1, 0.78, portraitProgress);
