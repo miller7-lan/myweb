@@ -288,7 +288,7 @@ export const MeteorImpact: React.FC<MeteorImpactProps> = ({ impactQueueRef, manu
 
   useFrame((_, delta) => {
     const canRun = visualMode !== 'silent' && (viewState === 'HOME' || viewState === 'HOVER_PLANET');
-    const mobileMeteorScale = isMobilePortrait ? 0.54 : 1;
+    const mobileMeteorScale = isMobilePortrait ? 0.72 : 1;
     const meteorOpacity = (visualMode === 'focus' ? 0.48 : 0.95) * mobileMeteorScale;
     const impactStrength = (visualMode === 'focus' ? 0.48 : 1.15) * (isMobilePortrait ? 0.46 : 1);
     clock.current += delta;

@@ -1,10 +1,17 @@
 import { Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { GalaxyScene } from './components/Scene/GalaxyScene';
 import { UIOverlay } from './components/UI/UIOverlay';
 import { ThemeOverlay } from './components/UI/ThemeOverlay';
 import { GuidePet } from './components/UI/GuidePet';
 import { useGalaxyStore } from './store/useGalaxyStore';
+
+function SceneBackground() {
+  const { size } = useThree();
+  const isMobilePortrait = size.width <= 768 && size.height > size.width;
+
+  return <color attach="background" args={[isMobilePortrait ? '#05070d' : '#020204']} />;
+}
 
 function App() {
   const visualMode = useGalaxyStore((state) => state.visualMode);
@@ -16,7 +23,7 @@ function App() {
         gl={{ antialias: true, alpha: false }}
         dpr={Math.min(window.devicePixelRatio, 2)}
       >
-        <color attach="background" args={['#020204']} />
+        <SceneBackground />
         <Suspense fallback={null}>
           <GalaxyScene />
         </Suspense>

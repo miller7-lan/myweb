@@ -40,10 +40,10 @@ export const BackgroundStars: React.FC = () => {
         <bufferAttribute attach="attributes-opacity" count={particleCount} args={[opacities, 1]} />
       </bufferGeometry>
       <pointsMaterial 
-        size={0.8} 
-        color="#1a1a20" 
+        size={0.72} 
+        color="#2c3446" 
         transparent 
-        opacity={visualMode === 'silent' ? 0.12 : visualMode === 'focus' ? 0.2 : 0.3}
+        opacity={visualMode === 'silent' ? 0.14 : visualMode === 'focus' ? 0.26 : 0.38}
         sizeAttenuation 
         depthWrite={false}
       />

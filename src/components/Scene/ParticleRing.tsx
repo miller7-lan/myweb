@@ -160,7 +160,7 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
         : visualMode === 'silent' ? 2.25 : visualMode === 'focus' ? 2.85 : 3.5;
       materialRef.current.uniforms.uOpacity.value = (
         visualMode === 'silent' ? 0.34 : visualMode === 'focus' ? 0.62 : 1
-      ) * (isMobilePortrait ? 0.48 : 1);
+      ) * (isMobilePortrait ? 0.68 : 1);
 
       // Update starlight world position and twinkling light strength inside the shader
       if (groupRef.current) {
