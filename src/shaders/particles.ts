@@ -96,8 +96,7 @@ void main() {
   // Smooth gaussian-like falloff for soft edges
   float alpha = exp(-ll * ll * 16.0) * vAlpha;
   
-  // Screen-space spotlight keeps the glow centered on the pointer. On highlighted
-  // planets, tint it toward the theme so the cursor does not wash the planet white.
+  // Screen-space spotlight keeps a pure-white focus centered on the pointer.
   vec2 screenDelta = (vScreenPos - uMouseScreenPos) * vec2(uAspect, 1.0);
   float screenDistance = length(screenDelta);
   float screenFalloff = smoothstep(0.2, 0.0, screenDistance);
@@ -107,21 +106,21 @@ void main() {
   float worldIntensity = smoothstep(4.2, 0.0, vDistanceToMouse) * 0.14;
   float lightIntensity = clamp(screenIntensity * (1.0 + uFocusBoost * 0.42) + worldIntensity, 0.0, 1.0);
   
-  vec3 pointerLightColor = mix(vec3(0.92, 0.96, 1.0), uGlowColor, uIsHovered * 0.72);
+  vec3 pointerLightColor = vec3(1.0);
   vec3 ambientLightColor = vec3(0.52, 0.6, 0.76);
   
-  // Focused planets emit their own themed light first; the pointer spotlight becomes a
-  // colored rim instead of a white cover.
+  // Focused planets emit saturated themed light first; the pointer remains a pure
+  // white highlight with radial falloff instead of tinting the whole planet.
   float themeDominance = clamp(max(uIsHovered, uHoverBrightness * 1.45), 0.0, 1.0);
-  float mouseDamp = mix(1.0, 0.12, themeDominance);
+  float mouseDamp = mix(1.0, 0.18, themeDominance);
   float pointerSpot = screenIntensity * mouseDamp;
   float effectiveLightIntensity = lightIntensity * mouseDamp;
   
-  vec3 finalColor = mix(uColor, pointerLightColor, effectiveLightIntensity * mix(0.86, 0.38, uIsHovered));
-  finalColor = mix(finalColor, uGlowColor, clamp(uHoverBrightness * 1.06, 0.0, 0.76));
-  finalColor += uGlowColor * uHoverBrightness * 0.74;
+  vec3 finalColor = mix(uColor, uGlowColor, clamp(uHoverBrightness * 1.18, 0.0, 0.82));
+  finalColor += uGlowColor * uHoverBrightness * 0.96;
+  finalColor = mix(finalColor, pointerLightColor, effectiveLightIntensity * mix(0.62, 0.16, uIsHovered));
   finalColor += ambientLightColor * uFocusBoost * 0.08;
-  finalColor += pointerLightColor * pointerSpot * (0.28 + uFocusBoost * 0.2);
+  finalColor += pointerLightColor * pointerSpot * (0.44 + uFocusBoost * 0.24);
   finalColor += mix(vec3(0.65, 0.72, 0.82), uGlowColor, 0.28) * clamp(vImpactGlow * 0.62, 0.0, 0.72);
   
   // Volumetric Lighting around the ship's mast-top twinkling Morning Star
