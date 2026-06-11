@@ -64,6 +64,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     [themeDef.color]
   );
   const softenedThemeHex = useMemo(() => `#${softenedThemeColor.getHexString()}`, [softenedThemeColor]);
+  const idleGlowHex = '#a0a0ab';
 
   const [positions, randoms, initialPositions] = useMemo(() => {
     const pos = new Float32Array(particleCount * 3);
@@ -558,7 +559,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       <mesh ref={coreGlowRef} visible={viewState !== 'THEME'}>
         <sphereGeometry args={[shapeProfile.glowRadius, 32, 32]} />
         <meshBasicMaterial
-          color={softenedThemeHex}
+          color={isHovered || isFocused ? softenedThemeHex : idleGlowHex}
           transparent
           opacity={(isHovered || isFocused ? shapeProfile.glowHover * 0.48 : isLastVisited ? shapeProfile.glowHover * 0.72 : isVisited ? shapeProfile.glowIdle * 1.35 : shapeProfile.glowIdle) * (visualMode === 'silent' ? 0.36 : visualMode === 'focus' ? 0.64 : 1)}
           blending={THREE.AdditiveBlending}
@@ -569,7 +570,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       <mesh ref={haloRef} rotation={[haloDefaultTilt, 0, 0]} visible={viewState !== 'THEME'}>
         <torusGeometry args={[shapeProfile.haloRadius, shapeProfile.haloTube, 10, 96]} />
         <meshBasicMaterial
-          color={softenedThemeHex}
+          color={isHovered || isFocused ? softenedThemeHex : idleGlowHex}
           transparent
           opacity={(isHovered || isFocused ? 0.46 : isLastVisited ? 0.34 : isVisited ? 0.2 : 0.12) * (visualMode === 'silent' ? 0.35 : visualMode === 'focus' ? 0.62 : 1)}
           blending={THREE.AdditiveBlending}
