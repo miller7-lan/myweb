@@ -104,7 +104,7 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
     const coreParticleSize = isMobilePortrait
       ? visualMode === 'silent' ? 1.02 : visualMode === 'focus' ? 1.22 : 1.42
       : visualMode === 'silent' ? 3.2 : visualMode === 'focus' ? 3.8 : 4.5;
-    const mobileOpacityScale = isMobilePortrait ? 0.62 : 1;
+    const mobileOpacityScale = isMobilePortrait ? 0.82 : 1;
 
     if (viewState !== 'THEME') {
       localTime.current += delta * motionScale;

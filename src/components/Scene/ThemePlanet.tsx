@@ -448,7 +448,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         );
         // Scale down particle opacity when hovered/focused to prevent additive blending blowout (white burnout)
         const baseOpacity = visualMode === 'silent' ? 0.56 : visualMode === 'focus' ? 0.74 : 1.0;
-        const mobileOpacityScale = THREE.MathUtils.lerp(1, 0.62, portraitProgress);
+        const mobileOpacityScale = THREE.MathUtils.lerp(1, 0.78, portraitProgress);
         const targetOpacity = baseOpacity * (highlighted ? 0.38 : 0.82) * mobileOpacityScale;
         materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.lerp(
           materialRef.current.uniforms.uOpacity.value,
