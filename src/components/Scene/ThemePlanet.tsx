@@ -60,7 +60,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     signal: { haloRadius: 0.94, haloTube: 0.018, glowRadius: 0.76, glowIdle: 0.065, glowHover: 0.26 },
   }[String(themeDef.key)] ?? { haloRadius: 0.94, haloTube: 0.014, glowRadius: 0.72, glowIdle: 0.045, glowHover: 0.2 };
   const softenedThemeColor = useMemo(
-    () => new THREE.Color(themeDef.color).lerp(new THREE.Color('#cbd5e1'), 0.16),
+    () => new THREE.Color(themeDef.color),
     [themeDef.color]
   );
   const softenedThemeHex = useMemo(() => `#${softenedThemeColor.getHexString()}`, [softenedThemeColor]);
@@ -460,7 +460,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         // Scale down particle opacity when hovered/focused to prevent additive blending blowout (white burnout)
         const baseOpacity = visualMode === 'silent' ? 0.56 : visualMode === 'focus' ? 0.74 : 1.0;
         const mobileOpacityScale = THREE.MathUtils.lerp(1, 0.78, portraitProgress);
-        const targetOpacity = baseOpacity * (highlighted ? 0.38 : 0.82) * mobileOpacityScale;
+        const targetOpacity = baseOpacity * (highlighted ? 0.26 : 0.82) * mobileOpacityScale;
         materialRef.current.uniforms.uOpacity.value = THREE.MathUtils.lerp(
           materialRef.current.uniforms.uOpacity.value,
           targetOpacity,
@@ -552,7 +552,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
           uniforms={uniforms}
           transparent
           depthWrite={false}
-          blending={THREE.AdditiveBlending}
+          blending={isHovered || isFocused ? THREE.NormalBlending : THREE.AdditiveBlending}
         />
       </points>
 
@@ -561,8 +561,8 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         <meshBasicMaterial
           color={isHovered || isFocused ? softenedThemeHex : idleGlowHex}
           transparent
-          opacity={(isHovered || isFocused ? shapeProfile.glowHover * 0.48 : isLastVisited ? shapeProfile.glowHover * 0.72 : isVisited ? shapeProfile.glowIdle * 1.35 : shapeProfile.glowIdle) * (visualMode === 'silent' ? 0.36 : visualMode === 'focus' ? 0.64 : 1)}
-          blending={THREE.AdditiveBlending}
+          opacity={(isHovered || isFocused ? shapeProfile.glowHover * 0.82 : isLastVisited ? shapeProfile.glowHover * 0.72 : isVisited ? shapeProfile.glowIdle * 1.35 : shapeProfile.glowIdle) * (visualMode === 'silent' ? 0.36 : visualMode === 'focus' ? 0.64 : 1)}
+          blending={isHovered || isFocused ? THREE.NormalBlending : THREE.AdditiveBlending}
           depthWrite={false}
         />
       </mesh>
