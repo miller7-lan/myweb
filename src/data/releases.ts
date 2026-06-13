@@ -36,6 +36,11 @@ export type ReleaseItem = {
     value: string;
     icon: LucideIcon;
   }>;
+  screenshots?: Array<{
+    src: string;
+    alt: string;
+    caption: string;
+  }>;
   scenes?: string[];
   keywords: string[];
 };
@@ -73,6 +78,13 @@ export const releases: ReleaseItem[] = [
       { label: '分辨率', value: '1280 × 720+', icon: Monitor },
       { label: '网络', value: '首次需联网', icon: Network },
     ],
+    screenshots: [
+      {
+        src: '/release-screenshots/dazzle-secretary.png',
+        alt: 'Dazzle Secretary 团支部智能核查系统界面',
+        caption: '团支部智能核查系统 · Streamlit 工作台',
+      },
+    ],
     keywords: ['secretary', '名单', 'ocr', '统计', '提醒', 'android', 'windows', 'macos'],
   },
   {
@@ -97,6 +109,13 @@ export const releases: ReleaseItem[] = [
       '快速演示：把本地 Web 服务临时公开给客户或团队。',
       '多服务商：支持 Cloudflare Tunnel、Pinggy 等一键切换。',
       '可视化控制：复制链接、断开连接、管理历史记录一目了然。',
+    ],
+    screenshots: [
+      {
+        src: '/release-screenshots/tunnel-console.png',
+        alt: '内网穿透控制台快速穿透界面',
+        caption: '快速穿透 · 隧道创建与运行日志',
+      },
     ],
     keywords: ['tunnel', '内网穿透', '公网', 'cloudflare', 'pinggy', 'macos', '端口'],
   },
@@ -130,6 +149,13 @@ export const releases: ReleaseItem[] = [
       '灵活字段：支持自定义字段和利润计算口径。',
       '趋势看板：录入、历史、统计视图围绕日常记账闭环设计。',
     ],
+    screenshots: [
+      {
+        src: '/release-screenshots/profit-assistant.png',
+        alt: '利润助手数据看板界面',
+        caption: '数据看板 · 本地利润统计视图',
+      },
+    ],
     keywords: ['profit', '利润助手', '记账', '家庭利润', 'sqlite', 'macos', 'android', 'apk', '本地应用'],
   },
   {
@@ -160,6 +186,13 @@ export const releases: ReleaseItem[] = [
       '悬浮观察：长时间下载、编译或运行任务时快速查看本机负载。',
       '网络判断：同时观察网络速率和代理出口 IP。',
       '轻量常驻：原生状态面板减少额外运行负担。',
+    ],
+    screenshots: [
+      {
+        src: '/release-screenshots/local-monitor.png',
+        alt: '本机检测内存悬浮状态窗',
+        caption: '悬浮状态窗 · 内存负载速览',
+      },
     ],
     keywords: ['monitor', '本机检测', '系统监测', 'cpu', '内存', '网络', '代理', 'macos'],
   },
