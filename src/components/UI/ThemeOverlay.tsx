@@ -1,13 +1,16 @@
-import React, { useEffect } from 'react';
-import { useGalaxyStore } from '../../store/useGalaxyStore';
+import React, { lazy, Suspense, useEffect } from 'react';
+import { useGalaxyStore, type NonNullThemeKey } from '../../store/useGalaxyStore';
 import { themes } from '../../data/themes';
 import { ArrowLeft } from 'lucide-react';
 import gsap from 'gsap';
-import { IdentityContent } from '../Themes/IdentityContent';
-import { CreationsContent } from '../Themes/CreationsContent';
-import { StackContent } from '../Themes/StackContent';
-import { OrbitContent } from '../Themes/OrbitContent';
-import { SignalContent } from '../Themes/SignalContent';
+
+const themeContentModules: Record<NonNullThemeKey, React.LazyExoticComponent<React.FC>> = {
+  identity: lazy(() => import('../Themes/IdentityContent').then((module) => ({ default: module.IdentityContent }))),
+  creations: lazy(() => import('../Themes/CreationsContent').then((module) => ({ default: module.CreationsContent }))),
+  stack: lazy(() => import('../Themes/StackContent').then((module) => ({ default: module.StackContent }))),
+  orbit: lazy(() => import('../Themes/OrbitContent').then((module) => ({ default: module.OrbitContent }))),
+  signal: lazy(() => import('../Themes/SignalContent').then((module) => ({ default: module.SignalContent }))),
+};
 
 export const ThemeOverlay: React.FC = () => {
   const { viewState, activeTheme, setViewState } = useGalaxyStore();
@@ -80,16 +83,7 @@ export const ThemeOverlay: React.FC = () => {
 
   if (!isVisible || !theme) return null;
 
-  const renderContent = () => {
-    switch (activeTheme) {
-      case 'identity': return <IdentityContent />;
-      case 'creations': return <CreationsContent />;
-      case 'stack': return <StackContent />;
-      case 'orbit': return <OrbitContent />;
-      case 'signal': return <SignalContent />;
-      default: return null;
-    }
-  };
+  const ActiveThemeContent = activeTheme ? themeContentModules[activeTheme] : null;
 
   return (
     <div
@@ -137,7 +131,9 @@ export const ThemeOverlay: React.FC = () => {
       <div className="absolute inset-0 pointer-events-auto overflow-y-auto z-30 flex flex-col pt-36 md:pt-44" data-guide-scroll-container="theme">
         <div className="w-full max-w-6xl mx-auto px-8 md:px-16 flex flex-col flex-1 min-h-full pb-24">
           <div className="theme-content opacity-0 flex-1" data-guide-id={activeTheme ? `theme-${activeTheme}` : undefined}>
-            {renderContent()}
+            <Suspense fallback={null}>
+              {ActiveThemeContent ? <ActiveThemeContent /> : null}
+            </Suspense>
           </div>
         </div>
       </div>
