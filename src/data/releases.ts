@@ -19,6 +19,12 @@ export type ReleaseDownload = {
   sha256?: string;
 };
 
+export type ReleaseScreenshot = {
+  src: string;
+  alt: string;
+  caption: string;
+};
+
 export type ReleaseItem = {
   key: ReleaseKey;
   title: string;
@@ -36,11 +42,7 @@ export type ReleaseItem = {
     value: string;
     icon: LucideIcon;
   }>;
-  screenshots?: Array<{
-    src: string;
-    alt: string;
-    caption: string;
-  }>;
+  screenshots?: ReleaseScreenshot[];
   scenes?: string[];
   keywords: string[];
 };

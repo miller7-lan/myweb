@@ -169,6 +169,34 @@ canvas {
     animation: download-thanks-in 360ms cubic-bezier(0.18, 1.08, 0.22, 1) both;
   }
 
+  .release-preview-backdrop {
+    background:
+      radial-gradient(circle at var(--release-preview-backdrop-x, 50%) var(--release-preview-backdrop-y, 50%), color-mix(in srgb, var(--theme-color, #a78bfa) 14%, transparent), transparent 24rem),
+      rgba(0, 0, 0, 0.64);
+    will-change: opacity, backdrop-filter;
+  }
+
+  .release-preview-backdrop.is-opening {
+    animation: release-preview-backdrop-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .release-preview-backdrop.is-closing {
+    animation: release-preview-backdrop-out 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  .release-preview-card {
+    transform-origin: var(--release-preview-origin-x, 50%) var(--release-preview-origin-y, 50%);
+    will-change: transform, opacity, filter, border-radius;
+  }
+
+  .release-preview-card.is-opening {
+    animation: release-preview-card-open 540ms cubic-bezier(0.18, 1.08, 0.22, 1) both;
+  }
+
+  .release-preview-card.is-closing {
+    animation: release-preview-card-close 320ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
   @keyframes announcement-backdrop-in {
     from {
       opacity: 0;
@@ -290,6 +318,64 @@ canvas {
       opacity: 0;
       transform: translateY(12px) scale(0.97);
       filter: blur(8px);
+    }
+  }
+
+  @keyframes release-preview-backdrop-in {
+    from {
+      opacity: 0;
+      backdrop-filter: blur(0);
+    }
+    to {
+      opacity: 1;
+      backdrop-filter: blur(14px);
+    }
+  }
+
+  @keyframes release-preview-backdrop-out {
+    from {
+      opacity: 1;
+      backdrop-filter: blur(14px);
+    }
+    to {
+      opacity: 0;
+      backdrop-filter: blur(0);
+    }
+  }
+
+  @keyframes release-preview-card-open {
+    0% {
+      opacity: 0;
+      transform: translateY(14px) scale(0.18);
+      border-radius: 1rem;
+      filter: blur(10px) brightness(1.18);
+    }
+    62% {
+      opacity: 1;
+      transform: translateY(-2px) scale(1.012);
+      border-radius: 1.9rem;
+      filter: blur(0) brightness(1.05);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      border-radius: 1.75rem;
+      filter: blur(0) brightness(1);
+    }
+  }
+
+  @keyframes release-preview-card-close {
+    0% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      border-radius: 1.75rem;
+      filter: blur(0) brightness(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(14px) scale(0.18);
+      border-radius: 1rem;
+      filter: blur(10px) brightness(1.12);
     }
   }
 
