@@ -1,15 +1,107 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownToLine, CheckCircle2, Search, X } from 'lucide-react';
-import { isReleaseKey, releases, type ReleaseDownload, type ReleaseKey } from '../../data/releases';
+import { isReleaseKey, releases, type ReleaseDownload, type ReleaseKey, type ReleaseScreenshot } from '../../data/releases';
 
 type DownloadNotice = {
   label: string;
   releaseTitle: string;
 };
 
+type PreviewOrigin = {
+  x: number;
+  y: number;
+};
+
+type ScreenshotPreview = {
+  screenshot: ReleaseScreenshot;
+  releaseTitle: string;
+  platform: string;
+  origin: PreviewOrigin;
+};
+
 const normalizeSearch = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
 const searchTokens = (value: string) => normalizeSearch(value).split(/\s+/).filter(Boolean);
+
+const ReleasePreviewBubble: React.FC<{
+  preview: ScreenshotPreview;
+  isClosing: boolean;
+  onClose: () => void;
+}> = ({ preview, isClosing, onClose }) => {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    card.style.setProperty('--release-preview-origin-x', `${preview.origin.x - rect.left}px`);
+    card.style.setProperty('--release-preview-origin-y', `${preview.origin.y - rect.top}px`);
+  }, [preview]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className={`release-preview-backdrop fixed inset-0 z-[170] flex items-center justify-center px-4 py-8 ${isClosing ? 'is-closing' : 'is-opening'}`}
+      style={{
+        ['--release-preview-backdrop-x' as string]: `${preview.origin.x}px`,
+        ['--release-preview-backdrop-y' as string]: `${preview.origin.y}px`,
+      }}
+      onMouseDown={onClose}
+      role="presentation"
+    >
+      <div
+        ref={cardRef}
+        className={`release-preview-card hud-panel w-full max-w-5xl rounded-[1.75rem] p-4 md:p-5 ${isClosing ? 'is-closing' : 'is-opening'}`}
+        onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${preview.releaseTitle} 应用预览`}
+        style={{ ['--theme-color' as string]: '#a78bfa' }}
+      >
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="hud-kicker mb-2">
+              <span className="hud-dot" />
+              <span>APPLICATION PREVIEW</span>
+            </div>
+            <h3 className="truncate text-xl font-light tracking-wide text-white md:text-2xl">{preview.releaseTitle}</h3>
+            <p className="mt-1 text-sm font-light text-gray-400">{preview.platform}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="关闭应用预览"
+            className="shrink-0 rounded-full border border-white/10 bg-white/[0.035] p-2.5 text-gray-400 transition-colors hover:border-white/25 hover:text-white"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#020204]/72 shadow-[inset_0_0_40px_rgba(255,255,255,0.025)]">
+          <div className="relative aspect-[16/10] bg-[radial-gradient(circle_at_50%_0%,rgba(196,181,253,0.10),transparent_48%),rgba(255,255,255,0.025)] p-3 md:p-4">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.03] via-transparent to-black/20" />
+            <img
+              src={preview.screenshot.src}
+              alt={preview.screenshot.alt}
+              className="relative h-full w-full rounded-xl border border-white/[0.08] object-contain object-top shadow-[0_24px_80px_rgba(0,0,0,0.34)]"
+            />
+          </div>
+          <div className="border-t border-white/[0.06] px-4 py-3 text-sm font-light leading-relaxed text-gray-300">
+            {preview.screenshot.caption}
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
 
 export const OrbitContent: React.FC = () => {
   const [activeRelease, setActiveRelease] = useState<ReleaseKey>(() => {
@@ -23,6 +115,9 @@ export const OrbitContent: React.FC = () => {
   const [pingResults, setPingResults] = useState<Record<string, number>>({});
   const [eccentricity, setEccentricity] = useState(1.0);
   const [downloadNotice, setDownloadNotice] = useState<DownloadNotice | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<ScreenshotPreview | null>(null);
+  const [isPreviewClosing, setIsPreviewClosing] = useState(false);
+  const previewCloseTimer = useRef<number | null>(null);
 
   useEffect(() => {
     const handleGuideOpen = (event: WindowEventMap['galaxy-guide-open']) => {
@@ -43,6 +138,12 @@ export const OrbitContent: React.FC = () => {
     const timer = window.setTimeout(() => setDownloadNotice(null), 3600);
     return () => window.clearTimeout(timer);
   }, [downloadNotice]);
+
+  useEffect(() => {
+    return () => {
+      if (previewCloseTimer.current) window.clearTimeout(previewCloseTimer.current);
+    };
+  }, []);
 
   const runOrbitPing = () => {
     setIsScanning(true);
@@ -67,6 +168,31 @@ export const OrbitContent: React.FC = () => {
       releaseTitle: activeItem.title,
     });
   };
+
+  const openScreenshotPreview = (screenshot: ReleaseScreenshot, element: HTMLElement) => {
+    if (previewCloseTimer.current) window.clearTimeout(previewCloseTimer.current);
+    const rect = element.getBoundingClientRect();
+    setIsPreviewClosing(false);
+    setScreenshotPreview({
+      screenshot,
+      releaseTitle: activeItem.title,
+      platform: activeItem.platform,
+      origin: {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      },
+    });
+  };
+
+  const closeScreenshotPreview = useCallback(() => {
+    if (!screenshotPreview || isPreviewClosing) return;
+    setIsPreviewClosing(true);
+    previewCloseTimer.current = window.setTimeout(() => {
+      setScreenshotPreview(null);
+      setIsPreviewClosing(false);
+      previewCloseTimer.current = null;
+    }, 320);
+  }, [isPreviewClosing, screenshotPreview]);
 
 
   const normalizedQuery = normalizeSearch(searchQuery);
@@ -133,6 +259,14 @@ export const OrbitContent: React.FC = () => {
           </div>
         </div>,
         document.body
+      )}
+
+      {screenshotPreview && (
+        <ReleasePreviewBubble
+          preview={screenshotPreview}
+          isClosing={isPreviewClosing}
+          onClose={closeScreenshotPreview}
+        />
       )}
 
       <div className="mb-10">
@@ -313,9 +447,12 @@ export const OrbitContent: React.FC = () => {
             <h3 className="mb-6 text-xl font-light text-gray-200">应用预览</h3>
             <div className="grid gap-4 md:grid-cols-2">
               {activeItem.screenshots.map((screenshot) => (
-                <figure
+                <button
                   key={screenshot.src}
-                  className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#05070d]/72 shadow-[0_18px_70px_rgba(0,0,0,0.34)]"
+                  type="button"
+                  onClick={(event) => openScreenshotPreview(screenshot, event.currentTarget)}
+                  className="group overflow-hidden rounded-xl border border-white/[0.07] bg-[#05070d]/72 text-left shadow-[0_18px_70px_rgba(0,0,0,0.34)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--theme-color)]/30 hover:bg-white/[0.035] hover:shadow-[0_24px_90px_rgba(0,0,0,0.44)] focus:outline-none focus-visible:border-[var(--theme-color)]/50 focus-visible:ring-2 focus-visible:ring-[var(--theme-color)]/20"
+                  aria-label={`打开预览：${screenshot.caption}`}
                 >
                   <div className="relative aspect-[16/10] bg-[radial-gradient(circle_at_50%_0%,rgba(196,181,253,0.10),transparent_44%),rgba(255,255,255,0.025)] p-3">
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.025] to-black/20" />
@@ -323,13 +460,18 @@ export const OrbitContent: React.FC = () => {
                       src={screenshot.src}
                       alt={screenshot.alt}
                       loading="lazy"
-                      className="relative h-full w-full rounded-lg border border-white/[0.08] object-contain object-top opacity-85 brightness-[0.78] contrast-[1.04] saturate-[0.82]"
+                      className="relative h-full w-full rounded-lg border border-white/[0.08] object-contain object-top opacity-85 brightness-[0.78] contrast-[1.04] saturate-[0.82] transition duration-300 group-hover:opacity-95 group-hover:brightness-[0.88] group-hover:saturate-[0.9]"
                     />
+                    <div className="pointer-events-none absolute inset-x-3 bottom-3 flex justify-end">
+                      <span className="rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-gray-300 opacity-0 backdrop-blur-md transition-opacity duration-300 group-hover:opacity-100">
+                        View
+                      </span>
+                    </div>
                   </div>
-                  <figcaption className="border-t border-white/[0.06] px-4 py-3 text-xs font-light tracking-wide text-gray-400">
+                  <div className="border-t border-white/[0.06] px-4 py-3 text-xs font-light tracking-wide text-gray-400 transition-colors duration-300 group-hover:text-gray-200">
                     {screenshot.caption}
-                  </figcaption>
-                </figure>
+                  </div>
+                </button>
               ))}
             </div>
           </div>
