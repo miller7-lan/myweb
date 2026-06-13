@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { Activity, ArrowRight, Bot, Calculator, Cpu, Eye, FolderSearch, Moon, Network, Route, Search, SearchCode, X, type LucideIcon } from 'lucide-react';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
+import type { DownloadableReleaseKey } from '../../data/releases';
 
 type Project = {
   title: string;
@@ -14,7 +15,7 @@ type Project = {
   design: string[];
   techStack: string[];
   highlights: string[];
-  releaseTarget?: 'secretary' | 'tunnel' | 'profit' | 'localMonitor';
+  releaseTarget?: DownloadableReleaseKey;
 };
 
 const projects: Project[] = [

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CornerDownRight, LocateFixed, Minus, Search } from 'lucide-react';
 import { guideTargets, petPrompts, type GuideTarget, type PetMood } from '../../data/guide';
@@ -275,7 +275,7 @@ const randomBubbleMode = (): BubbleMode => {
 const bubbleWidthRem = (text: string, mode: BubbleMode) => {
   if (mode === 'emoji') return 4.6;
   const base = mode === 'mixed' ? 3.8 : 4.4;
-  const charWidth = /[^\x00-\xff]/.test(text) ? 0.58 : 0.38;
+  const charWidth = Array.from(text).some((char) => char.codePointAt(0)! > 255) ? 0.58 : 0.38;
   const max = mode === 'mixed' ? 10.8 : 12.25;
   return Math.min(max, Math.max(6.4, base + text.length * charWidth));
 };
@@ -326,7 +326,7 @@ export const GuidePet: React.FC = () => {
   }, [inputValue]);
   const queryPattern = useMemo(() => parseGuideRegex(inputValue)?.source ?? null, [inputValue]);
 
-  const hideBubble = (force = false) => {
+  const hideBubble = useCallback((force = false) => {
     if (!force && !bubbleVisible && !bubbleClosing) return;
     if (bubbleTimerRef.current) {
       window.clearTimeout(bubbleTimerRef.current);
@@ -337,7 +337,7 @@ export const GuidePet: React.FC = () => {
       setBubbleVisible(false);
       setBubbleClosing(false);
     }, 220);
-  };
+  }, [bubbleClosing, bubbleVisible]);
 
   const showBubble = (
     text: string,
@@ -383,8 +383,9 @@ export const GuidePet: React.FC = () => {
   };
 
   useEffect(() => {
-    hideBubble();
-  }, [activeTheme]);
+    const timer = window.setTimeout(() => hideBubble(), 0);
+    return () => window.clearTimeout(timer);
+  }, [activeTheme, hideBubble]);
 
   useEffect(() => {
     if (idleTimerRef.current) window.clearInterval(idleTimerRef.current);
@@ -397,7 +398,7 @@ export const GuidePet: React.FC = () => {
     return () => {
       if (idleTimerRef.current) window.clearInterval(idleTimerRef.current);
     };
-  }, [bubbleVisible, panelOpen, visualMode]);
+  }, [hideBubble, visualMode]);
 
   useEffect(() => {
     return () => {
@@ -410,6 +411,7 @@ export const GuidePet: React.FC = () => {
   useEffect(() => {
     let timer: number | null = null;
     let nextActionTimer: number | null = null;
+    let startTimer: number | null = null;
     
     const runFrameSequence = async (
       sequence: { frame: number; duration: number; action?: IdleAction }[],
@@ -456,52 +458,55 @@ export const GuidePet: React.FC = () => {
       }, delay);
     };
 
-    if (mood === 'thinking') {
-      setIdleAction('scan');
-      const runThinkingLoop = () => {
-        const delay = Math.random() * 2000 + 1500;
-        timer = window.setTimeout(async () => {
-          setFrameIndex(1);
-          await new Promise(r => { timer = window.setTimeout(r, 120); });
-          setFrameIndex(3);
-          runThinkingLoop();
-        }, delay);
-      };
-      setFrameIndex(3);
-      runThinkingLoop();
-    } else if (mood === 'guiding') {
-      setIdleAction('wave');
-      const runGuidingLoop = () => {
-        const cycle = [0, 2, 3];
-        let step = 0;
-        const nextStep = () => {
-          setFrameIndex(cycle[step]);
-          step = (step + 1) % cycle.length;
-          timer = window.setTimeout(nextStep, 250);
+    startTimer = window.setTimeout(() => {
+      if (mood === 'thinking') {
+        setIdleAction('scan');
+        const runThinkingLoop = () => {
+          const delay = Math.random() * 2000 + 1500;
+          timer = window.setTimeout(async () => {
+            setFrameIndex(1);
+            await new Promise(r => { timer = window.setTimeout(r, 120); });
+            setFrameIndex(3);
+            runThinkingLoop();
+          }, delay);
         };
-        nextStep();
-      };
-      runGuidingLoop();
-    } else if (mood === 'success') {
-      setIdleAction('wave');
-      const runSuccessLoop = () => {
-        const delay = Math.random() * 3000 + 2000;
-        timer = window.setTimeout(async () => {
-          setFrameIndex(1);
-          await new Promise(r => { timer = window.setTimeout(r, 120); });
-          setFrameIndex(2);
-          runSuccessLoop();
-        }, delay);
-      };
-      setFrameIndex(2);
-      runSuccessLoop();
-    } else {
-      setFrameIndex(0);
-      setIdleAction('rest');
-      scheduleNextExpression();
-    }
+        setFrameIndex(3);
+        runThinkingLoop();
+      } else if (mood === 'guiding') {
+        setIdleAction('wave');
+        const runGuidingLoop = () => {
+          const cycle = [0, 2, 3];
+          let step = 0;
+          const nextStep = () => {
+            setFrameIndex(cycle[step]);
+            step = (step + 1) % cycle.length;
+            timer = window.setTimeout(nextStep, 250);
+          };
+          nextStep();
+        };
+        runGuidingLoop();
+      } else if (mood === 'success') {
+        setIdleAction('wave');
+        const runSuccessLoop = () => {
+          const delay = Math.random() * 3000 + 2000;
+          timer = window.setTimeout(async () => {
+            setFrameIndex(1);
+            await new Promise(r => { timer = window.setTimeout(r, 120); });
+            setFrameIndex(2);
+            runSuccessLoop();
+          }, delay);
+        };
+        setFrameIndex(2);
+        runSuccessLoop();
+      } else {
+        setFrameIndex(0);
+        setIdleAction('rest');
+        scheduleNextExpression();
+      }
+    }, 0);
 
     return () => {
+      if (startTimer) window.clearTimeout(startTimer);
       if (timer) window.clearTimeout(timer);
       if (nextActionTimer) window.clearTimeout(nextActionTimer);
       setIdleAction('rest');
@@ -523,6 +528,25 @@ export const GuidePet: React.FC = () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);
     };
+  }, []);
+
+  const finishDrag = useCallback((clientX: number, clientY: number) => {
+    const dragState = dragStateRef.current;
+    if (!dragState) return;
+
+    const finalPosition = clampPetPosition({
+      x: dragState.originX + clientX - dragState.startX,
+      y: dragState.originY + clientY - dragState.startY,
+    });
+    setPetPosition(finalPosition);
+    window.localStorage.setItem(petPositionStorageKey, JSON.stringify(finalPosition));
+    suppressNextClickRef.current = dragState.moved;
+    if (dragState.moved && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    dragStateRef.current = null;
+    setIsDragging(false);
+    setDragDirection('idle');
   }, []);
 
   useEffect(() => {
@@ -548,26 +572,7 @@ export const GuidePet: React.FC = () => {
       window.removeEventListener('mouseup', handleMouseDone);
       window.removeEventListener('blur', handleBlur);
     };
-  }, [isDragging]);
-
-  const finishDrag = (clientX: number, clientY: number) => {
-    const dragState = dragStateRef.current;
-    if (!dragState) return;
-
-    const finalPosition = clampPetPosition({
-      x: dragState.originX + clientX - dragState.startX,
-      y: dragState.originY + clientY - dragState.startY,
-    });
-    setPetPosition(finalPosition);
-    window.localStorage.setItem(petPositionStorageKey, JSON.stringify(finalPosition));
-    suppressNextClickRef.current = dragState.moved;
-    if (dragState.moved && document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-    dragStateRef.current = null;
-    setIsDragging(false);
-    setDragDirection('idle');
-  };
+  }, [finishDrag, isDragging]);
 
   const addChat = (line: ChatLine) => {
     setChatLines((lines) => [...lines.slice(-5), line]);
