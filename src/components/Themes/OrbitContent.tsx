@@ -83,6 +83,7 @@ export const OrbitContent: React.FC = () => {
         release.platform,
         release.primaryDownload?.label ?? '',
         ...(release.links ?? []).map((link) => link.label),
+        ...(release.screenshots ?? []).flatMap((screenshot) => [screenshot.alt, screenshot.caption]),
         ...release.keywords,
         ...(release.scenes ?? []),
       ].join(' ').toLowerCase();
@@ -306,6 +307,33 @@ export const OrbitContent: React.FC = () => {
             </div>
           )}
         </div>
+
+        {activeItem.screenshots && (
+          <div className="mb-8" data-guide-id="release-preview">
+            <h3 className="mb-6 text-xl font-light text-gray-200">应用预览</h3>
+            <div className="grid gap-4 md:grid-cols-2">
+              {activeItem.screenshots.map((screenshot) => (
+                <figure
+                  key={screenshot.src}
+                  className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#05070d]/72 shadow-[0_18px_70px_rgba(0,0,0,0.34)]"
+                >
+                  <div className="relative aspect-[16/10] bg-[radial-gradient(circle_at_50%_0%,rgba(196,181,253,0.10),transparent_44%),rgba(255,255,255,0.025)] p-3">
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.025] to-black/20" />
+                    <img
+                      src={screenshot.src}
+                      alt={screenshot.alt}
+                      loading="lazy"
+                      className="relative h-full w-full rounded-lg border border-white/[0.08] object-contain object-top opacity-85 brightness-[0.78] contrast-[1.04] saturate-[0.82]"
+                    />
+                  </div>
+                  <figcaption className="border-t border-white/[0.06] px-4 py-3 text-xs font-light tracking-wide text-gray-400">
+                    {screenshot.caption}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        )}
 
         {activeItem.specs && (
           <div data-guide-id="release-specs">
