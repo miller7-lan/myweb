@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { particleVertexShader, particleFragmentShader } from '../../shaders/particles';
-import { useGalaxyStore } from '../../store/useGalaxyStore';
+import { themeCount, useGalaxyStore } from '../../store/useGalaxyStore';
 import { themes } from '../../data/themes';
 import { createSeededRandom } from '../../utils/random';
 
@@ -22,7 +22,7 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
   const [completionGlow, setCompletionGlow] = useState(false);
   const isVisible = viewState === 'HOME' || viewState === 'HOVER_PLANET';
   const canTriggerFirework = isVisible && visualMode !== 'silent';
-  const isComplete = Object.values(visitedThemes).filter(Boolean).length === 5;
+  const isComplete = Object.values(visitedThemes).filter(Boolean).length === themeCount;
   const lockedColor = completionGlow ? '#f8fafc' : hoveredPlanet ? themes[hoveredPlanet].color : '#e2e8f0';
   const shownCompletionPulseId = useRef(0);
 

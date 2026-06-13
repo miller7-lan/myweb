@@ -5,6 +5,9 @@ export type ThemeKey = 'identity' | 'creations' | 'stack' | 'orbit' | 'signal' |
 export type NonNullThemeKey = Exclude<ThemeKey, null>;
 export type VisualMode = 'cinematic' | 'focus' | 'silent';
 
+const themeKeys: NonNullThemeKey[] = ['identity', 'creations', 'stack', 'orbit', 'signal'];
+export const themeCount = themeKeys.length;
+
 interface GalaxyState {
   viewState: ViewState;
   hoveredPlanet: ThemeKey;
@@ -33,6 +36,24 @@ const readInitialVisualMode = (): VisualMode => {
     : 'cinematic';
 };
 
+const markThemeVisited = (state: GalaxyState, theme: NonNullThemeKey) => {
+  const wasVisited = Boolean(state.visitedThemes[theme]);
+  const visitedThemes = {
+    ...state.visitedThemes,
+    [theme]: true,
+  };
+  const visitSequence = wasVisited ? state.visitSequence : [...state.visitSequence, theme];
+  const wasComplete = Object.keys(state.visitedThemes).length === themeCount;
+  const isComplete = Object.keys(visitedThemes).length === themeCount;
+
+  return {
+    visitedThemes,
+    visitSequence,
+    lastVisitedTheme: theme,
+    completionPulseId: !wasComplete && isComplete ? state.completionPulseId + 1 : state.completionPulseId,
+  };
+};
+
 export const useGalaxyStore = create<GalaxyState>((set) => ({
   viewState: 'HOME',
   hoveredPlanet: null,
@@ -57,39 +78,12 @@ export const useGalaxyStore = create<GalaxyState>((set) => ({
       return { activeTheme: null };
     }
 
-    const wasVisited = Boolean(state.visitedThemes[theme]);
-    const visitedThemes = {
-      ...state.visitedThemes,
-      [theme]: true,
-    };
-    const visitSequence = wasVisited ? state.visitSequence : [...state.visitSequence, theme];
-    const wasComplete = Object.keys(state.visitedThemes).length === 5;
-    const isComplete = Object.keys(visitedThemes).length === 5;
-
     return {
+      ...markThemeVisited(state, theme),
       activeTheme: theme,
-      visitedThemes,
-      visitSequence,
-      lastVisitedTheme: theme,
-      completionPulseId: !wasComplete && isComplete ? state.completionPulseId + 1 : state.completionPulseId,
     };
   }),
-  visitTheme: (theme) => set((state) => {
-    const wasVisited = Boolean(state.visitedThemes[theme]);
-    const visitedThemes = {
-      ...state.visitedThemes,
-      [theme]: true,
-    };
-    const wasComplete = Object.keys(state.visitedThemes).length === 5;
-    const isComplete = Object.keys(visitedThemes).length === 5;
-
-    return {
-      visitedThemes,
-      visitSequence: wasVisited ? state.visitSequence : [...state.visitSequence, theme],
-      lastVisitedTheme: theme,
-      completionPulseId: !wasComplete && isComplete ? state.completionPulseId + 1 : state.completionPulseId,
-    };
-  }),
+  visitTheme: (theme) => set((state) => markThemeVisited(state, theme)),
   triggerCoreFirework: () => set((state) => ({ coreFireworkId: state.coreFireworkId + 1 })),
   setVisualMode: (mode) => set(() => {
     if (typeof window !== 'undefined') {
@@ -98,20 +92,10 @@ export const useGalaxyStore = create<GalaxyState>((set) => ({
 
     return { visualMode: mode };
   }),
-  setPlanetPosition: (theme, x, y, z) => set((state) => {
-    const position = state.planetPositions[theme];
-    if (!position) {
-      return {
-        planetPositions: {
-          ...state.planetPositions,
-          [theme]: [x, y, z],
-        },
-      };
-    }
-
-    position[0] = x;
-    position[1] = y;
-    position[2] = z;
-    return state;
-  }),
+  setPlanetPosition: (theme, x, y, z) => set((state) => ({
+    planetPositions: {
+      ...state.planetPositions,
+      [theme]: [x, y, z],
+    },
+  })),
 }));

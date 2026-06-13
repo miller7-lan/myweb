@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Gauge, Moon, Sparkles, type LucideIcon } from 'lucide-react';
-import { useGalaxyStore, type NonNullThemeKey, type VisualMode } from '../../store/useGalaxyStore';
+import { themeCount, useGalaxyStore, type NonNullThemeKey, type VisualMode } from '../../store/useGalaxyStore';
 import { themes } from '../../data/themes';
 
 const announcements = [
@@ -44,7 +44,7 @@ export const UIOverlay: React.FC = () => {
   const focusedTheme = hoveredPlanet ? themes[hoveredPlanet] : null;
   const lastVisited = lastVisitedTheme ? themes[lastVisitedTheme] : null;
   const visitedCount = themeListLength(visitedThemes);
-  const isComplete = visitedCount === 5;
+  const isComplete = visitedCount === themeCount;
   const hudThemeColor = focusedTheme?.color ?? (isComplete ? '#f8fafc' : lastVisited?.color) ?? '#e2e8f0';
   const focusedThemeKey = focusedTheme?.key as NonNullThemeKey | undefined;
   const hudTitle = focusedTheme && focusedThemeKey
@@ -57,12 +57,12 @@ export const UIOverlay: React.FC = () => {
   const hudText = focusedTheme && focusedThemeKey
     ? `${focusedTheme.subtitle} · ${focusedTheme.chineseName} · ${visitedThemes[focusedThemeKey] ? 'VISITED' : 'LOCKED'}`
     : completionPulseId > 0 && isComplete
-      ? `ALL FIVE MODULES ONLINE · ${visitSequence.length}/5`
+      ? `ALL ${themeCount} MODULES ONLINE · ${visitSequence.length}/${themeCount}`
       : lastVisited
-        ? `${lastVisited.title} · ${lastVisited.chineseName} · ${visitedCount}/5 MODULES SYNCED`
+        ? `${lastVisited.title} · ${lastVisited.chineseName} · ${visitedCount}/${themeCount} MODULES SYNCED`
         : isMobilePortrait
-          ? 'FIVE SIGNALS ONLINE · 点击星球进入档案'
-          : 'ORBITING FIVE MODULES · 点击星球或导航进入档案';
+          ? `${themeCount} SIGNALS ONLINE · 点击星球进入档案`
+          : `ORBITING ${themeCount} MODULES · 点击星球或导航进入档案`;
   const mobileLabels: Record<string, string> = {
     identity: 'ID',
     creations: 'WORK',
@@ -137,9 +137,10 @@ export const UIOverlay: React.FC = () => {
         setViewState('HOVER_PLANET');
       };
 
-      if (/^[1-5]$/.test(event.key)) {
+      const requestedThemeIndex = Number(event.key) - 1;
+      if (Number.isInteger(requestedThemeIndex) && requestedThemeIndex >= 0 && requestedThemeIndex < themeList.length) {
         event.preventDefault();
-        lockTheme(Number(event.key) - 1);
+        lockTheme(requestedThemeIndex);
         return;
       }
 
