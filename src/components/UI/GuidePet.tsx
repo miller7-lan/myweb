@@ -302,10 +302,13 @@ export const GuidePet: React.FC = () => {
   ]);
   const idleTimerRef = useRef<number | null>(null);
   const bubbleTimerRef = useRef<number | null>(null);
+  const bubbleCloseTimerRef = useRef<number | null>(null);
   const panelOpenTimerRef = useRef<number | null>(null);
   const panelCloseTimerRef = useRef<number | null>(null);
   const dragStateRef = useRef<DragState | null>(null);
   const suppressNextClickRef = useRef(false);
+  const bubbleVisibleRef = useRef(bubbleVisible);
+  const bubbleClosingRef = useRef(bubbleClosing);
   const visibleTheme = activeTheme ?? hoveredPlanet;
   const themeColor = visibleTheme ? themes[visibleTheme].color : '#e2e8f0';
   const isInTheme = viewState === 'THEME' || viewState === 'LEAVING_THEME' || viewState === 'ENTERING_THEME';
@@ -326,18 +329,43 @@ export const GuidePet: React.FC = () => {
   }, [inputValue]);
   const queryPattern = useMemo(() => parseGuideRegex(inputValue)?.source ?? null, [inputValue]);
 
-  const hideBubble = useCallback((force = false) => {
-    if (!force && !bubbleVisible && !bubbleClosing) return;
+  useEffect(() => {
+    bubbleVisibleRef.current = bubbleVisible;
+    bubbleClosingRef.current = bubbleClosing;
+  }, [bubbleClosing, bubbleVisible]);
+
+  const clearBubbleTimers = useCallback(() => {
     if (bubbleTimerRef.current) {
       window.clearTimeout(bubbleTimerRef.current);
       bubbleTimerRef.current = null;
     }
+    if (bubbleCloseTimerRef.current) {
+      window.clearTimeout(bubbleCloseTimerRef.current);
+      bubbleCloseTimerRef.current = null;
+    }
+  }, []);
+
+  const hideBubbleImmediately = useCallback(() => {
+    clearBubbleTimers();
+    bubbleVisibleRef.current = false;
+    bubbleClosingRef.current = false;
+    setBubbleVisible(false);
+    setBubbleClosing(false);
+  }, [clearBubbleTimers]);
+
+  const hideBubble = useCallback((force = false) => {
+    if (!force && !bubbleVisibleRef.current && !bubbleClosingRef.current) return;
+    clearBubbleTimers();
+    bubbleClosingRef.current = true;
     setBubbleClosing(true);
-    window.setTimeout(() => {
+    bubbleCloseTimerRef.current = window.setTimeout(() => {
+      bubbleVisibleRef.current = false;
+      bubbleClosingRef.current = false;
       setBubbleVisible(false);
       setBubbleClosing(false);
+      bubbleCloseTimerRef.current = null;
     }, 220);
-  }, [bubbleClosing, bubbleVisible]);
+  }, [clearBubbleTimers]);
 
   const showBubble = (
     text: string,
@@ -345,13 +373,12 @@ export const GuidePet: React.FC = () => {
     mode: BubbleMode = emoji ? 'mixed' : 'text',
     autoHideMs = 4200,
   ) => {
-    if (bubbleTimerRef.current) {
-      window.clearTimeout(bubbleTimerRef.current);
-      bubbleTimerRef.current = null;
-    }
+    clearBubbleTimers();
     setBubbleText(mode === 'mixed' ? shortBubbleText(text) : text);
     setBubbleEmoji(mode === 'emoji' ? emoji ?? randomPixelEmoji() : emoji);
     setBubbleMode(mode);
+    bubbleVisibleRef.current = true;
+    bubbleClosingRef.current = false;
     setBubbleClosing(false);
     setBubbleVisible(true);
     if (autoHideMs > 0) {
@@ -402,11 +429,11 @@ export const GuidePet: React.FC = () => {
 
   useEffect(() => {
     return () => {
-      if (bubbleTimerRef.current) window.clearTimeout(bubbleTimerRef.current);
+      clearBubbleTimers();
       if (panelOpenTimerRef.current) window.clearTimeout(panelOpenTimerRef.current);
       if (panelCloseTimerRef.current) window.clearTimeout(panelCloseTimerRef.current);
     };
-  }, []);
+  }, [clearBubbleTimers]);
 
   useEffect(() => {
     let timer: number | null = null;
@@ -825,18 +852,18 @@ export const GuidePet: React.FC = () => {
   };
 
   const openPanelFromBubble = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
     const rect = event.currentTarget.getBoundingClientRect();
     setPanelLaunch({
       x: rect.left + rect.width / 2 - window.innerWidth / 2,
       y: rect.top + rect.height / 2 - window.innerHeight / 2,
     });
     setPanelClosing(false);
-    hideBubble(true);
+    hideBubbleImmediately();
     if (panelOpenTimerRef.current) window.clearTimeout(panelOpenTimerRef.current);
-    panelOpenTimerRef.current = window.setTimeout(() => {
-      setPanelOpen(true);
-      panelOpenTimerRef.current = null;
-    }, 120);
+    panelOpenTimerRef.current = null;
+    setPanelOpen(true);
   };
 
   const panel = panelOpen ? (
