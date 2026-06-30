@@ -13,6 +13,8 @@ const smtpPass = process.env.SMTP_PASS;
 const turnstileSecretKey = process.env.TURNSTILE_SECRET_KEY;
 const contactPerSecondLimit = positiveInteger(process.env.CONTACT_PER_SECOND_LIMIT, 1);
 const contactWindowMs = positiveInteger(process.env.CONTACT_RATE_WINDOW_MS, 5000);
+const contactBodyLimitBytes = positiveInteger(process.env.CONTACT_BODY_LIMIT_BYTES, 24 * 1024);
+const isProduction = process.env.NODE_ENV === 'production' || process.env.CONTEXT === 'production';
 
 const json = (statusCode, body, origin) => ({
   statusCode,
@@ -65,19 +67,30 @@ const hasControlChars = (value) => /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007
 const mailDisplayName = (value) => cleanSingleLine(value).replace(/[<>"]/g, '').slice(0, 80);
 
 const verifyTurnstile = async (token, ip) => {
-  if (!turnstileSecretKey) return true;
+  if (!turnstileSecretKey) return !isProduction;
   if (!token || typeof token !== 'string' || token.length > 2048) return false;
 
-  const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    body: new URLSearchParams({
-      secret: turnstileSecretKey,
-      response: token,
-      remoteip: ip,
-    }),
-  });
-  const result = await response.json().catch(() => null);
-  return Boolean(response.ok && result?.success);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: new URLSearchParams({
+        secret: turnstileSecretKey,
+        response: token,
+        remoteip: ip,
+      }),
+      signal: controller.signal,
+    });
+    const result = await response.json().catch(() => null);
+    return Boolean(response.ok && result?.success);
+  } catch (error) {
+    console.warn('[contact-function] turnstile verification failed', error);
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
 };
 
 const transporter = () => {
@@ -89,6 +102,8 @@ const transporter = () => {
     host: 'smtp.qq.com',
     port: 465,
     secure: true,
+    disableFileAccess: true,
+    disableUrlAccess: true,
     auth: {
       user: smtpUser,
       pass: smtpPass,
@@ -134,6 +149,12 @@ export const handler = async (event) => {
 
   let payload;
   try {
+    const rawBody = event.body || '';
+    const bodyBytes = Buffer.byteLength(rawBody, event.isBase64Encoded ? 'base64' : 'utf8');
+    if (bodyBytes > contactBodyLimitBytes) {
+      return json(413, { ok: false, message: '请求内容过大，请精简后再发送。' }, origin);
+    }
+
     payload = JSON.parse(event.body || '{}');
   } catch {
     return json(400, { ok: false, message: '请求内容无效。' }, origin);
@@ -183,6 +204,8 @@ export const handler = async (event) => {
       to: contactTo,
       replyTo: `"${safeName}" <${email}>`,
       subject: `Galaxy Portfolio 联系：${subject}`,
+      disableFileAccess: true,
+      disableUrlAccess: true,
       text: [
         `姓名：${name}`,
         `邮箱：${email}`,
