@@ -34,6 +34,7 @@ const contactRateStorePath = path.isAbsolute(configuredRateStorePath)
   ? configuredRateStorePath
   : path.join(rootDir, configuredRateStorePath);
 const turnstileSecretKey = process.env.TURNSTILE_SECRET_KEY;
+const isProduction = process.env.NODE_ENV === 'production';
 
 if (trustProxy) {
   app.set('trust proxy', 1);
@@ -294,7 +295,7 @@ const hasControlChars = (value) => /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007
 const mailDisplayName = (value) => cleanSingleLine(value).replace(/[<>"]/g, '').slice(0, 80);
 
 const verifyTurnstile = async (token, ip) => {
-  if (!turnstileSecretKey) return true;
+  if (!turnstileSecretKey) return !isProduction;
   if (!token || typeof token !== 'string' || token.length > 2048) return false;
 
   const controller = new AbortController();
@@ -329,6 +330,8 @@ const transporter = () => {
     host: 'smtp.qq.com',
     port: 465,
     secure: true,
+    disableFileAccess: true,
+    disableUrlAccess: true,
     auth: {
       user: smtpUser,
       pass: smtpPass,
@@ -388,6 +391,8 @@ app.post('/api/contact', requireSameOrigin, requireJsonContent, async (req, res)
       to: contactTo,
       replyTo: `"${safeName}" <${email}>`,
       subject: safeSubject,
+      disableFileAccess: true,
+      disableUrlAccess: true,
       text: [
         `姓名：${name}`,
         `邮箱：${email}`,
