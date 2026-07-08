@@ -1,4 +1,4 @@
-import { requireAdminSession, type AdminEnv } from '../_lib/admin';
+import { assertAdminActionAllowed, requireAdminSession, type AdminEnv } from '../_lib/admin';
 import { apiError, json } from '../_lib/announcement';
 import { loadSiteContent, normalizeSiteContent, readSiteContentBody, saveSiteContent, type SiteContentEnv } from '../_lib/siteContent';
 
@@ -16,6 +16,7 @@ export async function onRequestGet({ env }: { env: Env }) {
 export async function onRequestPut({ request, env }: { request: Request; env: Env }) {
   try {
     const session = await requireAdminSession(request, env);
+    await assertAdminActionAllowed(request, env, session.username, 'site-content-save', 60);
     const body = await readSiteContentBody(request);
     const siteContent = normalizeSiteContent({
       ...body,
