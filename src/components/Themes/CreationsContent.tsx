@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { Activity, ArrowRight, Bot, Calculator, Cpu, Eye, FolderSearch, Moon, Network, Route, Search, SearchCode, X, type LucideIcon } from 'lucide-react';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 import type { DownloadableReleaseKey } from '../../data/releases';
+import { defaultSiteContent, visibleBySort, type CreationAddon, type SiteContentDocument } from '../../data/siteContent';
 
 type Project = {
   title: string;
@@ -377,10 +378,26 @@ const ProjectDetailBubble: React.FC<{
 export const CreationsContent: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [siteContent, setSiteContent] = useState<SiteContentDocument>(defaultSiteContent);
   const setActiveTheme = useGalaxyStore((state) => state.setActiveTheme);
+  const dynamicProjects = useMemo(
+    () => visibleBySort<CreationAddon>(siteContent.creationAddons).map<Project>((addon) => ({
+      title: addon.title,
+      subtitle: addon.subtitle || 'Portfolio Addon',
+      icon: FolderSearch,
+      desc: addon.description,
+      requirements: ['后台补充作品介绍，可实时更新展示。'],
+      problem: addon.description,
+      design: addon.highlights.length ? addon.highlights : ['作为补充作品条目展示，不绑定发行下载页。'],
+      techStack: addon.highlights.length ? addon.highlights : ['Portfolio'],
+      highlights: addon.highlights.length ? addon.highlights : ['新增作品'],
+    })),
+    [siteContent.creationAddons],
+  );
+  const allProjects = useMemo(() => [...projects, ...dynamicProjects], [dynamicProjects]);
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredProjects = normalizedQuery
-    ? projects.filter((project) => [
+    ? allProjects.filter((project) => [
       project.title,
       project.subtitle,
       project.desc,
@@ -390,7 +407,32 @@ export const CreationsContent: React.FC = () => {
       ...project.requirements,
       ...project.design,
     ].join(' ').toLowerCase().includes(normalizedQuery))
-    : projects;
+    : allProjects;
+
+  const loadSiteContent = useCallback(async () => {
+    try {
+      const response = await fetch('/api/site-content', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error('site content unavailable');
+      const payload = await response.json() as { siteContent?: SiteContentDocument };
+      setSiteContent(payload.siteContent ?? defaultSiteContent);
+    } catch {
+      setSiteContent(defaultSiteContent);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadSiteContent();
+    }, 0);
+    window.addEventListener('galaxy-site-content-updated', loadSiteContent);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener('galaxy-site-content-updated', loadSiteContent);
+    };
+  }, [loadSiteContent]);
 
   useEffect(() => {
     const preferredProject = window.sessionStorage.getItem('preferredCreationProject');
@@ -398,19 +440,19 @@ export const CreationsContent: React.FC = () => {
       return;
     }
 
-    const project = projects.find((item) => item.title === preferredProject);
+    const project = allProjects.find((item) => item.title === preferredProject);
     window.sessionStorage.removeItem('preferredCreationProject');
     if (project) {
       const timer = window.setTimeout(() => setSelectedProject(project), 0);
       return () => window.clearTimeout(timer);
     }
-  }, []);
+  }, [allProjects]);
 
   useEffect(() => {
     const handleGuideOpen = (event: WindowEventMap['galaxy-guide-open']) => {
       const action = event.detail.target.openAction;
       if (action?.type !== 'open-project') return;
-      const project = projects.find((item) => item.title === action.value);
+      const project = allProjects.find((item) => item.title === action.value);
       if (project) {
         setSearchQuery('');
         setSelectedProject(project);
@@ -419,7 +461,7 @@ export const CreationsContent: React.FC = () => {
 
     window.addEventListener('galaxy-guide-open', handleGuideOpen);
     return () => window.removeEventListener('galaxy-guide-open', handleGuideOpen);
-  }, []);
+  }, [allProjects]);
 
   const openReleasePage = (target: NonNullable<Project['releaseTarget']>) => {
     window.sessionStorage.setItem('preferredOrbitTab', target);
@@ -450,7 +492,7 @@ export const CreationsContent: React.FC = () => {
           />
         </label>
         <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.2em] text-gray-500 md:justify-end">
-          <span>{filteredProjects.length} / {projects.length} Files</span>
+          <span>{filteredProjects.length} / {allProjects.length} Files</span>
           {searchQuery && (
             <button
               type="button"

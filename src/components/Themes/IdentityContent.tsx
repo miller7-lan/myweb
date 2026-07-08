@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Award, Brain, Code2, Cpu, ExternalLink, Layers3, Lock, Medal, Rocket, ShieldCheck, Sparkles, Trophy, Unlock, Wand2, X, type LucideIcon } from 'lucide-react';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
+import { defaultSiteContent, visibleBySort, type DynamicCertificate, type IdentityAddon, type SiteContentDocument } from '../../data/siteContent';
 
 const identityProfiles = [
   {
@@ -83,7 +84,15 @@ const growthMilestones = [
   },
 ];
 
-const growthCertificates = [
+type CertificateItem = {
+  title: string;
+  src: string;
+  meta: string;
+  width: number;
+  height: number;
+};
+
+const growthCertificates: CertificateItem[] = [
   {
     title: '河南大学校级赛二等奖',
     src: '/certificates/computer-design-hnu-2026.jpg',
@@ -110,12 +119,13 @@ const growthCertificates = [
 const CertificateGallery: React.FC<{
   isOpen: boolean;
   activeIndex: number;
+  certificates: CertificateItem[];
   onActiveIndexChange: (index: number) => void;
   onClose: () => void;
-}> = ({ isOpen, activeIndex, onActiveIndexChange, onClose }) => {
+}> = ({ isOpen, activeIndex, certificates, onActiveIndexChange, onClose }) => {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isClosing, setIsClosing] = useState(false);
-  const activeCertificate = growthCertificates[activeIndex] ?? growthCertificates[0];
+  const activeCertificate = certificates[activeIndex] ?? certificates[0] ?? growthCertificates[0];
   const activeAspectRatio = `${activeCertificate.width} / ${activeCertificate.height}`;
   const isPortraitCertificate = activeCertificate.height > activeCertificate.width;
 
@@ -195,7 +205,7 @@ const CertificateGallery: React.FC<{
 
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
           <div className="flex shrink-0 gap-2 overflow-x-auto no-scrollbar" aria-label="切换证书">
-            {growthCertificates.map((certificate, index) => {
+            {certificates.map((certificate, index) => {
               const isActive = index === activeIndex;
 
               return (
@@ -320,8 +330,27 @@ export const IdentityContent: React.FC = () => {
   const [isCertificateGalleryOpen, setIsCertificateGalleryOpen] = useState(false);
   const [selectedCertificateIndex, setSelectedCertificateIndex] = useState(0);
   const setActiveTheme = useGalaxyStore((state) => state.setActiveTheme);
+  const [siteContent, setSiteContent] = useState<SiteContentDocument>(defaultSiteContent);
   const activeProfile = identityProfiles[activeRoleIndex];
   const ActiveIcon = activeProfile.icon;
+  const dynamicIdentityAddons = useMemo<IdentityAddon[]>(
+    () => visibleBySort(siteContent.identityAddons),
+    [siteContent.identityAddons],
+  );
+  const dynamicCertificates = useMemo<CertificateItem[]>(
+    () => visibleBySort<DynamicCertificate>(siteContent.certificates).map((certificate) => ({
+      title: certificate.title,
+      src: certificate.imageUrl,
+      meta: certificate.description || '后台上传证书',
+      width: 1280,
+      height: 900,
+    })),
+    [siteContent.certificates],
+  );
+  const certificateItems = useMemo(
+    () => [...growthCertificates, ...dynamicCertificates],
+    [dynamicCertificates],
+  );
 
   const [isOverclocked, setIsOverclocked] = useState(false);
   const [telemetry, setTelemetry] = useState({ freq: 3.4, temp: 40.2, load: 15 });
@@ -359,6 +388,31 @@ export const IdentityContent: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [isOverclocked]);
+
+  const loadSiteContent = useCallback(async () => {
+    try {
+      const response = await fetch('/api/site-content', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error('site content unavailable');
+      const payload = await response.json() as { siteContent?: SiteContentDocument };
+      setSiteContent(payload.siteContent ?? defaultSiteContent);
+    } catch {
+      setSiteContent(defaultSiteContent);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadSiteContent();
+    }, 0);
+    window.addEventListener('galaxy-site-content-updated', loadSiteContent);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener('galaxy-site-content-updated', loadSiteContent);
+    };
+  }, [loadSiteContent]);
 
   // Rolling diagnostic logs in background
   useEffect(() => {
@@ -524,6 +578,28 @@ export const IdentityContent: React.FC = () => {
           </div>
         </div>
 
+        {dynamicIdentityAddons.length > 0 && (
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+            {dynamicIdentityAddons.map((addon) => (
+              <div key={addon.id} className="scan-card p-5">
+                <div className="hud-kicker mb-4">
+                  <span className="hud-dot" />
+                  <span>Profile Addon</span>
+                </div>
+                <h3 className="mb-3 text-lg font-light tracking-wide text-white">{addon.title}</h3>
+                <p className="text-sm font-light leading-relaxed text-gray-400">{addon.body}</p>
+                {addon.tags.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {addon.tags.map((tag) => (
+                      <span key={tag} className="hud-chip">{tag}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="hud-panel mt-6 rounded-3xl p-6 md:p-7" data-guide-id="identity-growth">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
@@ -588,6 +664,29 @@ export const IdentityContent: React.FC = () => {
                 <div className="mb-1 text-base font-light tracking-wide text-white">{milestone.stage}</div>
                 <div className="mb-3 text-[11px] uppercase tracking-[0.18em] text-gray-500">{milestone.date}</div>
                 <div className="text-xs font-light leading-relaxed text-gray-500">{milestone.certificate}</div>
+              </button>
+            ))}
+            {dynamicCertificates.map((certificate, index) => (
+              <button
+                key={`${certificate.title}-${certificate.src}`}
+                type="button"
+                onClick={() => openCertificateGallery(growthCertificates.length + index)}
+                aria-label={`查看${certificate.title}证书`}
+                className="scan-card group p-4 text-left focus:outline-none focus:ring-1 focus:ring-[var(--theme-color)]/35"
+              >
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-200 transition-colors group-hover:text-white">
+                      <Medal size={18} />
+                    </span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-gray-600">UPLOAD {String(index + 1).padStart(2, '0')}</span>
+                  </div>
+                  <span className="rounded-full border border-[var(--theme-color)]/20 bg-[var(--theme-color)]/10 px-3 py-1 text-[11px] text-gray-200 transition-colors group-hover:border-[var(--theme-color)]/35 group-hover:text-white">
+                    新增
+                  </span>
+                </div>
+                <div className="mb-1 text-base font-light tracking-wide text-white">{certificate.title}</div>
+                <div className="text-xs font-light leading-relaxed text-gray-500">{certificate.meta}</div>
               </button>
             ))}
           </div>
@@ -752,6 +851,7 @@ export const IdentityContent: React.FC = () => {
     <CertificateGallery
       isOpen={isCertificateGalleryOpen}
       activeIndex={selectedCertificateIndex}
+      certificates={certificateItems}
       onActiveIndexChange={setSelectedCertificateIndex}
       onClose={() => setIsCertificateGalleryOpen(false)}
     />

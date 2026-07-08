@@ -62,13 +62,13 @@ npm run preview
 
 ## 公告管理配置
 
-线上公告通过 Cloudflare Pages Functions 读取和保存，内容存放在 KV 绑定 `ANNOUNCEMENTS_KV` 中。管理员账号不要写进代码，放在 Cloudflare Pages 的环境变量里：
+线上公告和重点内容补充通过 Cloudflare Pages Functions 读取和保存，文本内容存放在 KV 绑定 `ANNOUNCEMENTS_KV` 中。奖状上传需要额外绑定一个 R2 bucket，binding name 为 `SITE_ASSETS_R2`。管理员账号不要写进代码，放在 Cloudflare Pages 的环境变量里：
 
 ```bash
 node scripts/hash-admin-password.mjs "your-long-admin-password"
 ```
 
-也可以用 `node scripts/hash-admin-password.mjs --stdin` 避免密码出现在命令参数里；如果明确要使用短密码，需要额外加 `--allow-short`。将输出值配置为 `ADMIN_PASSWORD_HASH`，同时配置 `ADMIN_USERNAME` 和一个高强度随机值 `ADMIN_SESSION_SECRET`。可用 `ADMIN_LOGIN_BURST_LIMIT` 和 `ADMIN_LOGIN_DAILY_LIMIT` 控制短时间与每日失败登录上限。登录成功后后台使用 HttpOnly Cookie 和 CSRF token 保存会话；更新公告会立即写入 KV，前台打开公告弹窗时会自动刷新。
+也可以用 `node scripts/hash-admin-password.mjs --stdin` 避免密码出现在命令参数里；如果明确要使用短密码，需要额外加 `--allow-short`。将输出值配置为 `ADMIN_PASSWORD_HASH`，同时配置 `ADMIN_USERNAME` 和一个高强度随机值 `ADMIN_SESSION_SECRET`。可用 `ADMIN_LOGIN_BURST_LIMIT` 和 `ADMIN_LOGIN_DAILY_LIMIT` 控制短时间与每日失败登录上限。登录成功后后台使用 HttpOnly Cookie 和 CSRF token 保存会话；更新公告、个人介绍补充、奖状和作品补充会立即写入 KV/R2，前台重新读取后展示。
 
 ## 项目结构
 
