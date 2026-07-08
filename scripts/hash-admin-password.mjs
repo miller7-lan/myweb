@@ -5,7 +5,7 @@ const readFromStdin = args.includes('--stdin');
 const allowShortPassword = args.includes('--allow-short');
 const passwordArg = args.find((arg) => !arg.startsWith('--'));
 const password = readFromStdin ? await readStdin() : passwordArg;
-const iterations = 260000;
+const iterations = 100000;
 
 const toBase64Url = (buffer) => buffer
   .toString('base64')

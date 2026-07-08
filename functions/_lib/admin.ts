@@ -112,7 +112,7 @@ export const requireAdminConfig = (env: AdminEnv) => {
 export const verifyPassword = async (password: string, encodedHash: string) => {
   const [algorithm, rawIterations, saltValue, hashValue] = encodedHash.split('$');
   const iterations = Number(rawIterations);
-  if (algorithm !== 'pbkdf2-sha256' || !Number.isInteger(iterations) || iterations < 210000 || !saltValue || !hashValue) {
+  if (algorithm !== 'pbkdf2-sha256' || !Number.isInteger(iterations) || iterations < 100000 || !saltValue || !hashValue) {
     return false;
   }
 
