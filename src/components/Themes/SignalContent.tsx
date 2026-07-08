@@ -190,6 +190,10 @@ export const SignalContent: React.FC = () => {
       : sendBatteryRemaining === 1
         ? 'bg-amber-300 shadow-[0_0_10px_rgba(252,211,77,0.3)]'
         : 'bg-[var(--theme-color,#93c5fd)] shadow-[0_0_10px_var(--theme-color,#93c5fd)]';
+  const successQuotaMessage =
+    sendBatteryRemaining === 0
+      ? `今日发送电量已用完，本地展示上限为 ${sendBatteryCapacity} 次。`
+      : `今天还可以发送 ${sendBatteryRemaining} 次，本地展示上限为 ${sendBatteryCapacity} 次。`;
 
   useEffect(() => {
     if (!turnstileSiteKey || !turnstileContainerRef.current) return;
@@ -546,6 +550,23 @@ export const SignalContent: React.FC = () => {
               <p className="relative text-gray-400 font-light leading-relaxed max-w-md mb-10">
                 谢谢你的来信。我已经收到这条信号，会尽快回复你留下的邮箱。
               </p>
+              <div className="relative mb-8 w-full max-w-md rounded-2xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-left shadow-[inset_0_0_18px_rgba(255,255,255,0.025)]">
+                <div className="mb-2 flex items-center justify-between gap-3 text-[9px] font-mono uppercase tracking-[0.18em] text-gray-500">
+                  <span>Send Cell</span>
+                  <span className={sendBatteryRemaining === 0 ? 'text-red-300' : 'text-gray-300'}>
+                    {sendBatteryRemaining} / {sendBatteryCapacity}
+                  </span>
+                </div>
+                <div className="mb-2 grid h-3 grid-cols-3 gap-1 rounded-md border border-white/[0.08] bg-black/25 p-1">
+                  {Array.from({ length: sendBatteryCapacity }, (_, index) => (
+                    <span
+                      key={index}
+                      className={`rounded-sm transition-all duration-500 ${index < sendBatteryRemaining ? sendBatteryTone : 'bg-white/[0.04]'}`}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs font-light leading-relaxed text-gray-400">{successQuotaMessage}</p>
+              </div>
               <div className="relative flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <button
                   type="button"
