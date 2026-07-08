@@ -229,6 +229,8 @@ export const UIOverlay: React.FC = () => {
       await fetch('/api/admin/logout', {
         method: 'POST',
         credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
       });
     } finally {
       setAdminSession(emptyAdminSession);
