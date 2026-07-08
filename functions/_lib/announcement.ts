@@ -59,6 +59,9 @@ export const json = (body: unknown, status = 200, headers: HeadersInit = {}) => 
     headers: {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff',
+      'x-robots-tag': 'noindex, nofollow, noarchive, nosnippet, noai, noimageai',
+      'referrer-policy': 'same-origin',
       ...headers,
     },
   });
