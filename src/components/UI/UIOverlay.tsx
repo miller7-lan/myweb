@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Gauge, Lock, LogOut, Moon, Pencil, RefreshCw, Save, Sparkles, type LucideIcon } from 'lucide-react';
+import { ChevronRight, Gauge, Lock, LogOut, Moon, Pencil, RefreshCw, Save, Sparkles, type LucideIcon } from 'lucide-react';
 import { themeCount, useGalaxyStore, type NonNullThemeKey, type VisualMode } from '../../store/useGalaxyStore';
 import { themes } from '../../data/themes';
 
@@ -72,6 +72,8 @@ const visualModes: Array<{
   { key: 'silent', label: 'Silent', title: 'Silent · 低功耗', Icon: Moon },
 ];
 
+const themeList = Object.values(themes);
+
 export const UIOverlay: React.FC = () => {
   const { viewState, hoveredPlanet, visitedThemes, visitSequence, lastVisitedTheme, completionPulseId, visualMode, setVisualMode, setViewState, setHoveredPlanet, setActiveTheme } = useGalaxyStore();
   const [announcementOpen, setAnnouncementOpen] = useState(false);
@@ -119,7 +121,12 @@ export const UIOverlay: React.FC = () => {
     orbit: 'ORBIT',
     signal: 'SIG',
   };
-  const themeList = Object.values(themes);
+  const sliderThemeIndex = Math.max(
+    0,
+    themeList.findIndex((theme) => theme.key === (hoveredPlanet ?? lastVisitedTheme ?? themeList[0]?.key)),
+  );
+  const sliderTheme = themeList[sliderThemeIndex] ?? themeList[0];
+  const sliderThemeKey = sliderTheme.key as NonNullThemeKey;
   const activeVisualMode = visualModes.find((mode) => mode.key === visualMode) ?? visualModes[0];
   const ActiveVisualModeIcon = activeVisualMode.Icon;
   const cycleVisualMode = () => {
@@ -286,6 +293,17 @@ export const UIOverlay: React.FC = () => {
       setAdminBusy(false);
     }
   }, [adminSession.csrf, editorDraft]);
+  const lockThemeByIndex = useCallback((index: number) => {
+    const theme = themeList[Math.min(Math.max(index, 0), themeList.length - 1)];
+    if (!theme || (viewState !== 'HOME' && viewState !== 'HOVER_PLANET')) return;
+    setHoveredPlanet(theme.key);
+    setViewState('HOVER_PLANET');
+  }, [setHoveredPlanet, setViewState, viewState]);
+  const enterSliderTheme = useCallback(() => {
+    if (viewState !== 'HOME' && viewState !== 'HOVER_PLANET') return;
+    setViewState('ENTERING_THEME');
+    setActiveTheme(sliderThemeKey);
+  }, [setActiveTheme, setViewState, sliderThemeKey, viewState]);
 
   useEffect(() => {
     const updateLayout = () => {
@@ -376,7 +394,7 @@ export const UIOverlay: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [announcementOpen, closeAnnouncement, hoveredPlanet, setActiveTheme, setHoveredPlanet, setViewState, themeList, viewState]);
+  }, [announcementOpen, closeAnnouncement, hoveredPlanet, setActiveTheme, setHoveredPlanet, setViewState, viewState]);
 
   useEffect(() => {
     if (!announcementOpen || !announcementPanelRef.current || !announcementButtonRef.current) return;
@@ -496,6 +514,59 @@ export const UIOverlay: React.FC = () => {
         </ul>
       </nav>
 
+      {isMobilePortrait && (
+        <div
+          className="pointer-events-auto absolute bottom-[5.55rem] left-1/2 z-20 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 md:hidden"
+          style={{
+            ['--theme-color' as string]: sliderTheme.color,
+          }}
+        >
+          <div className="mobile-orbit-slider hud-panel grid grid-cols-[1fr_2.75rem] items-center gap-3 rounded-2xl px-4 py-3">
+            <div className="min-w-0">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-gray-200">
+                    <span className="hud-dot" />
+                    <span className="truncate">{sliderTheme.title}</span>
+                    <span className="text-gray-500">|</span>
+                    <span className="truncate text-gray-400">{sliderTheme.chineseName}</span>
+                  </div>
+                </div>
+                <span className="shrink-0 text-[9px] uppercase tracking-[0.16em] text-gray-500">
+                  {String(sliderThemeIndex + 1).padStart(2, '0')}/{themeList.length}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={themeList.length - 1}
+                step={1}
+                value={sliderThemeIndex}
+                onChange={(event) => lockThemeByIndex(Number(event.currentTarget.value))}
+                className="mobile-orbit-slider-input"
+                aria-label="移动星球焦点"
+              />
+              <div className="mt-2 grid grid-cols-5 gap-1" aria-hidden="true">
+                {themeList.map((theme, index) => (
+                  <span
+                    key={theme.key}
+                    className={`h-1 rounded-full transition-all duration-200 ${index === sliderThemeIndex ? 'bg-[var(--theme-color)] shadow-[0_0_10px_var(--theme-color)]' : 'bg-white/12'}`}
+                  />
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={enterSliderTheme}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--theme-color)]/35 bg-[var(--theme-color)]/12 text-gray-200 shadow-[0_0_24px_color-mix(in_srgb,var(--theme-color)_14%,transparent)] transition-colors hover:border-[var(--theme-color)]/65 focus:outline-none focus-visible:border-white/70"
+              aria-label={`进入 ${sliderTheme.title} ${sliderTheme.chineseName}`}
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={cycleVisualMode}
@@ -515,7 +586,7 @@ export const UIOverlay: React.FC = () => {
         <span className="h-1.5 w-1.5 rounded-full bg-[var(--theme-color)] opacity-60 shadow-[0_0_8px_var(--theme-color)]" />
       </button>
 
-      <div className={`absolute left-1/2 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 text-center md:bottom-8 md:left-8 md:w-auto md:translate-x-0 md:text-left ${isMobilePortrait ? 'bottom-6' : 'bottom-[6rem]'}`}>
+      <div className={`absolute left-1/2 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 text-center md:bottom-8 md:left-8 md:w-auto md:translate-x-0 md:text-left ${isMobilePortrait ? 'bottom-4' : 'bottom-[6rem]'}`}>
         <div
           className={`hud-panel inline-flex flex-col items-center rounded-2xl transition-all duration-500 md:items-start ${isMobilePortrait ? 'px-4 py-2.5 opacity-80' : 'px-5 py-3'}`}
           style={{
