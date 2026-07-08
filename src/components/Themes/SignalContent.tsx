@@ -13,7 +13,8 @@ import {
   User,
   Tag,
   AlertTriangle,
-  MessageSquare
+  MessageSquare,
+  BatteryCharging
 } from 'lucide-react';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 
@@ -26,6 +27,11 @@ type FormState = {
 };
 
 type SubmitStatus = 'idle' | 'sending' | 'success' | 'error';
+
+type LocalSendMeter = {
+  day: string;
+  count: number;
+};
 
 type TurnstileRenderOptions = {
   sitekey: string;
@@ -73,7 +79,59 @@ const defaultContactApiUrl =
     ? netlifyContactApiUrl
     : '/api/contact';
 const contactApiUrl = import.meta.env.VITE_CONTACT_API_URL || defaultContactApiUrl;
+const sendBatteryCapacity = 3;
+const sendBatteryStorageKey = 'galaxy-contact-send-battery';
 let turnstileScriptPromise: Promise<void> | null = null;
+
+const shanghaiDayKey = (date = new Date()) => {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+
+    const value = (type: string) => parts.find((part) => part.type === type)?.value;
+    return `${value('year')}-${value('month')}-${value('day')}`;
+  } catch {
+    return date.toISOString().slice(0, 10);
+  }
+};
+
+const normalizeSendMeter = (value: unknown): LocalSendMeter => {
+  const today = shanghaiDayKey();
+  if (!value || typeof value !== 'object') return { day: today, count: 0 };
+
+  const meter = value as Partial<LocalSendMeter>;
+  if (meter.day !== today) return { day: today, count: 0 };
+
+  const count = Number.isFinite(meter.count)
+    ? Math.min(sendBatteryCapacity, Math.max(0, Math.trunc(Number(meter.count))))
+    : 0;
+
+  return { day: today, count };
+};
+
+const loadSendMeter = () => {
+  if (typeof window === 'undefined') return normalizeSendMeter(null);
+
+  try {
+    return normalizeSendMeter(JSON.parse(window.localStorage.getItem(sendBatteryStorageKey) || 'null'));
+  } catch {
+    return normalizeSendMeter(null);
+  }
+};
+
+const saveSendMeter = (meter: LocalSendMeter) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(sendBatteryStorageKey, JSON.stringify(meter));
+  } catch {
+    // Ignore storage failures; the meter is visual feedback, not source of truth.
+  }
+};
 
 const loadTurnstile = () => {
   if (window.turnstile) return Promise.resolve();
@@ -108,6 +166,7 @@ export const SignalContent: React.FC = () => {
   const [turnstileToken, setTurnstileToken] = useState('');
   const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
   const turnstileWidgetIdRef = useRef<string | null>(null);
+  const [sendMeter, setSendMeter] = useState<LocalSendMeter>(() => loadSendMeter());
   
   // Custom validation states
   const [errors, setErrors] = useState<Record<string, boolean>>({});
@@ -123,6 +182,14 @@ export const SignalContent: React.FC = () => {
   }, [form]);
 
   const isSending = status === 'sending';
+  const sendBatteryRemaining = Math.max(0, sendBatteryCapacity - sendMeter.count);
+  const sendBatteryPercent = Math.round((sendBatteryRemaining / sendBatteryCapacity) * 100);
+  const sendBatteryTone =
+    sendBatteryRemaining === 0
+      ? 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.35)]'
+      : sendBatteryRemaining === 1
+        ? 'bg-amber-300 shadow-[0_0_10px_rgba(252,211,77,0.3)]'
+        : 'bg-[var(--theme-color,#93c5fd)] shadow-[0_0_10px_var(--theme-color,#93c5fd)]';
 
   useEffect(() => {
     if (!turnstileSiteKey || !turnstileContainerRef.current) return;
@@ -254,6 +321,15 @@ export const SignalContent: React.FC = () => {
         throw new Error(data.message || '消息通道暂时不可用，请稍后再试。');
       }
 
+      setSendMeter((current) => {
+        const base = normalizeSendMeter(current);
+        const next = {
+          day: base.day,
+          count: Math.min(sendBatteryCapacity, base.count + 1),
+        };
+        saveSendMeter(next);
+        return next;
+      });
       setStatus('success');
     } catch (error) {
       setStatus('error');
@@ -399,6 +475,34 @@ export const SignalContent: React.FC = () => {
                       className="h-full bg-gradient-to-r from-gray-500 to-[var(--theme-color,#93c5fd)] transition-all duration-300 shadow-[0_0_6px_var(--theme-color,#93c5fd)]"
                       style={{ width: `${Math.min(100, (payloadBytes / 3000) * 100)}%` }}
                     />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-3 text-[9px] font-mono text-gray-500">
+                    <span className="inline-flex items-center gap-1.5">
+                      <BatteryCharging size={11} className="text-gray-500" />
+                      <span>LOCAL IP SEND CELL</span>
+                    </span>
+                    <span className={`transition-colors duration-300 ${sendBatteryRemaining <= 1 ? 'text-amber-200' : 'text-gray-300'}`}>
+                      {sendBatteryRemaining} / {sendBatteryCapacity} CHARGES
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="grid h-5 flex-1 grid-cols-3 gap-1 rounded-md border border-white/[0.08] bg-black/25 p-1 shadow-[inset_0_0_14px_rgba(255,255,255,0.03)]"
+                      aria-label={`今日本地发送电量剩余 ${sendBatteryRemaining} / ${sendBatteryCapacity}`}
+                      title={`今日本地发送电量剩余 ${sendBatteryRemaining} / ${sendBatteryCapacity}`}
+                    >
+                      {Array.from({ length: sendBatteryCapacity }, (_, index) => (
+                        <span
+                          key={index}
+                          className={`rounded-sm transition-all duration-500 ${index < sendBatteryRemaining ? sendBatteryTone : 'bg-white/[0.035]'}`}
+                        />
+                      ))}
+                    </div>
+                    <span className="h-2.5 w-1 rounded-r-sm bg-white/[0.12]" />
+                    <span className="w-9 text-right text-[9px] font-mono text-gray-400">{sendBatteryPercent}%</span>
                   </div>
                 </div>
 
