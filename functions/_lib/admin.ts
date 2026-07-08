@@ -22,6 +22,7 @@ const sessionSeconds = 60 * 60 * 12;
 const loginWindowSeconds = 15 * 60;
 const defaultLoginBurstLimit = 6;
 const defaultLoginDailyLimit = 12;
+const defaultActionWindowSeconds = 15 * 60;
 
 const encoder = new TextEncoder();
 
@@ -246,6 +247,28 @@ export const recordFailedLogin = async (request: Request, env: AdminEnv, usernam
     env.ANNOUNCEMENTS_KV.put(burstKey, String(burstFailures + 1), { expirationTtl: loginWindowSeconds + 60 }),
     env.ANNOUNCEMENTS_KV.put(dayKey, String(dayFailures + 1), { expirationTtl: 60 * 60 * 30 }),
   ]);
+};
+
+export const assertAdminActionAllowed = async (
+  request: Request,
+  env: AdminEnv,
+  username: string,
+  action: string,
+  limit: number,
+  windowSeconds = defaultActionWindowSeconds,
+) => {
+  if (!env.ANNOUNCEMENTS_KV) return;
+  const safeAction = action.replace(/[^a-z0-9:-]/gi, '').slice(0, 40) || 'action';
+  const clientKey = await getClientKey(request, username);
+  const windowId = Math.floor(Date.now() / (windowSeconds * 1000));
+  const key = `admin:rate:${safeAction}:${clientKey}:${windowId}`;
+  const count = await readCounter(env, key);
+
+  if (count >= limit) {
+    throw json({ ok: false, error: '操作过于频繁，请稍后再试' }, 429);
+  }
+
+  await env.ANNOUNCEMENTS_KV.put(key, String(count + 1), { expirationTtl: windowSeconds + 60 });
 };
 
 export const readLoginBody = async (request: Request) => {

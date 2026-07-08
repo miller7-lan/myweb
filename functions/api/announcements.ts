@@ -1,5 +1,5 @@
 import { apiError, json, loadAnnouncement, normalizeAnnouncement, readJsonBody, saveAnnouncement, type AnnouncementEnv } from '../_lib/announcement';
-import { requireAdminSession, type AdminEnv } from '../_lib/admin';
+import { assertAdminActionAllowed, requireAdminSession, type AdminEnv } from '../_lib/admin';
 
 type Env = AnnouncementEnv & AdminEnv;
 
@@ -15,6 +15,7 @@ export async function onRequestGet({ env }: { env: Env }) {
 export async function onRequestPut({ request, env }: { request: Request; env: Env }) {
   try {
     const session = await requireAdminSession(request, env);
+    await assertAdminActionAllowed(request, env, session.username, 'announcement-save', 60);
     const body = await readJsonBody(request);
     const announcement = normalizeAnnouncement({
       ...body,

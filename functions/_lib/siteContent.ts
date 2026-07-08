@@ -46,6 +46,7 @@ export type SiteContentEnv = {
 
 const siteContentKey = 'site-content:v1';
 const maxContentBytes = 64 * 1024;
+const certificateAssetKeyPattern = /^certificate-\d{10,17}-[a-f0-9]{24}\.(?:jpg|png|webp)$/;
 
 export const defaultSiteContent: SiteContentDocument = {
   identityAddons: [],
@@ -77,6 +78,11 @@ const clampBoolean = (value: unknown) => value !== false;
 
 const normalizeId = (value: unknown, prefix: string, index: number) =>
   clampText(value, 80) || `${prefix}-${Date.now()}-${index}`;
+
+export const isCertificateAssetKey = (value: string) => certificateAssetKeyPattern.test(value);
+
+export const certificateAssetUrl = (key: string) =>
+  `/api/site-content/assets/${encodeURIComponent(key)}`;
 
 export const readSiteContentBody = async (request: Request) => {
   const body = await request.text();
@@ -113,17 +119,18 @@ export const normalizeSiteContent = (input: unknown): SiteContentDocument => {
     .slice(0, 24)
     .map((item, index) => {
       const row = typeof item === 'object' && item ? item as Record<string, unknown> : {};
+      const imageKey = clampText(row.imageKey, 160);
       return {
         id: normalizeId(row.id, 'certificate', index),
         title: clampText(row.title, 80),
         description: clampText(row.description, 180),
-        imageUrl: clampText(row.imageUrl, 240),
-        imageKey: clampText(row.imageKey, 160),
+        imageUrl: isCertificateAssetKey(imageKey) ? certificateAssetUrl(imageKey) : '',
+        imageKey,
         visible: clampBoolean(row.visible),
         sortOrder: clampSortOrder(row.sortOrder, index),
       };
     })
-    .filter((item) => item.title && item.imageUrl && item.imageKey);
+    .filter((item) => item.title && item.imageUrl && isCertificateAssetKey(item.imageKey));
 
   const creationAddons = (Array.isArray(source.creationAddons) ? source.creationAddons : [])
     .slice(0, 16)
