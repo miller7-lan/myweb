@@ -4,6 +4,8 @@ export type AdminEnv = {
   ADMIN_USERNAME?: string;
   ADMIN_PASSWORD_HASH?: string;
   ADMIN_SESSION_SECRET?: string;
+  ADMIN_LOGIN_BURST_LIMIT?: string;
+  ADMIN_LOGIN_DAILY_LIMIT?: string;
   ANNOUNCEMENTS_KV?: {
     get(key: string): Promise<string | null>;
     put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
@@ -18,9 +20,15 @@ export type AdminSession = {
 const cookieName = 'gp_admin_session';
 const sessionSeconds = 60 * 60 * 12;
 const loginWindowSeconds = 15 * 60;
-const loginAttemptLimit = 8;
+const defaultLoginBurstLimit = 6;
+const defaultLoginDailyLimit = 12;
 
 const encoder = new TextEncoder();
+
+const positiveInteger = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
 
 const toBase64Url = (bytes: ArrayBuffer | Uint8Array) => {
   const array = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
@@ -85,6 +93,13 @@ const sameOrigin = (request: Request) => {
 export const requireSameOrigin = (request: Request) => {
   if (!sameOrigin(request)) {
     throw json({ ok: false, error: '跨站请求已被拒绝' }, 403);
+  }
+};
+
+export const requireJsonRequest = (request: Request) => {
+  const contentType = request.headers.get('content-type') || '';
+  if (!contentType.toLowerCase().includes('application/json')) {
+    throw json({ ok: false, error: '请求格式不正确' }, 415);
   }
 };
 
@@ -167,6 +182,7 @@ export const getAdminSession = async (request: Request, env: AdminEnv): Promise<
 
 export const requireAdminSession = async (request: Request, env: AdminEnv) => {
   requireSameOrigin(request);
+  requireJsonRequest(request);
   const session = await getAdminSession(request, env);
   const csrfHeader = request.headers.get('x-gp-admin-csrf') || '';
   if (!session || !csrfHeader || !timingSafeEqual(encoder.encode(csrfHeader), encoder.encode(session.csrf))) {
@@ -175,16 +191,53 @@ export const requireAdminSession = async (request: Request, env: AdminEnv) => {
   return session;
 };
 
-export const enforceLoginRateLimit = async (request: Request, env: AdminEnv) => {
-  if (!env.ANNOUNCEMENTS_KV) return;
+const getClientKey = async (request: Request, username: string) => {
   const ip = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'unknown';
+  const userHash = (await sha256(username.toLowerCase())).slice(0, 20);
+  return `${ip}:${userHash}`;
+};
+
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+const readCounter = async (env: AdminEnv, key: string) => Number(await env.ANNOUNCEMENTS_KV?.get(key)) || 0;
+
+export const assertLoginAllowed = async (request: Request, env: AdminEnv, username: string) => {
+  if (!env.ANNOUNCEMENTS_KV) return;
+  const clientKey = await getClientKey(request, username);
   const windowId = Math.floor(Date.now() / (loginWindowSeconds * 1000));
-  const key = `admin:login:${ip}:${windowId}`;
-  const current = Number(await env.ANNOUNCEMENTS_KV.get(key)) || 0;
-  if (current >= loginAttemptLimit) {
+  const day = todayKey();
+  const burstLimit = positiveInteger(env.ADMIN_LOGIN_BURST_LIMIT, defaultLoginBurstLimit);
+  const dailyLimit = positiveInteger(env.ADMIN_LOGIN_DAILY_LIMIT, defaultLoginDailyLimit);
+  const burstKey = `admin:login:fail:burst:${clientKey}:${windowId}`;
+  const dayKey = `admin:login:fail:day:${clientKey}:${day}`;
+  const [burstFailures, dayFailures] = await Promise.all([
+    readCounter(env, burstKey),
+    readCounter(env, dayKey),
+  ]);
+
+  if (burstFailures >= burstLimit) {
     throw json({ ok: false, error: '登录尝试过多，请稍后再试' }, 429);
   }
-  await env.ANNOUNCEMENTS_KV.put(key, String(current + 1), { expirationTtl: loginWindowSeconds + 60 });
+  if (dayFailures >= dailyLimit) {
+    throw json({ ok: false, error: '今日失败次数已达上限，请明天再试' }, 429);
+  }
+};
+
+export const recordFailedLogin = async (request: Request, env: AdminEnv, username: string) => {
+  if (!env.ANNOUNCEMENTS_KV) return;
+  const clientKey = await getClientKey(request, username);
+  const windowId = Math.floor(Date.now() / (loginWindowSeconds * 1000));
+  const day = todayKey();
+  const burstKey = `admin:login:fail:burst:${clientKey}:${windowId}`;
+  const dayKey = `admin:login:fail:day:${clientKey}:${day}`;
+  const [burstFailures, dayFailures] = await Promise.all([
+    readCounter(env, burstKey),
+    readCounter(env, dayKey),
+  ]);
+  await Promise.all([
+    env.ANNOUNCEMENTS_KV.put(burstKey, String(burstFailures + 1), { expirationTtl: loginWindowSeconds + 60 }),
+    env.ANNOUNCEMENTS_KV.put(dayKey, String(dayFailures + 1), { expirationTtl: 60 * 60 * 30 }),
+  ]);
 };
 
 export const readLoginBody = async (request: Request) => {

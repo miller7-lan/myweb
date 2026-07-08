@@ -68,7 +68,7 @@ npm run preview
 node scripts/hash-admin-password.mjs "your-long-admin-password"
 ```
 
-将输出值配置为 `ADMIN_PASSWORD_HASH`，同时配置 `ADMIN_USERNAME` 和一个高强度随机值 `ADMIN_SESSION_SECRET`。登录成功后后台使用 HttpOnly Cookie 和 CSRF token 保存会话；更新公告会立即写入 KV，前台打开公告弹窗时会自动刷新。
+将输出值配置为 `ADMIN_PASSWORD_HASH`，同时配置 `ADMIN_USERNAME` 和一个高强度随机值 `ADMIN_SESSION_SECRET`。可用 `ADMIN_LOGIN_BURST_LIMIT` 和 `ADMIN_LOGIN_DAILY_LIMIT` 控制短时间与每日失败登录上限。登录成功后后台使用 HttpOnly Cookie 和 CSRF token 保存会话；更新公告会立即写入 KV，前台打开公告弹窗时会自动刷新。
 
 ## 项目结构
 
