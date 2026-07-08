@@ -1,7 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Gauge, Lock, LogOut, Moon, Pencil, RefreshCw, Save, Sparkles, type LucideIcon } from 'lucide-react';
+import { Gauge, Lock, LogOut, Moon, Pencil, Plus, RefreshCw, Save, Sparkles, Trash2, Upload, type LucideIcon } from 'lucide-react';
 import { themeCount, useGalaxyStore, type NonNullThemeKey, type VisualMode } from '../../store/useGalaxyStore';
 import { themes } from '../../data/themes';
+import {
+  createCertificateAddon,
+  createCreationAddon,
+  createIdentityAddon,
+  defaultSiteContent,
+  type CreationAddon,
+  type DynamicCertificate,
+  type IdentityAddon,
+  type SiteContentDocument,
+} from '../../data/siteContent';
 
 type AnnouncementItem = {
   code: string;
@@ -23,6 +33,8 @@ type AdminSession = {
   username: string | null;
   csrf: string | null;
 };
+
+type AdminContentTab = 'announcement' | 'identity' | 'certificates' | 'creations';
 
 const defaultAnnouncement: AnnouncementDocument = {
   title: 'DAZZLE 更新说明',
@@ -61,6 +73,15 @@ const createEmptyAnnouncementItem = (): AnnouncementItem => ({
   detail: '',
 });
 
+const splitListInput = (value: string, limit = 8) =>
+  value
+    .split(/[,，\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, limit);
+
+const joinListInput = (items: string[]) => items.join('，');
+
 const visualModes: Array<{
   key: VisualMode;
   label: string;
@@ -85,8 +106,11 @@ export const UIOverlay: React.FC = () => {
   const [adminSession, setAdminSession] = useState<AdminSession>(emptyAdminSession);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [editorDraft, setEditorDraft] = useState<AnnouncementDocument>(defaultAnnouncement);
+  const [siteDraft, setSiteDraft] = useState<SiteContentDocument>(defaultSiteContent);
+  const [adminContentTab, setAdminContentTab] = useState<AdminContentTab>('announcement');
   const [adminBusy, setAdminBusy] = useState(false);
   const [adminError, setAdminError] = useState('');
+  const [uploadingCertificateId, setUploadingCertificateId] = useState<string | null>(null);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
   const announcementButtonRef = useRef<HTMLButtonElement>(null);
   const announcementPanelRef = useRef<HTMLDivElement>(null);
@@ -172,6 +196,19 @@ export const UIOverlay: React.FC = () => {
       if (!silent) setAnnouncementLoading(false);
     }
   }, []);
+  const loadSiteContent = useCallback(async () => {
+    try {
+      const response = await fetch('/api/site-content', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error('site content unavailable');
+      const payload = await response.json() as { siteContent?: SiteContentDocument };
+      setSiteDraft(payload.siteContent ?? defaultSiteContent);
+    } catch {
+      setSiteDraft(defaultSiteContent);
+    }
+  }, []);
   const checkAdminSession = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/session', {
@@ -217,12 +254,13 @@ export const UIOverlay: React.FC = () => {
       });
       setLoginForm({ username: '', password: '' });
       setAnnouncementNotice('已进入公告编辑模式');
+      void loadSiteContent();
     } catch (error) {
       setAdminError(error instanceof Error ? error.message : '登录失败');
     } finally {
       setAdminBusy(false);
     }
-  }, [loginForm]);
+  }, [loadSiteContent, loginForm]);
   const handleLogout = useCallback(async () => {
     setAdminBusy(true);
     setAdminError('');
@@ -235,6 +273,7 @@ export const UIOverlay: React.FC = () => {
       });
     } finally {
       setAdminSession(emptyAdminSession);
+      setAdminContentTab('announcement');
       setAdminBusy(false);
       setAnnouncementNotice('已退出管理模式');
     }
@@ -287,6 +326,94 @@ export const UIOverlay: React.FC = () => {
       setAdminBusy(false);
     }
   }, [adminSession.csrf, editorDraft]);
+  const saveSiteContent = useCallback(async () => {
+    if (!adminSession.csrf) {
+      setAdminError('登录已失效，请重新登录');
+      return;
+    }
+    setAdminBusy(true);
+    setAdminError('');
+    try {
+      const response = await fetch('/api/site-content', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: {
+          'content-type': 'application/json',
+          'x-gp-admin-csrf': adminSession.csrf,
+        },
+        body: JSON.stringify(siteDraft),
+      });
+      const payload = await response.json() as { siteContent?: SiteContentDocument; error?: string };
+      if (!response.ok || !payload.siteContent) {
+        throw new Error(payload.error || '保存失败');
+      }
+      setSiteDraft(payload.siteContent);
+      setAnnouncementNotice('内容已同步到线上');
+      window.dispatchEvent(new CustomEvent('galaxy-site-content-updated'));
+    } catch (error) {
+      setAdminError(error instanceof Error ? error.message : '保存失败');
+    } finally {
+      setAdminBusy(false);
+    }
+  }, [adminSession.csrf, siteDraft]);
+  const uploadCertificateImage = useCallback(async (certificateId: string, file: File | undefined) => {
+    if (!file) return;
+    if (!adminSession.csrf) {
+      setAdminError('登录已失效，请重新登录');
+      return;
+    }
+    setUploadingCertificateId(certificateId);
+    setAdminError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/site-content/assets', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'x-gp-admin-csrf': adminSession.csrf,
+        },
+        body: formData,
+      });
+      const payload = await response.json() as {
+        asset?: { key: string; url: string };
+        error?: string;
+      };
+      if (!response.ok || !payload.asset) {
+        throw new Error(payload.error || '上传失败');
+      }
+      setSiteDraft((draft) => ({
+        ...draft,
+        certificates: draft.certificates.map((certificate) => certificate.id === certificateId
+          ? { ...certificate, imageKey: payload.asset!.key, imageUrl: payload.asset!.url }
+          : certificate),
+      }));
+      setAnnouncementNotice('图片已上传，保存后前台显示');
+    } catch (error) {
+      setAdminError(error instanceof Error ? error.message : '上传失败');
+    } finally {
+      setUploadingCertificateId(null);
+    }
+  }, [adminSession.csrf]);
+
+  const updateIdentityAddon = useCallback((index: number, patch: Partial<IdentityAddon>) => {
+    setSiteDraft((draft) => ({
+      ...draft,
+      identityAddons: draft.identityAddons.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item),
+    }));
+  }, []);
+  const updateCertificateAddon = useCallback((index: number, patch: Partial<DynamicCertificate>) => {
+    setSiteDraft((draft) => ({
+      ...draft,
+      certificates: draft.certificates.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item),
+    }));
+  }, []);
+  const updateCreationAddon = useCallback((index: number, patch: Partial<CreationAddon>) => {
+    setSiteDraft((draft) => ({
+      ...draft,
+      creationAddons: draft.creationAddons.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item),
+    }));
+  }, []);
 
   useEffect(() => {
     const updateLayout = () => {
@@ -322,6 +449,14 @@ export const UIOverlay: React.FC = () => {
       window.clearInterval(intervalId);
     };
   }, [announcementOpen, loadAnnouncement]);
+
+  useEffect(() => {
+    if (!adminPanelOpen || !adminSession.authenticated) return;
+    const timeoutId = window.setTimeout(() => {
+      void loadSiteContent();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [adminPanelOpen, adminSession.authenticated, loadSiteContent]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -627,6 +762,30 @@ export const UIOverlay: React.FC = () => {
                         </button>
                       </div>
 
+                      <div className="grid grid-cols-4 gap-1 rounded-2xl border border-white/[0.06] bg-black/20 p-1">
+                        {([
+                          ['announcement', '公告'],
+                          ['identity', '个人介绍'],
+                          ['certificates', '奖状'],
+                          ['creations', '作品'],
+                        ] as Array<[AdminContentTab, string]>).map(([tab, label]) => (
+                          <button
+                            key={tab}
+                            type="button"
+                            onClick={() => setAdminContentTab(tab)}
+                            className={`rounded-xl px-2 py-2 text-[10px] uppercase tracking-[0.12em] transition-colors ${
+                              adminContentTab === tab
+                                ? 'bg-white/[0.08] text-gray-100'
+                                : 'text-gray-500 hover:text-gray-300'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {adminContentTab === 'announcement' && (
+                        <div className="space-y-4">
                       <div className="grid gap-3 sm:grid-cols-[1fr_0.55fr]">
                         <label className="space-y-1.5">
                           <span className="text-[10px] uppercase tracking-[0.18em] text-gray-500">标题</span>
@@ -719,6 +878,280 @@ export const UIOverlay: React.FC = () => {
                           保存并同步
                         </button>
                       </div>
+                        </div>
+                      )}
+
+                      {adminContentTab === 'identity' && (
+                        <div className="space-y-3">
+                          {siteDraft.identityAddons.map((item, index) => (
+                            <div key={item.id} className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+                              <div className="mb-2 flex items-center justify-between gap-3">
+                                <span className="text-[10px] uppercase tracking-[0.18em] text-gray-500">介绍 {String(index + 1).padStart(2, '0')}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setSiteDraft((draft) => ({ ...draft, identityAddons: draft.identityAddons.filter((_, itemIndex) => itemIndex !== index) }))}
+                                  disabled={adminBusy}
+                                  className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-1 text-[10px] text-gray-500 transition-colors hover:text-white disabled:opacity-35"
+                                >
+                                  <Trash2 size={11} />
+                                  删除
+                                </button>
+                              </div>
+                              <div className="grid gap-2 sm:grid-cols-[1fr_0.32fr]">
+                                <input
+                                  value={item.title}
+                                  onChange={(event) => updateIdentityAddon(index, { title: event.target.value })}
+                                  maxLength={64}
+                                  placeholder="标题"
+                                  className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-200 outline-none transition-colors focus:border-white/25"
+                                />
+                                <input
+                                  type="number"
+                                  value={item.sortOrder}
+                                  onChange={(event) => updateIdentityAddon(index, { sortOrder: Number(event.target.value) })}
+                                  aria-label={`个人介绍 ${index + 1} 排序`}
+                                  className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-300 outline-none transition-colors focus:border-white/25"
+                                />
+                              </div>
+                              <textarea
+                                value={item.body}
+                                onChange={(event) => updateIdentityAddon(index, { body: event.target.value })}
+                                maxLength={520}
+                                rows={3}
+                                placeholder="补充介绍内容"
+                                className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs leading-relaxed text-gray-300 outline-none transition-colors focus:border-white/25"
+                              />
+                              <input
+                                value={joinListInput(item.tags)}
+                                onChange={(event) => updateIdentityAddon(index, { tags: splitListInput(event.target.value) })}
+                                maxLength={160}
+                                placeholder="标签，用逗号分隔"
+                                className="mt-2 w-full rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-300 outline-none transition-colors focus:border-white/25"
+                              />
+                              <label className="mt-2 inline-flex items-center gap-2 text-xs text-gray-500">
+                                <input
+                                  type="checkbox"
+                                  checked={item.visible}
+                                  onChange={(event) => updateIdentityAddon(index, { visible: event.target.checked })}
+                                  className="accent-white"
+                                />
+                                前台显示
+                              </label>
+                            </div>
+                          ))}
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setSiteDraft((draft) => ({ ...draft, identityAddons: [...draft.identityAddons, createIdentityAddon(draft.identityAddons.length)] }))}
+                              disabled={siteDraft.identityAddons.length >= 12 || adminBusy}
+                              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-gray-400 transition-colors hover:text-white disabled:opacity-40"
+                            >
+                              <Plus size={12} />
+                              添加介绍
+                            </button>
+                            <button
+                              type="button"
+                              onClick={saveSiteContent}
+                              disabled={adminBusy}
+                              className="inline-flex items-center gap-2 rounded-full border border-[var(--theme-color)]/35 bg-[var(--theme-color)]/10 px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-gray-100 transition-colors hover:border-[var(--theme-color)]/65 disabled:opacity-50"
+                            >
+                              <Save size={13} />
+                              保存内容
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {adminContentTab === 'certificates' && (
+                        <div className="space-y-3">
+                          {siteDraft.certificates.map((item, index) => (
+                            <div key={item.id} className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+                              <div className="mb-2 flex items-center justify-between gap-3">
+                                <span className="text-[10px] uppercase tracking-[0.18em] text-gray-500">奖状 {String(index + 1).padStart(2, '0')}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setSiteDraft((draft) => ({ ...draft, certificates: draft.certificates.filter((_, itemIndex) => itemIndex !== index) }))}
+                                  disabled={adminBusy}
+                                  className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-1 text-[10px] text-gray-500 transition-colors hover:text-white disabled:opacity-35"
+                                >
+                                  <Trash2 size={11} />
+                                  删除
+                                </button>
+                              </div>
+                              <div className="grid gap-2 sm:grid-cols-[1fr_0.32fr]">
+                                <input
+                                  value={item.title}
+                                  onChange={(event) => updateCertificateAddon(index, { title: event.target.value })}
+                                  maxLength={80}
+                                  placeholder="奖状标题"
+                                  className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-200 outline-none transition-colors focus:border-white/25"
+                                />
+                                <input
+                                  type="number"
+                                  value={item.sortOrder}
+                                  onChange={(event) => updateCertificateAddon(index, { sortOrder: Number(event.target.value) })}
+                                  aria-label={`奖状 ${index + 1} 排序`}
+                                  className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-300 outline-none transition-colors focus:border-white/25"
+                                />
+                              </div>
+                              <textarea
+                                value={item.description}
+                                onChange={(event) => updateCertificateAddon(index, { description: event.target.value })}
+                                maxLength={180}
+                                rows={2}
+                                placeholder="奖状说明"
+                                className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs leading-relaxed text-gray-300 outline-none transition-colors focus:border-white/25"
+                              />
+                              <div className="mt-2 grid gap-2 sm:grid-cols-[96px_1fr]">
+                                <div className="flex h-20 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/30">
+                                  {item.imageUrl ? (
+                                    <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+                                  ) : (
+                                    <Upload size={18} className="text-gray-600" />
+                                  )}
+                                </div>
+                                <div className="flex flex-col justify-center gap-2">
+                                  <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-gray-400 transition-colors hover:text-white">
+                                    <Upload size={12} />
+                                    {uploadingCertificateId === item.id ? '上传中' : '上传图片'}
+                                    <input
+                                      type="file"
+                                      accept="image/jpeg,image/png,image/webp"
+                                      disabled={adminBusy || uploadingCertificateId === item.id}
+                                      onChange={(event) => {
+                                        const file = event.currentTarget.files?.[0];
+                                        if (file) {
+                                          void uploadCertificateImage(item.id, file);
+                                        }
+                                        event.currentTarget.value = '';
+                                      }}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                  <p className="text-[10px] leading-relaxed text-gray-600">JPG / PNG / WebP，单张不超过 4 MB</p>
+                                </div>
+                              </div>
+                              <label className="mt-2 inline-flex items-center gap-2 text-xs text-gray-500">
+                                <input
+                                  type="checkbox"
+                                  checked={item.visible}
+                                  onChange={(event) => updateCertificateAddon(index, { visible: event.target.checked })}
+                                  className="accent-white"
+                                />
+                                前台显示
+                              </label>
+                            </div>
+                          ))}
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setSiteDraft((draft) => ({ ...draft, certificates: [...draft.certificates, createCertificateAddon(draft.certificates.length)] }))}
+                              disabled={siteDraft.certificates.length >= 24 || adminBusy}
+                              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-gray-400 transition-colors hover:text-white disabled:opacity-40"
+                            >
+                              <Plus size={12} />
+                              添加奖状
+                            </button>
+                            <button
+                              type="button"
+                              onClick={saveSiteContent}
+                              disabled={adminBusy}
+                              className="inline-flex items-center gap-2 rounded-full border border-[var(--theme-color)]/35 bg-[var(--theme-color)]/10 px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-gray-100 transition-colors hover:border-[var(--theme-color)]/65 disabled:opacity-50"
+                            >
+                              <Save size={13} />
+                              保存内容
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {adminContentTab === 'creations' && (
+                        <div className="space-y-3">
+                          {siteDraft.creationAddons.map((item, index) => (
+                            <div key={item.id} className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+                              <div className="mb-2 flex items-center justify-between gap-3">
+                                <span className="text-[10px] uppercase tracking-[0.18em] text-gray-500">作品 {String(index + 1).padStart(2, '0')}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setSiteDraft((draft) => ({ ...draft, creationAddons: draft.creationAddons.filter((_, itemIndex) => itemIndex !== index) }))}
+                                  disabled={adminBusy}
+                                  className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-1 text-[10px] text-gray-500 transition-colors hover:text-white disabled:opacity-35"
+                                >
+                                  <Trash2 size={11} />
+                                  删除
+                                </button>
+                              </div>
+                              <div className="grid gap-2 sm:grid-cols-[1fr_0.32fr]">
+                                <input
+                                  value={item.title}
+                                  onChange={(event) => updateCreationAddon(index, { title: event.target.value })}
+                                  maxLength={72}
+                                  placeholder="作品名称"
+                                  className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-200 outline-none transition-colors focus:border-white/25"
+                                />
+                                <input
+                                  type="number"
+                                  value={item.sortOrder}
+                                  onChange={(event) => updateCreationAddon(index, { sortOrder: Number(event.target.value) })}
+                                  aria-label={`作品 ${index + 1} 排序`}
+                                  className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-300 outline-none transition-colors focus:border-white/25"
+                                />
+                              </div>
+                              <input
+                                value={item.subtitle}
+                                onChange={(event) => updateCreationAddon(index, { subtitle: event.target.value })}
+                                maxLength={80}
+                                placeholder="副标题 / 类型"
+                                className="mt-2 w-full rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-300 outline-none transition-colors focus:border-white/25"
+                              />
+                              <textarea
+                                value={item.description}
+                                onChange={(event) => updateCreationAddon(index, { description: event.target.value })}
+                                maxLength={520}
+                                rows={3}
+                                placeholder="作品介绍"
+                                className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs leading-relaxed text-gray-300 outline-none transition-colors focus:border-white/25"
+                              />
+                              <input
+                                value={joinListInput(item.highlights)}
+                                onChange={(event) => updateCreationAddon(index, { highlights: splitListInput(event.target.value) })}
+                                maxLength={180}
+                                placeholder="亮点，用逗号分隔"
+                                className="mt-2 w-full rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-300 outline-none transition-colors focus:border-white/25"
+                              />
+                              <label className="mt-2 inline-flex items-center gap-2 text-xs text-gray-500">
+                                <input
+                                  type="checkbox"
+                                  checked={item.visible}
+                                  onChange={(event) => updateCreationAddon(index, { visible: event.target.checked })}
+                                  className="accent-white"
+                                />
+                                前台显示
+                              </label>
+                            </div>
+                          ))}
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setSiteDraft((draft) => ({ ...draft, creationAddons: [...draft.creationAddons, createCreationAddon(draft.creationAddons.length)] }))}
+                              disabled={siteDraft.creationAddons.length >= 16 || adminBusy}
+                              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-gray-400 transition-colors hover:text-white disabled:opacity-40"
+                            >
+                              <Plus size={12} />
+                              添加作品
+                            </button>
+                            <button
+                              type="button"
+                              onClick={saveSiteContent}
+                              disabled={adminBusy}
+                              className="inline-flex items-center gap-2 rounded-full border border-[var(--theme-color)]/35 bg-[var(--theme-color)]/10 px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-gray-100 transition-colors hover:border-[var(--theme-color)]/65 disabled:opacity-50"
+                            >
+                              <Save size={13} />
+                              保存内容
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <form className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]" onSubmit={handleLogin}>

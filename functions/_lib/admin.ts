@@ -184,15 +184,19 @@ export const getAdminSession = async (request: Request, env: AdminEnv): Promise<
   }
 };
 
-export const requireAdminSession = async (request: Request, env: AdminEnv) => {
+export const requireAdminSessionWithCsrf = async (request: Request, env: AdminEnv) => {
   requireSameOrigin(request);
-  requireJsonRequest(request);
   const session = await getAdminSession(request, env);
   const csrfHeader = request.headers.get('x-gp-admin-csrf') || '';
   if (!session || !csrfHeader || !timingSafeEqual(encoder.encode(csrfHeader), encoder.encode(session.csrf))) {
     throw json({ ok: false, error: '管理员登录已失效' }, 401);
   }
   return session;
+};
+
+export const requireAdminSession = async (request: Request, env: AdminEnv) => {
+  requireJsonRequest(request);
+  return requireAdminSessionWithCsrf(request, env);
 };
 
 const getClientKey = async (request: Request, username: string) => {
