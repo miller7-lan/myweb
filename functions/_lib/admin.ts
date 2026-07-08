@@ -116,19 +116,23 @@ export const verifyPassword = async (password: string, encodedHash: string) => {
     return false;
   }
 
-  const passwordKey = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const derived = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      hash: 'SHA-256',
-      salt: fromBase64Url(saltValue),
-      iterations,
-    },
-    passwordKey,
-    256,
-  );
+  try {
+    const passwordKey = await crypto.subtle.importKey('raw', encoder.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']);
+    const derived = await crypto.subtle.deriveBits(
+      {
+        name: 'PBKDF2',
+        hash: 'SHA-256',
+        salt: fromBase64Url(saltValue),
+        iterations,
+      },
+      passwordKey,
+      256,
+    );
 
-  return timingSafeEqual(new Uint8Array(derived), fromBase64Url(hashValue));
+    return timingSafeEqual(new Uint8Array(derived), fromBase64Url(hashValue));
+  } catch {
+    return false;
+  }
 };
 
 export const createSessionCookie = async (request: Request, env: AdminEnv) => {
