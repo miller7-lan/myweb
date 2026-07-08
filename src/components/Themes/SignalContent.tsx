@@ -66,7 +66,13 @@ const signalBoundaries = [
 ];
 
 const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
-const contactApiUrl = import.meta.env.VITE_CONTACT_API_URL || '/api/contact';
+const cloudflarePagesHost = 'dazzle-galaxy-show.pages.dev';
+const netlifyContactApiUrl = 'https://dazzle-galaxy-show.netlify.app/api/contact';
+const defaultContactApiUrl =
+  typeof window !== 'undefined' && window.location.hostname === cloudflarePagesHost
+    ? netlifyContactApiUrl
+    : '/api/contact';
+const contactApiUrl = import.meta.env.VITE_CONTACT_API_URL || defaultContactApiUrl;
 let turnstileScriptPromise: Promise<void> | null = null;
 
 const loadTurnstile = () => {
@@ -242,10 +248,10 @@ export const SignalContent: React.FC = () => {
         body: JSON.stringify({ ...form, turnstileToken }),
       });
 
-      const data = await response.json().catch(() => ({ message: '' }));
+      const data = await response.json().catch(() => ({ ok: false, message: '' }));
 
-      if (!response.ok) {
-        throw new Error(data.message || '消息暂时发送失败，请稍后再试。');
+      if (!response.ok || !data.ok) {
+        throw new Error(data.message || '消息通道暂时不可用，请稍后再试。');
       }
 
       setStatus('success');
