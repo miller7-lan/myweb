@@ -1,25 +1,65 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Gauge, Moon, Sparkles, type LucideIcon } from 'lucide-react';
+import { Gauge, Lock, LogOut, Moon, Pencil, RefreshCw, Save, Sparkles, type LucideIcon } from 'lucide-react';
 import { themeCount, useGalaxyStore, type NonNullThemeKey, type VisualMode } from '../../store/useGalaxyStore';
 import { themes } from '../../data/themes';
 
-const announcements = [
-  {
-    code: 'PERF',
-    title: '场景性能优化',
-    detail: '优化动画帧内的数据同步，减少不必要的 React / Zustand 更新。',
-  },
-  {
-    code: 'GC',
-    title: '内存分配收敛',
-    detail: '复用星球、流星、飞船和鼠标光源计算中的临时对象，降低 GC 抖动。',
-  },
-  {
-    code: 'VISUAL',
-    title: '效果保持不变',
-    detail: '保留当前视觉效果、交互节奏和动效参数，仅做底层稳定性清理。',
-  },
-];
+type AnnouncementItem = {
+  code: string;
+  title: string;
+  detail: string;
+};
+
+type AnnouncementDocument = {
+  title: string;
+  subtitle: string;
+  status: string;
+  items: AnnouncementItem[];
+  updatedAt: string;
+  updatedBy: string;
+};
+
+type AdminSession = {
+  authenticated: boolean;
+  username: string | null;
+  csrf: string | null;
+};
+
+const defaultAnnouncement: AnnouncementDocument = {
+  title: 'DAZZLE 更新说明',
+  subtitle: '版本 2026.05.21 · 性能与稳定性优化',
+  status: 'Ready',
+  updatedAt: '2026-05-21T00:00:00.000Z',
+  updatedBy: 'system',
+  items: [
+    {
+      code: 'PERF',
+      title: '场景性能优化',
+      detail: '优化动画帧内的数据同步，减少不必要的 React / Zustand 更新。',
+    },
+    {
+      code: 'GC',
+      title: '内存分配收敛',
+      detail: '复用星球、流星、飞船和鼠标光源计算中的临时对象，降低 GC 抖动。',
+    },
+    {
+      code: 'VISUAL',
+      title: '效果保持不变',
+      detail: '保留当前视觉效果、交互节奏和动效参数，仅做底层稳定性清理。',
+    },
+  ],
+};
+
+const emptyAdminSession: AdminSession = {
+  authenticated: false,
+  username: null,
+  csrf: null,
+};
+
+const createEmptyAnnouncementItem = (): AnnouncementItem => ({
+  code: 'NOTE',
+  title: '',
+  detail: '',
+});
 
 const visualModes: Array<{
   key: VisualMode;
@@ -36,6 +76,15 @@ export const UIOverlay: React.FC = () => {
   const { viewState, hoveredPlanet, visitedThemes, visitSequence, lastVisitedTheme, completionPulseId, visualMode, setVisualMode, setViewState, setHoveredPlanet, setActiveTheme } = useGalaxyStore();
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [announcementClosing, setAnnouncementClosing] = useState(false);
+  const [announcement, setAnnouncement] = useState<AnnouncementDocument>(defaultAnnouncement);
+  const [announcementLoading, setAnnouncementLoading] = useState(false);
+  const [announcementNotice, setAnnouncementNotice] = useState('');
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [adminSession, setAdminSession] = useState<AdminSession>(emptyAdminSession);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [editorDraft, setEditorDraft] = useState<AnnouncementDocument>(defaultAnnouncement);
+  const [adminBusy, setAdminBusy] = useState(false);
+  const [adminError, setAdminError] = useState('');
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
   const announcementButtonRef = useRef<HTMLButtonElement>(null);
   const announcementPanelRef = useRef<HTMLDivElement>(null);
@@ -102,6 +151,139 @@ export const UIOverlay: React.FC = () => {
       openAnnouncement();
     }
   }, [announcementOpen, closeAnnouncement, openAnnouncement]);
+  const loadAnnouncement = useCallback(async (silent = false) => {
+    if (!silent) setAnnouncementLoading(true);
+    try {
+      const response = await fetch('/api/announcements', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error('announcement api unavailable');
+      const payload = await response.json() as { announcement?: AnnouncementDocument };
+      if (payload.announcement) {
+        setAnnouncement(payload.announcement);
+        setEditorDraft(payload.announcement);
+      }
+    } catch {
+      setAnnouncement(defaultAnnouncement);
+      setEditorDraft(defaultAnnouncement);
+    } finally {
+      if (!silent) setAnnouncementLoading(false);
+    }
+  }, []);
+  const checkAdminSession = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/session', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error('session unavailable');
+      const payload = await response.json() as AdminSession;
+      setAdminSession({
+        authenticated: Boolean(payload.authenticated),
+        username: payload.username ?? null,
+        csrf: payload.csrf ?? null,
+      });
+    } catch {
+      setAdminSession(emptyAdminSession);
+    }
+  }, []);
+  const openAdminPanel = useCallback(() => {
+    setAdminPanelOpen((open) => !open);
+    setAdminError('');
+    setAnnouncementNotice('');
+    void checkAdminSession();
+  }, [checkAdminSession]);
+  const handleLogin = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAdminBusy(true);
+    setAdminError('');
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(loginForm),
+      });
+      const payload = await response.json() as AdminSession & { ok?: boolean; error?: string };
+      if (!response.ok || !payload.authenticated && !payload.csrf) {
+        throw new Error(payload.error || '登录失败');
+      }
+      setAdminSession({
+        authenticated: true,
+        username: payload.username ?? loginForm.username,
+        csrf: payload.csrf ?? null,
+      });
+      setLoginForm({ username: '', password: '' });
+      setAnnouncementNotice('已进入公告编辑模式');
+    } catch (error) {
+      setAdminError(error instanceof Error ? error.message : '登录失败');
+    } finally {
+      setAdminBusy(false);
+    }
+  }, [loginForm]);
+  const handleLogout = useCallback(async () => {
+    setAdminBusy(true);
+    setAdminError('');
+    try {
+      await fetch('/api/admin/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+    } finally {
+      setAdminSession(emptyAdminSession);
+      setAdminBusy(false);
+      setAnnouncementNotice('已退出管理模式');
+    }
+  }, []);
+  const updateDraftItem = useCallback((index: number, field: keyof AnnouncementItem, value: string) => {
+    setEditorDraft((draft) => ({
+      ...draft,
+      items: draft.items.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item),
+    }));
+  }, []);
+  const addDraftItem = useCallback(() => {
+    setEditorDraft((draft) => ({
+      ...draft,
+      items: draft.items.length >= 5 ? draft.items : [...draft.items, createEmptyAnnouncementItem()],
+    }));
+  }, []);
+  const removeDraftItem = useCallback((index: number) => {
+    setEditorDraft((draft) => ({
+      ...draft,
+      items: draft.items.length <= 1 ? draft.items : draft.items.filter((_, itemIndex) => itemIndex !== index),
+    }));
+  }, []);
+  const saveAnnouncement = useCallback(async () => {
+    if (!adminSession.csrf) {
+      setAdminError('登录已失效，请重新登录');
+      return;
+    }
+    setAdminBusy(true);
+    setAdminError('');
+    try {
+      const response = await fetch('/api/announcements', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: {
+          'content-type': 'application/json',
+          'x-gp-admin-csrf': adminSession.csrf,
+        },
+        body: JSON.stringify(editorDraft),
+      });
+      const payload = await response.json() as { announcement?: AnnouncementDocument; error?: string };
+      if (!response.ok || !payload.announcement) {
+        throw new Error(payload.error || '保存失败');
+      }
+      setAnnouncement(payload.announcement);
+      setEditorDraft(payload.announcement);
+      setAnnouncementNotice('公告已同步到线上');
+    } catch (error) {
+      setAdminError(error instanceof Error ? error.message : '保存失败');
+    } finally {
+      setAdminBusy(false);
+    }
+  }, [adminSession.csrf, editorDraft]);
 
   useEffect(() => {
     const updateLayout = () => {
@@ -116,6 +298,27 @@ export const UIOverlay: React.FC = () => {
       window.removeEventListener('orientationchange', updateLayout);
     };
   }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadAnnouncement(true);
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadAnnouncement]);
+
+  useEffect(() => {
+    if (!announcementOpen) return;
+    const timeoutId = window.setTimeout(() => {
+      void loadAnnouncement(true);
+    }, 0);
+    const intervalId = window.setInterval(() => {
+      void loadAnnouncement(true);
+    }, 30000);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+    };
+  }, [announcementOpen, loadAnnouncement]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -376,16 +579,16 @@ export const UIOverlay: React.FC = () => {
                     <span className="hud-dot" />
                     <span>Software Update</span>
                   </div>
-                  <h2 className="text-2xl font-light tracking-wide text-gray-100 md:text-3xl">DAZZLE 更新说明</h2>
-                  <p className="mt-2 text-sm font-light leading-relaxed text-gray-500">版本 2026.05.21 · 性能与稳定性优化</p>
+                  <h2 className="text-2xl font-light tracking-wide text-gray-100 md:text-3xl">{announcement.title}</h2>
+                  <p className="mt-2 text-sm font-light leading-relaxed text-gray-500">{announcement.subtitle}</p>
                 </div>
                 <span className="mt-1 hidden rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-gray-400 sm:inline-flex">
-                  Ready
+                  {announcement.status}
                 </span>
               </div>
 
               <div className="rounded-2xl border border-white/[0.07] bg-black/20">
-                {announcements.map((item, index) => (
+                {announcement.items.map((item, index) => (
                   <div key={item.code} className={`grid grid-cols-[2.5rem_1fr] gap-3 px-4 py-4 text-left ${index > 0 ? 'border-t border-white/[0.06]' : ''}`}>
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.035] text-[10px] font-medium tracking-wider text-gray-300">
                       {String(index + 1).padStart(2, '0')}
@@ -401,9 +604,181 @@ export const UIOverlay: React.FC = () => {
                 ))}
               </div>
 
+              {adminPanelOpen && (
+                <div className="mt-4 rounded-2xl border border-white/[0.07] bg-black/25 p-4">
+                  {adminSession.authenticated ? (
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Admin Console</div>
+                          <div className="mt-1 text-xs text-gray-400">当前账号：{adminSession.username}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          disabled={adminBusy}
+                          className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-gray-400 transition-colors hover:text-white disabled:opacity-50"
+                        >
+                          <LogOut size={13} />
+                          退出
+                        </button>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-[1fr_0.55fr]">
+                        <label className="space-y-1.5">
+                          <span className="text-[10px] uppercase tracking-[0.18em] text-gray-500">标题</span>
+                          <input
+                            value={editorDraft.title}
+                            onChange={(event) => setEditorDraft((draft) => ({ ...draft, title: event.target.value }))}
+                            maxLength={64}
+                            className="w-full rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-sm text-gray-200 outline-none transition-colors focus:border-white/25"
+                          />
+                        </label>
+                        <label className="space-y-1.5">
+                          <span className="text-[10px] uppercase tracking-[0.18em] text-gray-500">状态</span>
+                          <input
+                            value={editorDraft.status}
+                            onChange={(event) => setEditorDraft((draft) => ({ ...draft, status: event.target.value }))}
+                            maxLength={24}
+                            className="w-full rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-sm text-gray-200 outline-none transition-colors focus:border-white/25"
+                          />
+                        </label>
+                      </div>
+
+                      <label className="block space-y-1.5">
+                        <span className="text-[10px] uppercase tracking-[0.18em] text-gray-500">副标题</span>
+                        <input
+                          value={editorDraft.subtitle}
+                          onChange={(event) => setEditorDraft((draft) => ({ ...draft, subtitle: event.target.value }))}
+                          maxLength={120}
+                          className="w-full rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-sm text-gray-200 outline-none transition-colors focus:border-white/25"
+                        />
+                      </label>
+
+                      <div className="space-y-3">
+                        {editorDraft.items.map((item, index) => (
+                          <div key={`${index}-${item.code}`} className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+                            <div className="mb-2 flex items-center justify-between gap-3">
+                              <span className="text-[10px] uppercase tracking-[0.18em] text-gray-500">条目 {String(index + 1).padStart(2, '0')}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeDraftItem(index)}
+                                disabled={editorDraft.items.length <= 1 || adminBusy}
+                                className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-gray-500 transition-colors hover:text-white disabled:opacity-35"
+                              >
+                                删除
+                              </button>
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-[0.35fr_1fr]">
+                              <input
+                                value={item.code}
+                                onChange={(event) => updateDraftItem(index, 'code', event.target.value)}
+                                maxLength={12}
+                                aria-label={`公告 ${index + 1} 代码`}
+                                className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs uppercase tracking-[0.16em] text-gray-300 outline-none transition-colors focus:border-white/25"
+                              />
+                              <input
+                                value={item.title}
+                                onChange={(event) => updateDraftItem(index, 'title', event.target.value)}
+                                maxLength={48}
+                                aria-label={`公告 ${index + 1} 标题`}
+                                className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-200 outline-none transition-colors focus:border-white/25"
+                              />
+                            </div>
+                            <textarea
+                              value={item.detail}
+                              onChange={(event) => updateDraftItem(index, 'detail', event.target.value)}
+                              maxLength={180}
+                              rows={2}
+                              aria-label={`公告 ${index + 1} 详情`}
+                              className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs leading-relaxed text-gray-300 outline-none transition-colors focus:border-white/25"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={addDraftItem}
+                          disabled={editorDraft.items.length >= 5 || adminBusy}
+                          className="inline-flex items-center rounded-full border border-white/10 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-gray-400 transition-colors hover:text-white disabled:opacity-40"
+                        >
+                          添加条目
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveAnnouncement}
+                          disabled={adminBusy}
+                          className="inline-flex items-center gap-2 rounded-full border border-[var(--theme-color)]/35 bg-[var(--theme-color)]/10 px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-gray-100 transition-colors hover:border-[var(--theme-color)]/65 disabled:opacity-50"
+                        >
+                          <Save size={13} />
+                          保存并同步
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <form className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]" onSubmit={handleLogin}>
+                      <label className="space-y-1.5">
+                        <span className="text-[10px] uppercase tracking-[0.18em] text-gray-500">账号</span>
+                        <input
+                          value={loginForm.username}
+                          onChange={(event) => setLoginForm((form) => ({ ...form, username: event.target.value }))}
+                          autoComplete="username"
+                          className="w-full rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-sm text-gray-200 outline-none transition-colors focus:border-white/25"
+                        />
+                      </label>
+                      <label className="space-y-1.5">
+                        <span className="text-[10px] uppercase tracking-[0.18em] text-gray-500">密码</span>
+                        <input
+                          type="password"
+                          value={loginForm.password}
+                          onChange={(event) => setLoginForm((form) => ({ ...form, password: event.target.value }))}
+                          autoComplete="current-password"
+                          className="w-full rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-sm text-gray-200 outline-none transition-colors focus:border-white/25"
+                        />
+                      </label>
+                      <button
+                        type="submit"
+                        disabled={adminBusy}
+                        className="inline-flex items-center justify-center gap-2 self-end rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-gray-300 transition-colors hover:text-white disabled:opacity-50"
+                      >
+                        <Lock size={13} />
+                        登录
+                      </button>
+                    </form>
+                  )}
+
+                  {(adminError || announcementNotice) && (
+                    <div className={`mt-3 text-xs ${adminError ? 'text-red-300' : 'text-gray-400'}`}>
+                      {adminError || announcementNotice}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="mt-5 flex flex-col gap-3 border-t border-white/[0.06] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">
-                  Recent Update · Live
+                <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-gray-500">
+                  <span>Recent Update · Live</span>
+                  <button
+                    type="button"
+                    onClick={() => void loadAnnouncement(false)}
+                    disabled={announcementLoading}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 text-gray-500 transition-colors hover:text-white disabled:opacity-40"
+                    aria-label="刷新公告"
+                    title="刷新公告"
+                  >
+                    <RefreshCw size={12} className={announcementLoading ? 'animate-spin' : ''} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openAdminPanel}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 text-gray-600 transition-colors hover:text-gray-300"
+                    aria-label="公告管理"
+                    title="公告管理"
+                  >
+                    {adminSession.authenticated ? <Pencil size={12} /> : <Lock size={12} />}
+                  </button>
                 </div>
                 <button
                   type="button"

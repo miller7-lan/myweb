@@ -26,6 +26,7 @@
 - **流星与涟漪**：星环上会出现流星冲击，点击星环也能手动触发流星坠落。
 - **纸船漂流**：星环上有一艘简笔画纸船，会沿环形水流漂动，并受到流星涟漪影响。
 - **公告舱**：首页提供最近更新公告入口，用于展示版本、安全和体验改动。
+- **公告管理**：公告弹窗内提供低调的管理员入口，可登录后编辑公告并同步线上内容。
 
 ## 技术栈
 
@@ -58,6 +59,16 @@ npm run build
 ```bash
 npm run preview
 ```
+
+## 公告管理配置
+
+线上公告通过 Cloudflare Pages Functions 读取和保存，内容存放在 KV 绑定 `ANNOUNCEMENTS_KV` 中。管理员账号不要写进代码，放在 Cloudflare Pages 的环境变量里：
+
+```bash
+node scripts/hash-admin-password.mjs "your-long-admin-password"
+```
+
+将输出值配置为 `ADMIN_PASSWORD_HASH`，同时配置 `ADMIN_USERNAME` 和一个高强度随机值 `ADMIN_SESSION_SECRET`。登录成功后后台使用 HttpOnly Cookie 和 CSRF token 保存会话；更新公告会立即写入 KV，前台打开公告弹窗时会自动刷新。
 
 ## 项目结构
 
