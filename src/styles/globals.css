@@ -19,6 +19,14 @@ canvas {
 }
 
 @layer components {
+  .galaxy-canvas-brightness {
+    filter: brightness(1.42) saturate(1.08) contrast(0.96);
+  }
+
+  .galaxy-ui-brightness {
+    filter: brightness(1.32) saturate(1.08);
+  }
+
   .hud-panel {
     position: relative;
     overflow: hidden;

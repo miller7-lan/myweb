@@ -19,6 +19,7 @@ function App() {
   return (
     <div className="w-full h-full relative overflow-hidden bg-galaxy-bg text-gray-200" data-visual-mode={visualMode}>
       <Canvas
+        className="galaxy-canvas-brightness"
         camera={{ position: [0, 5, 20], fov: 45 }}
         gl={{ antialias: true, alpha: false }}
         dpr={Math.min(window.devicePixelRatio, 2)}
@@ -28,8 +29,10 @@ function App() {
           <GalaxyScene />
         </Suspense>
       </Canvas>
-      <UIOverlay />
-      <ThemeOverlay />
+      <div className="galaxy-ui-brightness absolute inset-0 pointer-events-none">
+        <UIOverlay />
+        <ThemeOverlay />
+      </div>
       <GuidePet />
     </div>
   );
