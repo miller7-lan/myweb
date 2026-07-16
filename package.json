@@ -10,6 +10,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "verify:portfolio": "node scripts/verify-portfolio-content.mjs",
     "verify:downloads": "node scripts/verify-downloads.mjs"
   },
   "dependencies": {

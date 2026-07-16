@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import { ArrowDownToLine, CheckCircle2, Search, X } from 'lucide-react';
 import { isReleaseKey, releases, type ReleaseDownload, type ReleaseKey, type ReleaseScreenshot } from '../../data/releases';
+import { useGalaxyStore } from '../../store/useGalaxyStore';
 
 type DownloadNotice = {
   label: string;
@@ -104,6 +105,7 @@ const ReleasePreviewBubble: React.FC<{
 };
 
 export const OrbitContent: React.FC = () => {
+  const activeTheme = useGalaxyStore((state) => state.activeTheme);
   const [activeRelease, setActiveRelease] = useState<ReleaseKey>(() => {
     const preferredTab = window.sessionStorage.getItem('preferredOrbitTab');
     window.sessionStorage.removeItem('preferredOrbitTab');
@@ -118,6 +120,18 @@ export const OrbitContent: React.FC = () => {
   const [screenshotPreview, setScreenshotPreview] = useState<ScreenshotPreview | null>(null);
   const [isPreviewClosing, setIsPreviewClosing] = useState(false);
   const previewCloseTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (activeTheme !== 'orbit') return;
+    const preferredTab = window.sessionStorage.getItem('preferredOrbitTab');
+    window.sessionStorage.removeItem('preferredOrbitTab');
+    if (!preferredTab || !isReleaseKey(preferredTab)) return;
+    const timer = window.setTimeout(() => {
+      setSearchQuery('');
+      setActiveRelease(preferredTab);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [activeTheme]);
 
   useEffect(() => {
     const handleGuideOpen = (event: WindowEventMap['galaxy-guide-open']) => {
@@ -275,7 +289,7 @@ export const OrbitContent: React.FC = () => {
           <span>ORBIT RELEASE BAY</span>
         </div>
         <h2 className="text-4xl md:text-5xl font-light tracking-tight text-white mb-4">软件发行</h2>
-        <p className="text-lg md:text-xl text-gray-400 font-light">沿发行轨道检索、选择并下载开箱即用的本机应用。</p>
+        <p className="text-lg md:text-xl text-gray-400 font-light">沿发行轨道检索、选择并获取本机应用、发行包与源码。</p>
       </div>
 
       <div className="hud-panel mb-6 flex flex-col gap-4 rounded-3xl p-4 md:flex-row md:items-center md:justify-between" data-guide-id="orbit-search">
@@ -412,8 +426,10 @@ export const OrbitContent: React.FC = () => {
                 <a
                   key={link.href}
                   href={link.href}
-                  download
-                  onClick={() => showDownloadNotice(link)}
+                  download={link.external ? undefined : true}
+                  target={link.external ? '_blank' : undefined}
+                  rel={link.external ? 'noreferrer' : undefined}
+                  onClick={link.external ? undefined : () => showDownloadNotice(link)}
                   className="hover:text-white transition-colors underline underline-offset-4"
                 >
                   {link.label}

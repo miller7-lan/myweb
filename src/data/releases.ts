@@ -5,18 +5,20 @@ import {
   Cpu,
   Database,
   HardDrive,
+  MailSearch,
   Monitor,
   Network,
   type LucideIcon,
 } from 'lucide-react';
 
-export type ReleaseKey = 'secretary' | 'tunnel' | 'profit' | 'localMonitor' | 'next';
+export type ReleaseKey = 'secretary' | 'tunnel' | 'profit' | 'localMonitor' | 'mailweek' | 'next';
 export type DownloadableReleaseKey = Exclude<ReleaseKey, 'next'>;
 
 export type ReleaseDownload = {
   label: string;
   href: string;
   sha256?: string;
+  external?: boolean;
 };
 
 export type ReleaseScreenshot = {
@@ -171,11 +173,42 @@ export const releases: ReleaseItem[] = [
     keywords: ['monitor', '本机检测', '系统监测', 'cpu', '内存', '网络', '代理', 'macos'],
   },
   {
+    key: 'mailweek',
+    title: 'Mailweek v0.3.2',
+    subtitle: '本地只读邮件周报 Agent',
+    date: '2026.07 · RELEASE',
+    node: 'Node 05',
+    icon: MailSearch,
+    body: '面向 macOS 终端的本地邮件审查工具，通过只读 IMAP 与本机 Ollama 生成 P0–P4 登记簿、AI 建议和安全正文预览，并用 4B→9B 自动复核守住分类完整性。',
+    status: 'Stable',
+    platform: 'macOS CLI · Python 3.11+ · Ollama',
+    links: [
+      {
+        label: '查看 GitHub 源码 ↗',
+        href: 'https://github.com/miller7-lan/mailweek',
+        external: true,
+      },
+    ],
+    specs: [
+      { label: '运行环境', value: 'Python 3.11+', icon: Cpu },
+      { label: '本地模型', value: 'Ollama 4B / 9B', icon: HardDrive },
+      { label: '邮箱连接', value: 'IMAP 只读', icon: Network },
+      { label: '交互界面', value: 'Terminal / JSON', icon: Monitor },
+    ],
+    scenes: [
+      '隐私优先：邮件正文只在本机处理，不上传云端，也不写入磁盘。',
+      '行动登记：优先呈现账户安全、待回复、截止日期和正式账单，并支持按优先级或状态筛选。',
+      '准确度门禁：4B 主分类与 9B 回退模型均通过 11/11 合成边界用例。',
+      '安全边界：没有 SMTP、删除、移动、标记或任意 Shell 工具。',
+    ],
+    keywords: ['mailweek', '邮件', '周报', 'imap', 'ollama', 'qwen', 'p0', '只读', 'macos', 'cli', 'agent'],
+  },
+  {
     key: 'next',
     title: '后续更新方向',
     subtitle: '维护与发行计划',
     date: 'NEXT ORBIT',
-    node: 'Node 05',
+    node: 'Node 06',
     icon: ArrowDownToLine,
     body: '后续会优先补齐版本提示、自动更新体验，以及更多本地工具的发行包整理。',
     status: 'Planning',
