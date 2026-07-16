@@ -14,12 +14,20 @@ const requiredContent = [
   '本地只读邮件周报 Agent',
   'P0–P4 登记簿',
   '4B→9B 复核',
-  'https://github.com/miller7-lan/mailweek',
+  '下载 macOS DMG',
+  'release-assets/Mailweek-0.3.2-macOS.dmg',
 ];
 
 const missing = requiredContent.filter((value) => !bundle.includes(value));
-if (missing.length > 0) {
+const forbiddenContent = [
+  'https://github.com/miller7-lan/mailweek',
+  '查看 GitHub 源码',
+];
+const exposed = forbiddenContent.filter((value) => bundle.includes(value));
+
+if (missing.length > 0 || exposed.length > 0) {
   console.error(`Portfolio bundle is missing: ${missing.join(', ')}`);
+  console.error(`Portfolio bundle must not expose: ${exposed.join(', ')}`);
   process.exit(1);
 }
 
