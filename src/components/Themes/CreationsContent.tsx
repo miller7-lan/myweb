@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { Activity, ArrowRight, Bot, Calculator, Cpu, Eye, FolderSearch, Moon, Network, Route, Search, SearchCode, X, type LucideIcon } from 'lucide-react';
+import { Activity, ArrowRight, Bot, Calculator, Cpu, Eye, FolderSearch, MailSearch, Moon, Network, Route, Search, SearchCode, X, type LucideIcon } from 'lucide-react';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 import type { DownloadableReleaseKey } from '../../data/releases';
 import { defaultSiteContent, visibleBySort, type CreationAddon, type SiteContentDocument } from '../../data/siteContent';
@@ -119,6 +119,28 @@ const projects: Project[] = [
     highlights: ['实时监测', '本地仪表盘', 'Token 成本'],
   },
   {
+    title: 'Mailweek',
+    subtitle: 'Local Read-only Email Agent · macOS CLI',
+    icon: MailSearch,
+    desc: '本地、只读的邮件审查 Agent，通过 IMAP 与本机 Ollama 把一周邮件整理成可筛选的优先级登记簿，让重要邮件、待回复事项和截止日期先被看见。',
+    requirements: [
+      '支持 QQ、Gmail、Outlook、iCloud、网易及自定义 IMAP 账户',
+      '按 P0–P4、是否需要行动、截止时间和主题生成稳定登记簿',
+      '在终端内完成账户切换、筛选、详情查看和自然语言审查',
+      '提供稳定 JSON 命令与合成质量套件，便于自动化和准确度回归',
+    ],
+    problem: '邮件数量增加后，账户安全、项目回复和正式账单容易被营销与通知淹没；同时又不希望把完整邮箱交给云端服务处理。',
+    design: [
+      '所有 IMAP 文件夹以 readonly 打开，正文使用 BODY.PEEK，工具表不提供发送、删除、移动或标记能力',
+      '按任务只暴露 3–5 个带类型工具，由宿主固定邮件身份、校验结构并隔离账户、文件夹和 UID',
+      '4B 负责逐封分类，输出不完整时由 9B 自动复核；11 类合成用例作为准确度门禁',
+      '仅缓存进程内邮件元数据，正文、模型思维和审查结果在退出后清除且不落盘',
+    ],
+    techStack: ['Python', 'Typer', 'Rich', 'IMAPClient', 'Ollama', 'Pydantic', 'macOS Keychain'],
+    highlights: ['本地只读', 'P0–P4 登记簿', '4B→9B 复核'],
+    releaseTarget: 'mailweek',
+  },
+  {
     title: 'DevEnv Master',
     subtitle: '全局虚拟环境管理',
     icon: FolderSearch,
@@ -221,6 +243,7 @@ const projectGuideIds: Record<string, string> = {
   '视觉识别系统 3.0': 'project-vision',
   'Dazzle Secretary Pro': 'project-secretary',
   '利润助手': 'project-profit',
+  'Mailweek': 'project-mailweek',
   '本机检测': 'project-monitor',
   '内网穿透控制台': 'project-tunnel',
 };
