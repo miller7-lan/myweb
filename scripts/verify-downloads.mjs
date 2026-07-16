@@ -30,7 +30,7 @@ const downloads = releases.flatMap((release) => [
 ]);
 
 for (const { release, download } of downloads) {
-  if (!download.external && !download.sha256) {
+  if (!download.sha256) {
     failures.push(`${release.title} / ${download.label}: missing SHA-256`);
   }
 
@@ -64,8 +64,7 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-const externalLinks = downloads.filter(({ download }) => download.external).length;
 console.log(
-  `Verified ${downloads.length - externalLinks} download entries and ${externalLinks} external links`
+  `Verified ${downloads.length} download entries`
   + `${shouldCheckNetwork ? ' with network checks' : ''}.`,
 );

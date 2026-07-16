@@ -18,7 +18,6 @@ export type ReleaseDownload = {
   label: string;
   href: string;
   sha256?: string;
-  external?: boolean;
 };
 
 export type ReleaseScreenshot = {
@@ -181,19 +180,17 @@ export const releases: ReleaseItem[] = [
     icon: MailSearch,
     body: '面向 macOS 终端的本地邮件审查工具，通过只读 IMAP 与本机 Ollama 生成 P0–P4 登记簿、AI 建议和安全正文预览，并用 4B→9B 自动复核守住分类完整性。',
     status: 'Stable',
-    platform: 'macOS CLI · Python 3.11+ · Ollama',
-    links: [
-      {
-        label: '查看 GitHub 源码 ↗',
-        href: 'https://github.com/miller7-lan/mailweek',
-        external: true,
-      },
-    ],
+    platform: 'macOS 11+ · Apple Silicon · Ollama',
+    primaryDownload: {
+      label: '下载 macOS DMG (19 MB)',
+      href: githubAsset('release-assets/Mailweek-0.3.2-macOS.dmg'),
+      sha256: 'ea9da94b1e77ec2db64c1117cc60f52ace60648b009ebb0d747c01f85207dea4',
+    },
     specs: [
-      { label: '运行环境', value: 'Python 3.11+', icon: Cpu },
+      { label: '系统', value: 'macOS 11+', icon: Monitor },
+      { label: '架构', value: 'Apple Silicon', icon: Cpu },
       { label: '本地模型', value: 'Ollama 4B / 9B', icon: HardDrive },
       { label: '邮箱连接', value: 'IMAP 只读', icon: Network },
-      { label: '交互界面', value: 'Terminal / JSON', icon: Monitor },
     ],
     scenes: [
       '隐私优先：邮件正文只在本机处理，不上传云端，也不写入磁盘。',

@@ -180,7 +180,7 @@ export const guideTargets: GuideTarget[] = [
     label: '软件发行',
     theme: 'orbit',
     keywords: ['发行', '下载', '软件', 'orbit', 'release', '找下载'],
-    description: '这里提供本机应用、发行包与源码入口。',
+    description: '这里提供已经验证的本机应用与发行包。',
   },
   {
     id: 'orbit-search',
@@ -209,8 +209,8 @@ export const guideTargets: GuideTarget[] = [
     id: 'release-mailweek',
     label: 'Mailweek 发行节点',
     theme: 'orbit',
-    keywords: ['mailweek 源码', 'mailweek 下载', '邮件工具', '邮件 agent', 'ollama 邮件'],
-    description: '这里介绍 Mailweek v0.3.2 的运行要求、安全边界和源码入口。',
+    keywords: ['mailweek dmg', 'mailweek 下载', '邮件工具', '邮件 agent', 'ollama 邮件'],
+    description: '这里介绍 Mailweek v0.3.2 的运行要求、安全边界和 macOS DMG 下载。',
     openAction: { type: 'select-release', value: 'mailweek' },
   },
   {
@@ -300,7 +300,7 @@ export const petPrompts: GuideMessage[] = [
   { id: 'identity-1', theme: 'identity', mood: 'idle', text: '这里有身份模块、获奖证书和当前任务。想看哪一块？' },
   { id: 'creations-1', theme: 'creations', mood: 'idle', text: '作品档案可以搜索，也可以让我直接打开某个项目详情。' },
   { id: 'stack-1', theme: 'stack', mood: 'idle', text: '技能星图支持拖拽和缩放，我也能帮你定位 Python、OCR、前端节点。' },
-  { id: 'orbit-1', theme: 'orbit', mood: 'idle', text: '要找软件包或源码，告诉我软件名或平台，比如“Mailweek”或“安卓 APK”。' },
+  { id: 'orbit-1', theme: 'orbit', mood: 'idle', text: '要找软件包，告诉我软件名或平台，比如“Mailweek DMG”或“安卓 APK”。' },
   { id: 'signal-1', theme: 'signal', mood: 'idle', text: '联系页在这里。需要的话我可以帮你定位到邮箱或消息输入框。' },
   { id: 'success', mood: 'success', text: '定位完成。扫描框闪过的地方就是目标区域。' },
   { id: 'fail', mood: 'curious', text: '我暂时没匹配到那个目标。可以试试“看作品”“找下载”“联系我”。' },
