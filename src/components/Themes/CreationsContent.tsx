@@ -126,6 +126,7 @@ const projects: Project[] = [
     requirements: [
       '支持 QQ、Gmail、Outlook、iCloud、网易及自定义 IMAP 账户',
       '按 P0–P4、是否需要行动、截止时间和主题生成稳定登记簿',
+      '自适应终端信息层级，并以 Mac 数字键 1 / 2 / 3 联动全局快捷预设',
       '在终端内完成账户切换、筛选、详情查看和自然语言审查',
       '提供稳定 JSON 命令与合成质量套件，便于自动化和准确度回归',
     ],
@@ -137,7 +138,7 @@ const projects: Project[] = [
       '仅缓存进程内邮件元数据，正文、模型思维和审查结果在退出后清除且不落盘',
     ],
     techStack: ['Python', 'Typer', 'Rich', 'IMAPClient', 'Ollama', 'Pydantic', 'macOS Keychain'],
-    highlights: ['本地只读', 'P0–P4 登记簿', '4B→9B 复核'],
+    highlights: ['本地只读', '1 / 2 / 3 全局快捷', '4B→9B 复核'],
     releaseTarget: 'mailweek',
   },
   {

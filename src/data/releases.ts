@@ -173,18 +173,18 @@ export const releases: ReleaseItem[] = [
   },
   {
     key: 'mailweek',
-    title: 'Mailweek v0.3.2',
+    title: 'Mailweek v0.3.3',
     subtitle: '本地只读邮件周报 Agent',
     date: '2026.07 · RELEASE',
     node: 'Node 05',
     icon: MailSearch,
-    body: '面向 macOS 终端的本地邮件审查工具，通过只读 IMAP 与本机 Ollama 生成 P0–P4 登记簿、AI 建议和安全正文预览，并用 4B→9B 自动复核守住分类完整性。',
+    body: '面向 macOS 终端的本地邮件审查工具。v0.3.3 重构 P0–P4 登记簿的信息层级，并加入可由 Mac 数字键 1 / 2 / 3 直接触发的全局快捷预设；只读 IMAP、4B→9B 自动复核与分类准确度门禁保持不变。',
     status: 'Stable',
     platform: 'macOS 11+ · Apple Silicon · Ollama',
     primaryDownload: {
       label: '下载 macOS DMG (19 MB)',
-      href: githubAsset('release-assets/Mailweek-0.3.2-macOS.dmg'),
-      sha256: 'ea9da94b1e77ec2db64c1117cc60f52ace60648b009ebb0d747c01f85207dea4',
+      href: githubAsset('release-assets/Mailweek-0.3.3-macOS.dmg'),
+      sha256: '56e14d53c3debbc739e4d3689fe16e6f1f55b543488024e90fb84af3910aae73',
     },
     specs: [
       { label: '系统', value: 'macOS 11+', icon: Monitor },
@@ -193,12 +193,13 @@ export const releases: ReleaseItem[] = [
       { label: '邮箱连接', value: 'IMAP 只读', icon: Network },
     ],
     scenes: [
+      '全局快捷预设：按 1 审查上一个完整自然周，按 2 审查今天，按 3 输入自定义命令或自然语言，无需回车。',
       '隐私优先：邮件正文只在本机处理，不上传云端，也不写入磁盘。',
       '行动登记：优先呈现账户安全、待回复、截止日期和正式账单，并支持按优先级或状态筛选。',
       '准确度门禁：4B 主分类与 9B 回退模型均通过 11/11 合成边界用例。',
       '安全边界：没有 SMTP、删除、移动、标记或任意 Shell 工具。',
     ],
-    keywords: ['mailweek', '邮件', '周报', 'imap', 'ollama', 'qwen', 'p0', '只读', 'macos', 'cli', 'agent'],
+    keywords: ['mailweek', '邮件', '周报', 'imap', 'ollama', 'qwen', 'p0', '只读', 'macos', 'cli', 'agent', '全局快捷预设', '数字键'],
   },
   {
     key: 'next',
