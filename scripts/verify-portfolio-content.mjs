@@ -10,12 +10,13 @@ const scripts = await Promise.all(
 const bundle = scripts.join('\n');
 
 const requiredContent = [
-  'Mailweek v0.3.2',
+  'Mailweek v0.3.3',
   '本地只读邮件周报 Agent',
   'P0–P4 登记簿',
   '4B→9B 复核',
   '下载 macOS DMG',
-  'release-assets/Mailweek-0.3.2-macOS.dmg',
+  '全局快捷预设',
+  'release-assets/Mailweek-0.3.3-macOS.dmg',
 ];
 
 const missing = requiredContent.filter((value) => !bundle.includes(value));

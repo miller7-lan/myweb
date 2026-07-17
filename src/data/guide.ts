@@ -126,8 +126,8 @@ export const guideTargets: GuideTarget[] = [
     id: 'project-mailweek',
     label: 'Mailweek 项目',
     theme: 'creations',
-    keywords: ['mailweek', '邮件', '周报', 'imap', 'ollama', '只读', 'p0', '邮件 agent'],
-    description: '本地只读的 Ollama 邮件审查 Agent，把一周邮件整理成优先级登记簿。',
+    keywords: ['mailweek', '邮件', '周报', 'imap', 'ollama', '只读', 'p0', '邮件 agent', '快捷预设', '数字键'],
+    description: '本地只读的 Ollama 邮件审查 Agent，用自适应终端界面和 1 / 2 / 3 全局快捷预设整理优先级登记簿。',
     openAction: { type: 'open-project', value: 'Mailweek' },
   },
   {
@@ -210,7 +210,7 @@ export const guideTargets: GuideTarget[] = [
     label: 'Mailweek 发行节点',
     theme: 'orbit',
     keywords: ['mailweek dmg', 'mailweek 下载', '邮件工具', '邮件 agent', 'ollama 邮件'],
-    description: '这里介绍 Mailweek v0.3.2 的运行要求、安全边界和 macOS DMG 下载。',
+    description: '这里介绍 Mailweek v0.3.3 的全局快捷预设、运行要求、安全边界和 macOS DMG 下载。',
     openAction: { type: 'select-release', value: 'mailweek' },
   },
   {
