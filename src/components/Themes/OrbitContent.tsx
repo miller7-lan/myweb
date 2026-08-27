@@ -277,8 +277,8 @@ export const OrbitContent: React.FC = () => {
           <span className="hud-dot" />
           <span>ORBIT RELEASE BAY</span>
         </div>
-        <h2 className="text-4xl md:text-5xl font-light tracking-tight text-white mb-4">软件发行</h2>
-        <p className="text-lg md:text-xl text-gray-400 font-light">沿发行轨道检索、选择并获取本机应用与发行包。</p>
+        <h2 className="text-4xl md:text-5xl font-light tracking-tight text-white mb-4">软件与 Skill 发行</h2>
+        <p className="text-lg md:text-xl text-gray-400 font-light">沿发行轨道检索、选择并获取本机应用、Codex Skill 与发行包。</p>
       </div>
 
       <div className="hud-panel mb-6 flex flex-col gap-4 rounded-3xl p-4 md:flex-row md:items-center md:justify-between" data-guide-id="orbit-search">
@@ -288,7 +288,7 @@ export const OrbitContent: React.FC = () => {
             type="search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="搜索软件、平台、关键词..."
+            placeholder="搜索软件、Skill、平台、关键词..."
             className="hud-search"
           />
         </label>
@@ -363,7 +363,7 @@ export const OrbitContent: React.FC = () => {
                   <span className="hud-dot" />
                   <span>NO RELEASE NODE</span>
                 </div>
-                <p className="text-sm font-light text-gray-400">没有找到匹配的软件节点。</p>
+                <p className="text-sm font-light text-gray-400">没有找到匹配的软件或 Skill 节点。</p>
               </div>
             )}
           </div>

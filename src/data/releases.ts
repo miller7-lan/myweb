@@ -8,10 +8,11 @@ import {
   MailSearch,
   Monitor,
   Network,
+  Workflow,
   type LucideIcon,
 } from 'lucide-react';
 
-export type ReleaseKey = 'secretary' | 'tunnel' | 'profit' | 'localMonitor' | 'mailweek' | 'next';
+export type ReleaseKey = 'secretary' | 'tunnel' | 'profit' | 'localMonitor' | 'mailweek' | 'multiAgentWorkspace' | 'next';
 export type DownloadableReleaseKey = Exclude<ReleaseKey, 'next'>;
 
 export type ReleaseDownload = {
@@ -202,11 +203,42 @@ export const releases: ReleaseItem[] = [
     keywords: ['mailweek', '邮件', '周报', 'imap', 'ollama', 'qwen', 'p0', '只读', 'macos', 'cli', 'agent', '全局快捷预设', '数字键'],
   },
   {
+    key: 'multiAgentWorkspace',
+    title: 'Universal Codex Multi-Agent Workspace',
+    subtitle: '项目自适应多 Agent 工作区 Skill',
+    date: '2026.08 · SKILL',
+    node: 'Node 06',
+    icon: Workflow,
+    body: '面向任意 Git 项目的本地优先 Codex Skill：先发现仓库结构与运行时能力，再按真实架构设计一个纯编排 Orchestrator 与最小专业 Agent 团队，并生成可审计、可复用的协作工作区。',
+    status: 'Verified',
+    platform: 'Codex Skill · Python 3.10+ · Git',
+    primaryDownload: {
+      label: '下载 Codex Skill ZIP (60 KB)',
+      href: githubAsset('release-assets/universal-codex-multi-agent-workspace.zip'),
+      sha256: '7389f2e03b4ec4cef5e83f93eb449640330eba82b5fa739f70e535590c97247d',
+    },
+    specs: [
+      { label: '安装位置', value: '~/.codex/skills/', icon: HardDrive },
+      { label: '运行环境', value: 'Python 3.10+ / Git', icon: Cpu },
+      { label: '线程后端', value: 'CodexMonitor / app-server', icon: Network },
+      { label: 'Python 依赖', value: '无第三方依赖', icon: Bot },
+    ],
+    scenes: [
+      '项目自适应：不内置固定角色，依据架构、风险、任务边界与验证需求设计最小团队。',
+      '完整工作区：生成项目级 Agent 配置与分派协议，创建或复用独立 worktree，并通过 CodexMonitor 或官方 app-server 初始化线程。',
+      '强制真实分派：先写任务单，再发送、等待最终 handoff 和综合验收；无可用通道时明确停止，不由 Main 越权代做。',
+      '证据化校验：区分 any-delegation 与 persistent-thread，用 smoke evidence 验证 dispatch、wait、handoff 和越权边界。',
+      '安全边界：保留脏工作树，不自动 commit、push 或 merge，也不覆盖非托管配置。',
+      '已验证：18 项自动化测试通过，编排连通性为 PASS；模型结论正确性不在本次验证范围内。',
+    ],
+    keywords: ['skill', 'codex', 'multi-agent', '多 agent', 'orchestrator', 'worktree', 'codexmonitor', 'app-server', 'delegation', 'persistent-thread', '任务单', 'smoke evidence', 'git', 'python'],
+  },
+  {
     key: 'next',
     title: '后续更新方向',
     subtitle: '维护与发行计划',
     date: 'NEXT ORBIT',
-    node: 'Node 06',
+    node: 'Node 07',
     icon: ArrowDownToLine,
     body: '后续会优先补齐版本提示、自动更新体验，以及更多本地工具的发行包整理。',
     status: 'Planning',
