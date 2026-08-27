@@ -17,6 +17,15 @@ const requiredContent = [
   '下载 macOS DMG',
   '全局快捷预设',
   'release-assets/Mailweek-0.3.3-macOS.dmg',
+  '软件与 Skill 发行',
+  'Universal Codex Multi-Agent Workspace',
+  '项目自适应多 Agent 工作区 Skill',
+  '强制真实分派',
+  '证据化校验',
+  '模型结论正确性不在本次验证范围内',
+  '下载 Codex Skill ZIP (60 KB)',
+  'release-assets/universal-codex-multi-agent-workspace.zip',
+  '7389f2e03b4ec4cef5e83f93eb449640330eba82b5fa739f70e535590c97247d',
 ];
 
 const missing = requiredContent.filter((value) => !bundle.includes(value));
