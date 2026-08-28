@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDownToLine, CheckCircle2, Search, X } from 'lucide-react';
-import { isReleaseKey, releases, type ReleaseDownload, type ReleaseKey, type ReleaseScreenshot } from '../../data/releases';
+import { isReleaseKey, releases, type ReleaseDownload, type ReleaseKey, type ReleaseKind, type ReleaseScreenshot } from '../../data/releases';
 
 type DownloadNotice = {
   label: string;
@@ -22,6 +22,26 @@ type ScreenshotPreview = {
 
 const normalizeSearch = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
 const searchTokens = (value: string) => normalizeSearch(value).split(/\s+/).filter(Boolean);
+
+const releaseKindOptions: Array<{
+  kind: ReleaseKind;
+  kicker: string;
+  label: string;
+  description: string;
+}> = [
+  {
+    kind: 'software',
+    kicker: 'SOFTWARE RELEASES',
+    label: '软件发行',
+    description: '桌面与移动应用安装包',
+  },
+  {
+    kind: 'skill',
+    kicker: 'SKILL SHARES',
+    label: 'Skill 分享',
+    description: '可复用的 Codex Skill',
+  },
+];
 
 const ReleasePreviewBubble: React.FC<{
   preview: ScreenshotPreview;
@@ -108,6 +128,12 @@ export const OrbitContent: React.FC = () => {
     const preferredTab = window.sessionStorage.getItem('preferredOrbitTab');
     return preferredTab && isReleaseKey(preferredTab) ? preferredTab : 'secretary';
   });
+  const [activeKind, setActiveKind] = useState<ReleaseKind>(() => {
+    const preferredTab = window.sessionStorage.getItem('preferredOrbitTab');
+    return preferredTab && isReleaseKey(preferredTab)
+      ? releases.find((release) => release.key === preferredTab)?.kind ?? 'software'
+      : 'software';
+  });
   const [searchQuery, setSearchQuery] = useState('');
 
   const [isScanning, setIsScanning] = useState(false);
@@ -117,6 +143,10 @@ export const OrbitContent: React.FC = () => {
   const [screenshotPreview, setScreenshotPreview] = useState<ScreenshotPreview | null>(null);
   const [isPreviewClosing, setIsPreviewClosing] = useState(false);
   const previewCloseTimer = useRef<number | null>(null);
+  const channelReleases = useMemo(
+    () => releases.filter((release) => release.kind === activeKind),
+    [activeKind],
+  );
 
   useEffect(() => {
     window.sessionStorage.removeItem('preferredOrbitTab');
@@ -127,7 +157,9 @@ export const OrbitContent: React.FC = () => {
       const action = event.detail.target.openAction;
       if (action?.type !== 'select-release') return;
       if (isReleaseKey(action.value)) {
+        const targetRelease = releases.find((release) => release.key === action.value);
         setSearchQuery('');
+        if (targetRelease) setActiveKind(targetRelease.kind);
         setActiveRelease(action.value);
       }
     };
@@ -148,17 +180,26 @@ export const OrbitContent: React.FC = () => {
     };
   }, []);
 
+  const selectReleaseKind = (kind: ReleaseKind) => {
+    const firstRelease = releases.find((release) => release.kind === kind);
+    setActiveKind(kind);
+    setSearchQuery('');
+    setPingResults({});
+    setIsScanning(false);
+    if (firstRelease) setActiveRelease(firstRelease.key);
+  };
+
   const runOrbitPing = () => {
     setIsScanning(true);
     setPingResults({});
     
-    releases.forEach((release, index) => {
+    channelReleases.forEach((release, index) => {
       setTimeout(() => {
         setPingResults(prev => ({
           ...prev,
           [release.key]: Math.floor(12 + Math.random() * 24)
         }));
-        if (index === releases.length - 1) {
+        if (index === channelReleases.length - 1) {
           setIsScanning(false);
         }
       }, (index + 1) * 600);
@@ -201,8 +242,8 @@ export const OrbitContent: React.FC = () => {
   const normalizedQuery = normalizeSearch(searchQuery);
   const normalizedQueryTokens = useMemo(() => searchTokens(searchQuery), [searchQuery]);
   const filteredReleases = useMemo(() => {
-    if (!normalizedQuery) return releases;
-    return releases.filter((release) => {
+    if (!normalizedQuery) return channelReleases;
+    return channelReleases.filter((release) => {
       const haystack = [
         release.title,
         release.subtitle,
@@ -219,9 +260,9 @@ export const OrbitContent: React.FC = () => {
 
       return haystack.includes(normalizedQuery) || normalizedQueryTokens.every((token) => haystack.includes(token));
     });
-  }, [normalizedQuery, normalizedQueryTokens]);
+  }, [channelReleases, normalizedQuery, normalizedQueryTokens]);
 
-  const storedActiveItem = releases.find((release) => release.key === activeRelease) ?? releases[0];
+  const storedActiveItem = channelReleases.find((release) => release.key === activeRelease) ?? channelReleases[0] ?? releases[0];
   const activeItem = filteredReleases.find((release) => release.key === storedActiveItem.key) ?? filteredReleases[0] ?? storedActiveItem;
   const ActiveIcon = activeItem.icon;
   const activeNodeIndex = Math.max(0, filteredReleases.findIndex((release) => release.key === activeItem.key));
@@ -277,8 +318,32 @@ export const OrbitContent: React.FC = () => {
           <span className="hud-dot" />
           <span>ORBIT RELEASE BAY</span>
         </div>
-        <h2 className="text-4xl md:text-5xl font-light tracking-tight text-white mb-4">软件与 Skill 发行</h2>
-        <p className="text-lg md:text-xl text-gray-400 font-light">沿发行轨道检索、选择并获取本机应用、Codex Skill 与发行包。</p>
+        <h2 className="text-4xl md:text-5xl font-light tracking-tight text-white mb-4">轨道发行舱</h2>
+        <p className="text-lg md:text-xl text-gray-400 font-light">软件发行与 Codex Skill 分享在独立栏位中浏览。</p>
+      </div>
+
+      <div className="hud-panel mb-6 grid gap-3 rounded-3xl p-3 sm:grid-cols-2" data-guide-id="orbit-kind-switcher">
+        {releaseKindOptions.map((option) => {
+          const isActive = activeKind === option.kind;
+          const count = releases.filter((release) => release.kind === option.kind).length;
+          return (
+            <button
+              key={option.kind}
+              type="button"
+              onClick={() => selectReleaseKind(option.kind)}
+              aria-pressed={isActive}
+              className={`rounded-2xl border px-5 py-4 text-left transition-all duration-300 ${isActive ? 'border-[var(--theme-color)]/40 bg-white/[0.06] shadow-[0_0_30px_rgba(196,181,253,0.10)]' : 'border-white/[0.06] bg-white/[0.025] hover:border-white/15 hover:bg-white/[0.04]'}`}
+              data-guide-id={`orbit-kind-${option.kind}`}
+            >
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-gray-500">{option.kicker}</span>
+                <span className="hud-chip text-white">{count}</span>
+              </div>
+              <div className="text-lg font-light tracking-wide text-gray-100">{option.label}</div>
+              <p className="mt-1 text-sm font-light text-gray-500">{option.description}</p>
+            </button>
+          );
+        })}
       </div>
 
       <div className="hud-panel mb-6 flex flex-col gap-4 rounded-3xl p-4 md:flex-row md:items-center md:justify-between" data-guide-id="orbit-search">
@@ -288,12 +353,12 @@ export const OrbitContent: React.FC = () => {
             type="search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="搜索软件、Skill、平台、关键词..."
+            placeholder={activeKind === 'software' ? '搜索软件、平台、关键词...' : '搜索 Skill、能力、关键词...'}
             className="hud-search"
           />
         </label>
         <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.2em] text-gray-500 md:justify-end">
-          <span>{filteredReleases.length} / {releases.length} Nodes</span>
+          <span>{filteredReleases.length} / {channelReleases.length} Nodes</span>
           {searchQuery && (
             <button
               type="button"
@@ -310,7 +375,7 @@ export const OrbitContent: React.FC = () => {
         <div className="scan-card p-5 md:p-6">
           <div className="hud-kicker mb-4">
             <span className="hud-dot" />
-            <span>发行轨道时间线</span>
+            <span>{activeKind === 'software' ? '软件发行轨道' : 'Skill 分享轨道'}</span>
           </div>
           <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#020204]/35 p-4 md:p-5">
             <div className="release-orbit-line hidden md:block" />
@@ -326,7 +391,7 @@ export const OrbitContent: React.FC = () => {
                       type="button"
                       onClick={() => setActiveRelease(item.key)}
                       aria-pressed={isActive}
-                      className={`group relative w-[18rem] shrink-0 pt-10 text-left md:w-1/3 ${isActive ? 'text-white' : 'text-gray-400'}`}
+                      className={`group relative w-[18rem] shrink-0 pt-10 text-left ${filteredReleases.length === 1 ? 'md:w-full' : 'md:w-1/3'} ${isActive ? 'text-white' : 'text-gray-400'}`}
                       data-guide-id={`release-${item.key}`}
                     >
                       <div className="absolute left-1/2 top-0 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-[#07070b] shadow-[0_0_22px_rgba(196,181,253,0.12)] transition-transform duration-300 group-hover:scale-110">
@@ -363,7 +428,7 @@ export const OrbitContent: React.FC = () => {
                   <span className="hud-dot" />
                   <span>NO RELEASE NODE</span>
                 </div>
-                <p className="text-sm font-light text-gray-400">没有找到匹配的软件或 Skill 节点。</p>
+                <p className="text-sm font-light text-gray-400">{activeKind === 'software' ? '没有找到匹配的软件节点。' : '没有找到匹配的 Skill 节点。'}</p>
               </div>
             )}
           </div>
@@ -525,7 +590,7 @@ export const OrbitContent: React.FC = () => {
                 <span className={`hud-dot ${isScanning ? 'bg-[var(--theme-color,#93c5fd)] shadow-[0_0_12px_var(--theme-color,#93c5fd)] animate-pulse' : 'bg-gray-600'}`} />
                 <span>ORBIT DIAGNOSTICS CONTROL</span>
               </div>
-              <h3 className="text-xl font-light text-white tracking-wide">轨道通信诊断与引力标定</h3>
+              <h3 className="text-xl font-light text-white tracking-wide">{activeKind === 'software' ? '软件轨道通信诊断与引力标定' : 'Skill 轨道通信诊断与引力标定'}</h3>
             </div>
             
             <button
@@ -547,7 +612,7 @@ export const OrbitContent: React.FC = () => {
               </div>
               
               <div className="space-y-2.5 font-mono text-xs">
-                {releases.map((node) => {
+                {channelReleases.map((node) => {
                   const ping = pingResults[node.key];
                   const hasPinged = ping !== undefined;
                   return (
