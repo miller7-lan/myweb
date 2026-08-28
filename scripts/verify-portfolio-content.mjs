@@ -10,6 +10,12 @@ const scripts = await Promise.all(
 const bundle = scripts.join('\n');
 
 const requiredContent = [
+  'TokenBar v0.1.0',
+  'Native Codex Token Usage · macOS Menu Bar',
+  'TokenBar 项目',
+  'TokenBar 发行节点',
+  'release-assets/TokenBar_0.1.0_arm64.dmg',
+  'e392aeadd4897e4f8ea90e2c7c1fe78988af393acdaf89b67e5dc2ff8bbed42d',
   'Mailweek v0.3.3',
   '本地只读邮件周报 Agent',
   'P0–P4 登记簿',

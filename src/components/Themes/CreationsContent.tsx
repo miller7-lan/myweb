@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { Activity, ArrowRight, Bot, Calculator, Cpu, Eye, FolderSearch, MailSearch, Moon, Network, Route, Search, SearchCode, X, type LucideIcon } from 'lucide-react';
+import { Activity, ArrowRight, Bot, Calculator, ChartNoAxesColumnIncreasing, Cpu, Eye, FolderSearch, MailSearch, Moon, Network, Route, Search, SearchCode, X, type LucideIcon } from 'lucide-react';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 import type { DownloadableReleaseKey } from '../../data/releases';
 import { defaultSiteContent, visibleBySort, type CreationAddon, type SiteContentDocument } from '../../data/siteContent';
@@ -117,6 +117,28 @@ const projects: Project[] = [
     ],
     techStack: ['Python', 'FastAPI', 'Uvicorn', 'SQLAlchemy', 'SQLite', 'WebSocket'],
     highlights: ['实时监测', '本地仪表盘', 'Token 成本'],
+  },
+  {
+    title: 'TokenBar',
+    subtitle: 'Native Codex Token Usage · macOS Menu Bar',
+    icon: ChartNoAxesColumnIncreasing,
+    desc: '原生 macOS 菜单栏 Token 统计工具，从本机 Codex sessions 的实际 usage 增量汇总今日、当前自然周和当前自然月消耗。',
+    requirements: [
+      '区分输入、缓存输入、输出和推理输出，避免子集重复计入总量',
+      '以累计 usage 差额和单次 usage 检查点保证重复扫描幂等',
+      '用中文弹窗展示今日明细、本周柱形图与本月日历热力格',
+      '只在本机保存汇总索引，不保存对话正文，不联网也不要求 API Key',
+    ],
+    problem: 'Codex 会写入准确的 Token usage，但日常使用中缺少一个不打断工作流、又能按自然日期查看趋势的本地入口。',
+    design: [
+      '用 SwiftUI MenuBarExtra 和 LSUIElement 构建无 Dock 图标的 380×500 菜单栏弹窗',
+      '以 SQLite 记录文件偏移、inode、当前模型和累计检查点，同时保留已统计历史',
+      '用 FSEvents 防抖监听日志追加，配合 60 秒轻量校对保持数据更新',
+      '通过 UsageProvider 适配器边界为 Claude、Gemini 等后续数据源预留扩展位',
+    ],
+    techStack: ['Swift 6', 'SwiftUI', 'AppKit', 'SQLite', 'FSEvents', 'SMAppService'],
+    highlights: ['原始 Usage', '增量索引', '菜单栏热力图'],
+    releaseTarget: 'tokenBar',
   },
   {
     title: 'Mailweek',
@@ -244,6 +266,7 @@ const projectGuideIds: Record<string, string> = {
   '视觉识别系统 3.0': 'project-vision',
   'Dazzle Secretary Pro': 'project-secretary',
   '利润助手': 'project-profit',
+  'TokenBar': 'project-tokenbar',
   'Mailweek': 'project-mailweek',
   '本机检测': 'project-monitor',
   '内网穿透控制台': 'project-tunnel',
