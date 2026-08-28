@@ -15,6 +15,7 @@ import {
 
 export type ReleaseKey = 'secretary' | 'tunnel' | 'profit' | 'localMonitor' | 'mailweek' | 'multiAgentWorkspace' | 'tokenBar' | 'next';
 export type DownloadableReleaseKey = Exclude<ReleaseKey, 'next'>;
+export type ReleaseKind = 'software' | 'skill';
 
 export type ReleaseDownload = {
   label: string;
@@ -30,6 +31,7 @@ export type ReleaseScreenshot = {
 
 export type ReleaseItem = {
   key: ReleaseKey;
+  kind: ReleaseKind;
   title: string;
   subtitle: string;
   date: string;
@@ -59,6 +61,7 @@ export const githubAsset = (path: string) =>
 export const releases: ReleaseItem[] = [
   {
     key: 'secretary',
+    kind: 'software',
     title: 'Dazzle Secretary v1.0',
     subtitle: '名单核查与统计',
     date: '2026 · RELEASE',
@@ -87,6 +90,7 @@ export const releases: ReleaseItem[] = [
   },
   {
     key: 'tunnel',
+    kind: 'software',
     title: '内网穿透控制台 v1.0',
     subtitle: '本地端口公网映射',
     date: '2026 · RELEASE',
@@ -112,6 +116,7 @@ export const releases: ReleaseItem[] = [
   },
   {
     key: 'profit',
+    kind: 'software',
     title: '利润助手 v1.0',
     subtitle: '本地家庭利润记账',
     date: '2026 · RELEASE',
@@ -144,6 +149,7 @@ export const releases: ReleaseItem[] = [
   },
   {
     key: 'localMonitor',
+    kind: 'software',
     title: '本机检测 v1.0',
     subtitle: 'macOS 悬浮系统监测',
     date: '2026 · RELEASE',
@@ -175,6 +181,7 @@ export const releases: ReleaseItem[] = [
   },
   {
     key: 'mailweek',
+    kind: 'software',
     title: 'Mailweek v0.3.3',
     subtitle: '本地只读邮件周报 Agent',
     date: '2026.07 · RELEASE',
@@ -205,10 +212,11 @@ export const releases: ReleaseItem[] = [
   },
   {
     key: 'multiAgentWorkspace',
+    kind: 'skill',
     title: 'Universal Codex Multi-Agent Workspace',
     subtitle: '项目自适应多 Agent 工作区 Skill',
     date: '2026.08 · SKILL',
-    node: 'Node 06',
+    node: 'Skill 01',
     icon: Workflow,
     body: '面向任意 Git 项目的本地优先 Codex Skill：先发现仓库结构与运行时能力，再按真实架构设计一个纯编排 Orchestrator 与最小专业 Agent 团队，并生成可审计、可复用的协作工作区。',
     status: 'Verified',
@@ -236,10 +244,11 @@ export const releases: ReleaseItem[] = [
   },
   {
     key: 'tokenBar',
+    kind: 'software',
     title: 'TokenBar v0.1.0',
     subtitle: '原生 macOS 菜单栏 Token 统计',
     date: '2026.08 · RELEASE',
-    node: 'Node 07',
+    node: 'Node 06',
     icon: ChartNoAxesColumnIncreasing,
     body: '从本机 Codex sessions 日志的实际 usage 中增量统计 Token，用中文菜单栏弹窗展示今日、当前自然周和当前自然月消耗，无需 API Key，不上传对话内容。',
     status: 'Stable',
@@ -266,10 +275,11 @@ export const releases: ReleaseItem[] = [
   },
   {
     key: 'next',
+    kind: 'software',
     title: '后续更新方向',
     subtitle: '维护与发行计划',
     date: 'NEXT ORBIT',
-    node: 'Node 08',
+    node: 'Node 07',
     icon: ArrowDownToLine,
     body: '后续会优先补齐版本提示、自动更新体验，以及更多本地工具的发行包整理。',
     status: 'Planning',
