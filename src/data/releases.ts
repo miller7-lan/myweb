@@ -2,6 +2,7 @@ import {
   ArrowDownToLine,
   Bot,
   Calculator,
+  ChartNoAxesColumnIncreasing,
   Cpu,
   Database,
   HardDrive,
@@ -12,7 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-export type ReleaseKey = 'secretary' | 'tunnel' | 'profit' | 'localMonitor' | 'mailweek' | 'multiAgentWorkspace' | 'next';
+export type ReleaseKey = 'secretary' | 'tunnel' | 'profit' | 'localMonitor' | 'mailweek' | 'multiAgentWorkspace' | 'tokenBar' | 'next';
 export type DownloadableReleaseKey = Exclude<ReleaseKey, 'next'>;
 
 export type ReleaseDownload = {
@@ -234,11 +235,41 @@ export const releases: ReleaseItem[] = [
     keywords: ['skill', 'codex', 'multi-agent', '多 agent', 'orchestrator', 'worktree', 'codexmonitor', 'app-server', 'delegation', 'persistent-thread', '任务单', 'smoke evidence', 'git', 'python'],
   },
   {
+    key: 'tokenBar',
+    title: 'TokenBar v0.1.0',
+    subtitle: '原生 macOS 菜单栏 Token 统计',
+    date: '2026.08 · RELEASE',
+    node: 'Node 07',
+    icon: ChartNoAxesColumnIncreasing,
+    body: '从本机 Codex sessions 日志的实际 usage 中增量统计 Token，用中文菜单栏弹窗展示今日、当前自然周和当前自然月消耗，无需 API Key，不上传对话内容。',
+    status: 'Stable',
+    platform: 'macOS 13+ · Apple Silicon',
+    primaryDownload: {
+      label: '下载 macOS DMG (2.0 MB)',
+      href: githubAsset('release-assets/TokenBar_0.1.0_arm64.dmg'),
+      sha256: 'e392aeadd4897e4f8ea90e2c7c1fe78988af393acdaf89b67e5dc2ff8bbed42d',
+    },
+    specs: [
+      { label: '系统', value: 'macOS 13+', icon: Monitor },
+      { label: '架构', value: 'Apple Silicon', icon: Cpu },
+      { label: '本地存储', value: 'SQLite 增量索引', icon: Database },
+      { label: '网络', value: '无需联网', icon: Network },
+    ],
+    scenes: [
+      '原始用量：直接解析 Codex 写入的 token_count，不按文字长度估算。',
+      '三个周期：今日查看四项明细和模型汇总，本周使用柱形图，本月使用日历热力格。',
+      '增量更新：FSEvents 监听日志追加，SQLite 检查点避免重复计数。',
+      '隐私边界：只保存 Token、本地日期和模型汇总，不保存对话正文，无遥测。',
+      '菜单栏常驻：不显示 Dock 图标，并默认开启登录后自动启动。',
+    ],
+    keywords: ['tokenbar', 'codex', 'token', '菜单栏', '用量统计', '热力图', 'sqlite', 'fsevents', 'macos', 'apple silicon', '本地隐私'],
+  },
+  {
     key: 'next',
     title: '后续更新方向',
     subtitle: '维护与发行计划',
     date: 'NEXT ORBIT',
-    node: 'Node 07',
+    node: 'Node 08',
     icon: ArrowDownToLine,
     body: '后续会优先补齐版本提示、自动更新体验，以及更多本地工具的发行包整理。',
     status: 'Planning',
