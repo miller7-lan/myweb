@@ -11,11 +11,14 @@ const bundle = scripts.join('\n');
 
 const requiredContent = [
   'TokenBar v0.1.0',
-  'Native Codex Token Usage · macOS Menu Bar',
+  'Native Codex Token Usage · macOS Menu Bar / Windows Tray',
   'TokenBar 项目',
   'TokenBar 发行节点',
   'release-assets/TokenBar_0.1.0_arm64.dmg',
   'e392aeadd4897e4f8ea90e2c7c1fe78988af393acdaf89b67e5dc2ff8bbed42d',
+  'Windows x64 便携版 ZIP (77 MB)',
+  'release-assets/TokenBar_0.1.0_win-x64_portable.zip',
+  '2ed86f562f44d83c67f84a5cb0f924e2f3f55f0402afa5058bd0cac92ec9c004',
   'Mailweek v0.3.3',
   '本地只读邮件周报 Agent',
   'P0–P4 登记簿',
