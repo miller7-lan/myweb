@@ -134,8 +134,8 @@ export const guideTargets: GuideTarget[] = [
     id: 'project-tokenbar',
     label: 'TokenBar 项目',
     theme: 'creations',
-    keywords: ['tokenbar', 'codex token', 'token 统计', '菜单栏', '热力图', '本地用量'],
-    description: '原生 macOS 菜单栏 Codex Token 统计工具，提供今日、本周与本月本地用量视图。',
+    keywords: ['tokenbar', 'codex token', 'token 统计', '菜单栏', '系统托盘', 'windows', '实时额度', '热力图', '本地用量'],
+    description: '原生 macOS 菜单栏与 Windows 系统托盘 Codex Token 统计工具，提供今日、本周与本月本地用量视图，并在 Windows 查看实时额度。',
     openAction: { type: 'open-project', value: 'TokenBar' },
   },
   {
@@ -232,8 +232,8 @@ export const guideTargets: GuideTarget[] = [
     id: 'release-tokenBar',
     label: 'TokenBar 发行节点',
     theme: 'orbit',
-    keywords: ['tokenbar dmg', 'tokenbar 下载', 'codex token', 'token 统计', '菜单栏工具'],
-    description: '这里介绍 TokenBar v0.1.0 的原始 usage 计量、本地隐私边界、系统要求和 Apple Silicon DMG 下载。',
+    keywords: ['tokenbar dmg', 'tokenbar zip', 'tokenbar windows', 'tokenbar 下载', 'codex token', 'token 统计', '菜单栏工具', '系统托盘', 'win-x64', '便携版'],
+    description: '这里介绍 TokenBar v0.1.0 的原始 usage 计量、本地隐私边界、系统要求，以及 Apple Silicon DMG 和 Windows x64 便携版 ZIP 下载。',
     openAction: { type: 'select-release', value: 'tokenBar' },
   },
   {

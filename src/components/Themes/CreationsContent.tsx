@@ -120,14 +120,15 @@ const projects: Project[] = [
   },
   {
     title: 'TokenBar',
-    subtitle: 'Native Codex Token Usage · macOS Menu Bar',
+    subtitle: 'Native Codex Token Usage · macOS Menu Bar / Windows Tray',
     icon: ChartNoAxesColumnIncreasing,
-    desc: '原生 macOS 菜单栏 Token 统计工具，从本机 Codex sessions 的实际 usage 增量汇总今日、当前自然周和当前自然月消耗。',
+    desc: '原生 macOS 菜单栏与 Windows 系统托盘 Token 统计工具，从本机 Codex sessions 的实际 usage 增量汇总今日、当前自然周和当前自然月消耗；Windows 版还能读取当前 ChatGPT 套餐的 Codex 实时额度。',
     requirements: [
       '区分输入、缓存输入、输出和推理输出，避免子集重复计入总量',
       '以累计 usage 差额和单次 usage 检查点保证重复扫描幂等',
       '用中文弹窗展示今日明细、本周柱形图与本月日历热力格',
-      '只在本机保存汇总索引，不保存对话正文，不联网也不要求 API Key',
+      'Windows 版通过本机已登录的 codex app-server 读取额度，不复制 auth.json、访问令牌或账户资料',
+      '只在本机保存汇总索引，不保存对话正文；本地 Token 统计无需联网或 API Key',
     ],
     problem: 'Codex 会写入准确的 Token usage，但日常使用中缺少一个不打断工作流、又能按自然日期查看趋势的本地入口。',
     design: [
@@ -135,9 +136,10 @@ const projects: Project[] = [
       '以 SQLite 记录文件偏移、inode、当前模型和累计检查点，同时保留已统计历史',
       '用 FSEvents 防抖监听日志追加，配合 60 秒轻量校对保持数据更新',
       '通过 UsageProvider 适配器边界为 Claude、Gemini 等后续数据源预留扩展位',
+      'Windows x64 版使用 .NET 10 自包含发布，便携 ZIP 解压后可直接运行',
     ],
-    techStack: ['Swift 6', 'SwiftUI', 'AppKit', 'SQLite', 'FSEvents', 'SMAppService'],
-    highlights: ['原始 Usage', '增量索引', '菜单栏热力图'],
+    techStack: ['Swift 6', 'SwiftUI', 'AppKit', '.NET 10', 'SQLite', 'FSEvents', 'SMAppService'],
+    highlights: ['原始 Usage', '跨平台常驻', 'Windows 实时额度'],
     releaseTarget: 'tokenBar',
   },
   {
