@@ -40,7 +40,7 @@ export const BackgroundStars: React.FC = () => {
         <bufferAttribute attach="attributes-opacity" count={particleCount} args={[opacities, 1]} />
       </bufferGeometry>
       <shaderMaterial
-        uniforms={{ uOpacity: { value: visualMode === 'silent' ? 0.28 : visualMode === 'focus' ? 0.46 : 0.62 } }}
+        uniforms={{ uOpacity: { value: visualMode === 'silent' ? 0.28 : visualMode === 'focus' ? 0.58 : 0.8 } }}
         vertexShader={`
           attribute float opacity;
           varying float vOpacity;

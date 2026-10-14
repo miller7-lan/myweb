@@ -21,7 +21,7 @@ canvas {
 
 @layer components {
   .galaxy-canvas-brightness {
-    filter: brightness(1.18) saturate(1.06);
+    filter: brightness(1.28) saturate(1.06);
   }
 
   .galaxy-ui-brightness {
