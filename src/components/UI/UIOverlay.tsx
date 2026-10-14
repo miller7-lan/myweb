@@ -532,8 +532,8 @@ export const UIOverlay: React.FC = () => {
   }, []);
 
   return (
-    <div className={`absolute inset-0 pointer-events-none transition-opacity duration-700 ${announcementOpen ? 'z-[140]' : 'z-10'} ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <nav className="absolute top-0 left-0 hidden w-full p-8 md:flex justify-center pointer-events-auto">
+    <div inert={!isVisible} className={`home-interface absolute inset-0 pointer-events-none transition-opacity duration-700 ${announcementOpen ? 'z-[140]' : 'z-10'} ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+      <nav aria-label="主题导航" className="home-navigation absolute top-0 left-0 hidden w-full p-8 md:flex justify-center pointer-events-auto">
         <ul className="hud-panel no-scrollbar flex max-w-[calc(100vw-2rem)] items-center gap-1 overflow-x-auto rounded-full px-3 py-2 md:gap-2 md:px-4">
           {themeList.map(theme => {
             const themeKey = theme.key as NonNullThemeKey;
@@ -582,7 +582,7 @@ export const UIOverlay: React.FC = () => {
                 <span className="uppercase tracking-[0.2em] text-[10px] md:text-xs font-medium whitespace-nowrap">{theme.title}</span>
                 <span className="opacity-45 text-[10px] font-normal tracking-widest">|</span>
                 <span className="tracking-widest text-[10px] md:text-xs font-medium whitespace-nowrap">{theme.chineseName}</span>
-                <span className={`text-[9px] uppercase tracking-[0.18em] transition-opacity ${visited ? 'opacity-70' : 'opacity-0'}`}>Visited</span>
+                <span aria-hidden="true" className={`nav-visited text-[9px] uppercase tracking-[0.18em] transition-opacity ${visited ? 'opacity-70' : 'opacity-0'}`}>Visited</span>
                 <span className={`absolute left-4 right-4 -bottom-px h-px bg-[var(--theme-color)] shadow-[0_0_12px_var(--theme-color)] transition-opacity duration-300 ${hoveredPlanet === themeKey || isLastVisited ? 'opacity-100' : visited ? 'opacity-45' : 'opacity-0 group-hover:opacity-70'}`} />
                 <span className={`absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-[var(--theme-color)] to-transparent transition-opacity duration-300 ${hoveredPlanet === themeKey || isLastVisited ? 'opacity-70' : 'opacity-0 group-hover:opacity-40'}`} />
               </button>
@@ -635,7 +635,7 @@ export const UIOverlay: React.FC = () => {
       <button
         type="button"
         onClick={cycleVisualMode}
-        className="hud-panel group pointer-events-auto absolute left-4 top-4 flex h-10 items-center gap-2 rounded-full px-3 text-gray-500 opacity-45 transition-all duration-300 hover:opacity-100 hover:text-gray-200 focus:outline-none focus-visible:opacity-100 focus-visible:text-white md:left-8 md:top-28"
+        className="visual-mode-control hud-panel group pointer-events-auto absolute left-4 top-4 flex h-10 items-center gap-2 rounded-full px-3 text-gray-500 opacity-45 transition-all duration-300 hover:opacity-100 hover:text-gray-200 focus:outline-none focus-visible:opacity-100 focus-visible:text-white md:left-8 md:top-28"
         style={{
           ['--theme-color' as string]: hudThemeColor,
           ['--hud-x' as string]: '12%',
@@ -651,7 +651,7 @@ export const UIOverlay: React.FC = () => {
         <span className="h-1.5 w-1.5 rounded-full bg-[var(--theme-color)] opacity-60 shadow-[0_0_8px_var(--theme-color)]" />
       </button>
 
-      <div className={`absolute left-1/2 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 text-center md:bottom-8 md:left-8 md:w-auto md:translate-x-0 md:text-left ${isMobilePortrait ? 'bottom-6' : 'bottom-[6rem]'}`}>
+      <div className={`home-status absolute left-1/2 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 text-center md:bottom-8 md:left-8 md:w-auto md:translate-x-0 md:text-left ${isMobilePortrait ? 'bottom-6' : 'bottom-[6rem]'}`}>
         <div
           className={`hud-panel inline-flex flex-col items-center rounded-2xl transition-all duration-500 md:items-start ${isMobilePortrait ? 'px-4 py-2.5 opacity-80' : 'px-5 py-3'}`}
           style={{
@@ -672,7 +672,7 @@ export const UIOverlay: React.FC = () => {
         ref={announcementButtonRef}
         type="button"
         onClick={toggleAnnouncement}
-        className={`hud-panel pointer-events-auto absolute right-4 top-4 flex items-center gap-2 rounded-full px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-gray-500 transition-all duration-300 hover:-translate-y-0.5 hover:text-gray-200 focus:outline-none focus-visible:text-white md:right-8 md:top-28 ${announcementOpen ? 'announcement-button-active text-gray-200' : ''}`}
+        className={`announcement-control hud-panel pointer-events-auto absolute right-4 top-4 flex items-center gap-2 rounded-full px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-gray-500 transition-all duration-300 hover:-translate-y-0.5 hover:text-gray-200 focus:outline-none focus-visible:text-white md:right-8 md:top-28 ${announcementOpen ? 'announcement-button-active text-gray-200' : ''}`}
         style={{
           ['--theme-color' as string]: hudThemeColor,
         }}

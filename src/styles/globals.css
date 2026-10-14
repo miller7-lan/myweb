@@ -12,6 +12,7 @@
 #root {
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
 }
 
 canvas {
@@ -20,11 +21,11 @@ canvas {
 
 @layer components {
   .galaxy-canvas-brightness {
-    filter: brightness(1.42) saturate(1.08) contrast(0.96);
+    filter: brightness(1.18) saturate(1.06);
   }
 
   .galaxy-ui-brightness {
-    filter: brightness(1.32) saturate(1.08);
+    filter: none;
   }
 
   .hud-panel {
@@ -44,7 +45,7 @@ canvas {
       /* Standard fills & radial glows */
       linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
       radial-gradient(circle at var(--hud-x, 88%) var(--hud-y, 12%), color-mix(in srgb, var(--theme-color, #e2e8f0) 10%, transparent), transparent 34%);
-    background-color: rgba(2, 2, 4, 0.54);
+    background-color: rgba(10, 13, 21, 0.82);
     background-position:
       top left, top left,
       top right, top right,
@@ -451,7 +452,7 @@ canvas {
   }
 
   .hud-search::placeholder {
-    color: rgb(75 85 99);
+    color: rgb(137 149 167);
   }
 
   .hud-search:focus {
@@ -474,7 +475,7 @@ canvas {
   }
 
   .hud-input::placeholder {
-    color: rgb(75 85 99);
+    color: rgb(137 149 167);
   }
 
   .hud-input:focus {
@@ -540,9 +541,9 @@ canvas {
       linear-gradient(to left, var(--theme-color, #e2e8f0) 8px, transparent 8px),
       linear-gradient(to top, var(--theme-color, #e2e8f0) 8px, transparent 8px),
       /* Fills & gradients */
-      radial-gradient(circle at 80% 14%, color-mix(in srgb, var(--theme-color, #e2e8f0) 17%, transparent), transparent 30%),
+      radial-gradient(circle at 80% 14%, color-mix(in srgb, var(--theme-color, #e2e8f0) 9%, transparent), transparent 50%),
       linear-gradient(145deg, rgba(255,255,255,0.052), rgba(255,255,255,0.012));
-    background-color: rgba(2, 2, 4, 0.38);
+    background-color: rgba(10, 13, 21, 0.88);
     background-position:
       top left, top left,
       top right, top right,
@@ -1958,5 +1959,143 @@ canvas {
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+}
+
+/* Shared presentation refinements; scene layout and theme routing stay independent. */
+@layer base {
+  :root { color-scheme: dark; }
+  body { -webkit-font-smoothing: antialiased; }
+  ::selection { background: #93c5fd40; color: #fff; }
+  button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
+  button:not(:disabled), a { touch-action: manipulation; }
+  :where(button, a, input, textarea):focus-visible {
+    outline: 2px solid var(--theme-color, #b8d5ff);
+    outline-offset: 4px;
+  }
+}
+
+@layer components {
+  :is(.home-interface, .theme-shell, .guide-pet-panel, [role='dialog']) :is(button, a, input, textarea):focus-visible {
+    outline: 2px solid var(--theme-color, #b8d5ff);
+    outline-offset: 3px;
+  }
+  .home-interface .home-navigation { padding-top: 1.5rem; }
+  .home-interface .home-navigation > ul {
+    padding: 0.5rem;
+    border-color: rgba(182, 199, 224, 0.16);
+    background-color: rgba(10, 14, 24, 0.82);
+    box-shadow: 0 12px 40px #0004, inset 0 1px 0 #ffffff0a;
+  }
+  .home-interface .home-navigation button { min-height: 2.75rem; padding-inline: 1.25rem; }
+  .nav-visited {
+    position: absolute;
+    bottom: 1px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 7px;
+    letter-spacing: 0.1em;
+  }
+  .home-interface .visual-mode-control { opacity: 0.9; color: #b3c0d2; min-height: 2.75rem; }
+  .home-interface .visual-mode-control > span:first-of-type { max-width: 4rem; opacity: 1; }
+  .home-interface .announcement-control { min-height: 2.75rem; color: #b3c0d2; padding-inline: 1rem; }
+  .home-interface .home-status .hud-panel { background-color: rgba(9, 13, 22, 0.86); border-color: #ffffff14; }
+  .home-interface .home-status p { line-height: 1.65; letter-spacing: 0.08em; color: #a8b5c8; }
+  .hud-kicker { line-height: 1.5; font-size: 0.65rem; letter-spacing: 0.19em; color: #a6b4c8; }
+  .hud-dot { flex-shrink: 0; box-shadow: 0 0 9px color-mix(in srgb, var(--theme-color, #e2e8f0) 65%, transparent); }
+  .hud-chip { gap: 0.3rem; line-height: 1.3; letter-spacing: 0.035em; }
+  button.hud-chip, a.hud-chip { min-height: 2.5rem; }
+  .hud-panel::before { opacity: 0.24; }
+  .hud-panel::after { opacity: 0; }
+  .hud-panel:hover::after, .hud-panel:focus-within::after { opacity: 0.18; }
+  .hud-search, .hud-input { min-height: 3rem; border-color: #b6c7df26; background-color: #060a12b3; }
+  .theme-backdrop { background-color: rgba(4, 7, 13, 0.88); }
+  .theme-scroll { padding-top: 8.5rem; overscroll-behavior: contain; scroll-padding-top: 8rem; }
+  .theme-layout { padding-inline: 3rem; padding-bottom: max(6rem, env(safe-area-inset-bottom)); }
+  .theme-shell .theme-toolbar { height: 6.5rem; }
+  .theme-shell .theme-return, .theme-shell .theme-location {
+    top: max(1.5rem, env(safe-area-inset-top));
+    min-height: 2.75rem;
+    background: #0b101be6;
+    border-color: #b6c7df26;
+  }
+  .theme-shell .text-gray-400, [role='dialog'] .text-gray-400 { color: #b3becf; }
+  .theme-shell p { font-weight: 400; }
+  .theme-shell .text-gray-500, [role='dialog'] .text-gray-500 { color: #93a1b7; }
+  .theme-shell .text-gray-600 { color: #7d8ca4; }
+  .theme-shell .section-heading { position: relative; padding-left: 1.2rem; margin-bottom: 2rem; }
+  .theme-shell .section-heading::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.15rem;
+    bottom: 0.15rem;
+    width: 2px;
+    background: linear-gradient(var(--theme-color), color-mix(in srgb, var(--theme-color) 8%, transparent));
+    border-radius: 2px;
+  }
+  .theme-shell .section-heading > h2 { font-size: clamp(2rem, 3.3vw, 2.8rem); letter-spacing: -0.035em; line-height: 1.2; margin-bottom: 0.9rem; }
+  .theme-shell .section-heading > p { font-size: 1rem; line-height: 1.8; max-width: 46rem; color: #a6b3c6; }
+  .theme-shell .section-heading .hud-kicker { margin-bottom: 0.8rem; }
+  .theme-shell [data-guide-id='theme-signal'] .section-heading { margin-bottom: 0; }
+  [data-guide-id='creations-search'], [data-guide-id='orbit-search'] { border-radius: 1.1rem; padding: 0.75rem; }
+  .theme-shell .creation-card { display: flex; flex-direction: column; border-radius: 1.5rem; }
+  .theme-shell .creation-card > div:last-child { display: flex; flex: 1; flex-direction: column; }
+  .theme-shell .creation-card > div:last-child > div:last-child { margin-top: auto; }
+  .theme-shell .creation-card p { line-height: 1.85; font-size: 0.925rem; }
+  .theme-shell .creation-card h3 { line-height: 1.4; letter-spacing: -0.015em; }
+  .theme-shell .creation-card > div:nth-child(2) { width: 3.25rem; height: 3.25rem; margin-bottom: 1.5rem; }
+  [data-guide-id='identity-profile'] { line-height: 1.9; }
+  [data-guide-id='orbit-kind-switcher'] { background-color: #0a0e18b3; }
+  [data-guide-id='orbit-kind-switcher'] button[aria-pressed='true'] {
+    border-color: color-mix(in srgb, var(--theme-color) 50%, transparent);
+    background: color-mix(in srgb, var(--theme-color) 9%, #0a0e18);
+  }
+  .stack-map-panel { height: clamp(26rem, calc(100svh - 25rem), 46rem); min-height: 26rem; }
+  .project-detail-backdrop { background: #02050bb8; backdrop-filter: blur(12px); }
+  [data-guide-id='project-detail'], .release-preview-card, .announcement-card { background-color: #0a0f1af5; border-color: #b6c7df29; }
+  .guide-pet-panel { border-color: #b6c7df29; }
+  .announcement-card p { line-height: 1.8; }
+
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .home-interface .home-navigation button { padding-inline: 0.8rem; gap: 0.4rem; }
+    .theme-layout { padding-inline: 2rem; }
+  }
+  @media (max-width: 767px) {
+    .theme-scroll { padding-top: 6.5rem; scroll-padding-top: 6rem; }
+    .theme-layout { padding-inline: 1.25rem; }
+    .theme-shell .theme-return { left: 1.25rem !important; top: max(1rem, env(safe-area-inset-top)); }
+    .theme-shell .theme-location { display: flex; right: 1.25rem !important; top: max(1rem, env(safe-area-inset-top)); font-size: 9px; gap: 0.4rem; letter-spacing: 0.08em; padding-inline: 0.8rem; }
+    .theme-shell .theme-location > span:nth-last-child(2), .theme-shell .theme-location > span:last-child { display: none; }
+    .theme-shell .section-heading { padding-left: 1rem; margin-bottom: 1.5rem; }
+    .theme-shell .section-heading > p { font-size: 0.875rem; }
+    .theme-shell .creation-card { padding: 1.4rem; min-height: 0; }
+    .theme-shell .creation-card p { min-height: 0; margin-bottom: 1.5rem; }
+    .hud-search, .hud-input { font-size: 16px; }
+    .stack-map-panel { min-height: 22rem; height: calc(100svh - 26rem); border-radius: 1.5rem; }
+    .stack-map-panel .stack-map-controls { left: 1rem; right: auto; bottom: 1rem; flex-direction: row; gap: 0.5rem; }
+    .theme-shell .stack-map-panel .stack-map-controls > button { margin: 0; }
+    .stack-map-panel .branch-label { font-size: 20px; }
+    .stack-map-panel .branch-label tspan { font-size: 18px; }
+    [data-guide-id='identity-profile'] { padding: 1.4rem; }
+    .announcement-card button[aria-label='关闭公告'] { width: 2.75rem; height: 2.75rem; }
+  }
+  @media (max-width: 768px) and (orientation: portrait) {
+    .home-interface .home-status { left: 1rem; bottom: max(1rem, env(safe-area-inset-bottom)); width: calc(100% - 6.5rem); transform: none; text-align: left; }
+    .home-interface .home-status .hud-panel { width: 100%; align-items: flex-start; padding: 0.8rem; opacity: 1; }
+    .home-interface .home-status .hud-kicker { font-size: 9px; letter-spacing: 0.1em; }
+    .home-interface .home-status p { font-size: 10px; margin-top: 0.35rem; }
+  }
+  @media (max-height: 550px) and (orientation: landscape) {
+    .home-interface .home-navigation { padding-top: 0.5rem; }
+    .home-interface .visual-mode-control, .home-interface .announcement-control { top: 4.75rem; }
+    .home-interface .home-status { bottom: 1rem; }
+    .home-interface .home-status p { font-size: 10px; }
+    .theme-scroll { padding-top: 5.5rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hud-panel::after, .scan-card::before, .theme-grid-backdrop { animation: none; transition: none; }
+    .scan-card:hover { transform: none; }
+    .home-interface, .hud-panel, .hud-chip, .hud-search, .hud-input { transition-duration: 0.01ms; }
   }
 }

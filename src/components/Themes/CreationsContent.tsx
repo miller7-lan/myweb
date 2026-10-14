@@ -314,12 +314,15 @@ const ProjectDetailBubble: React.FC<{
   const Icon = project.icon;
 
   return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-center justify-center pointer-events-none px-4">
-      <div className="absolute inset-0 pointer-events-auto" onClick={handleClose} />
+    <div className="fixed inset-0 z-[160] flex items-center justify-center pointer-events-none px-4">
+      <div className="project-detail-backdrop absolute inset-0 pointer-events-auto" onClick={handleClose} />
 
       <div
         ref={containerRef}
         className="hud-panel relative w-[calc(100vw-32px)] md:w-[600px] max-h-[75vh] flex flex-col rounded-[28px] p-6 md:p-8 pointer-events-auto overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label={project.title}
         data-guide-id="project-detail"
         style={{
           ['--theme-color' as string]: '#93c5fd',
@@ -520,7 +523,7 @@ export const CreationsContent: React.FC = () => {
 
   return (
     <div className="w-full relative">
-      <div className="mb-12">
+      <div className="section-heading mb-12">
         <div className="hud-kicker mb-4">
           <span className="hud-dot" />
           <span>CREATIONS ARCHIVE</span>
@@ -534,6 +537,7 @@ export const CreationsContent: React.FC = () => {
           <Search size={18} className="absolute left-4 text-gray-500" />
           <input
             type="search"
+            aria-label="搜索作品"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="搜索项目、技术栈、关键词..."
@@ -564,7 +568,7 @@ export const CreationsContent: React.FC = () => {
               type="button"
               key={project.title}
               onClick={() => setSelectedProject(project)}
-              className="scan-card group min-h-[23rem] text-left p-7 md:p-8 backdrop-blur-md focus:outline-none"
+              className="creation-card scan-card group min-h-[23rem] text-left p-7 md:p-8 backdrop-blur-md focus:outline-none"
               data-guide-id={projectGuideIds[project.title]}
               style={{ ['--theme-color' as string]: '#93c5fd' }}
             >

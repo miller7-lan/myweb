@@ -87,7 +87,7 @@ export const ThemeOverlay: React.FC = () => {
 
   return (
     <div
-      className="absolute inset-0 pointer-events-none z-20 flex flex-col"
+      className="theme-shell absolute inset-0 pointer-events-none z-20 flex flex-col"
       style={{ ['--theme-color' as string]: theme.color }}
     >
       {/* Background Dimmer & Blur */}
@@ -106,10 +106,10 @@ export const ThemeOverlay: React.FC = () => {
       </div>
       
       {/* Fixed Return Layer */}
-      <div className="absolute top-0 left-0 w-full h-28 md:h-32 z-50 pointer-events-none bg-gradient-to-b from-[#020204]/95 via-[#020204]/70 to-transparent">
+      <div className="theme-toolbar absolute top-0 left-0 w-full h-28 md:h-32 z-50 pointer-events-none bg-gradient-to-b from-[#020204]/95 via-[#020204]/70 to-transparent">
         <button
           onClick={handleReturn}
-          className="group fixed top-6 md:top-8 flex items-center gap-2 text-gray-400 hover:text-white transition-colors duration-300 w-fit cursor-pointer pointer-events-auto bg-[#020204]/65 backdrop-blur-md px-4 py-2 rounded-full border border-white/[0.08] shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+          className="theme-return group fixed top-6 md:top-8 flex items-center gap-2 text-gray-400 hover:text-white transition-colors duration-300 w-fit cursor-pointer pointer-events-auto bg-[#020204]/65 backdrop-blur-md px-4 py-2 rounded-full border border-white/[0.08] shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
           style={{ left: 'max(1.5rem, calc((100vw - 72rem) / 2 + 2rem))' }}
           aria-label="Return to Galaxy"
         >
@@ -117,7 +117,7 @@ export const ThemeOverlay: React.FC = () => {
           <span className="font-light tracking-wide text-sm uppercase">Return</span>
         </button>
         <div
-          className="theme-content fixed top-6 right-6 hidden items-center gap-3 rounded-full border border-white/[0.08] bg-[#020204]/65 px-4 py-2 text-xs uppercase tracking-[0.22em] text-gray-400 backdrop-blur-md md:flex"
+          className="theme-location theme-content fixed top-6 right-6 hidden items-center gap-3 rounded-full border border-white/[0.08] bg-[#020204]/65 px-4 py-2 text-xs uppercase tracking-[0.22em] text-gray-400 backdrop-blur-md md:flex"
           style={{ right: 'max(1.5rem, calc((100vw - 72rem) / 2 + 2rem))' }}
         >
           <span className="hud-dot" />
@@ -128,8 +128,8 @@ export const ThemeOverlay: React.FC = () => {
       </div>
 
       {/* Scrollable Container */}
-      <div className="absolute inset-0 pointer-events-auto overflow-y-auto z-30 flex flex-col pt-36 md:pt-44" data-guide-scroll-container="theme">
-        <div className="w-full max-w-6xl mx-auto px-8 md:px-16 flex flex-col flex-1 min-h-full pb-24">
+      <div className="theme-scroll absolute inset-0 pointer-events-auto overflow-y-auto z-30 flex flex-col" data-guide-scroll-container="theme">
+        <div className="theme-layout w-full max-w-6xl mx-auto flex flex-col flex-1 min-h-full pb-24">
           <div className="theme-content opacity-0 flex-1" data-guide-id={activeTheme ? `theme-${activeTheme}` : undefined}>
             <Suspense fallback={null}>
               {ActiveThemeContent ? <ActiveThemeContent /> : null}

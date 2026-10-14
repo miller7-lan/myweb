@@ -358,7 +358,7 @@ export const SignalContent: React.FC = () => {
   return (
     <div className="w-full flex flex-col gap-8 xl:gap-10">
       {/* Full-width Title Section to Align the Physical Baseline */}
-      <div className="w-full">
+      <div className="section-heading w-full">
         <div className="hud-kicker mb-3">
           <span className="hud-dot animate-pulse" />
           <span>SIGNAL CHANNEL</span>
