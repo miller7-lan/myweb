@@ -313,7 +313,7 @@ export const OrbitContent: React.FC = () => {
         />
       )}
 
-      <div className="mb-10">
+      <div className="section-heading mb-10">
         <div className="hud-kicker mb-4">
           <span className="hud-dot" />
           <span>ORBIT RELEASE BAY</span>
@@ -351,6 +351,7 @@ export const OrbitContent: React.FC = () => {
           <Search size={18} className="absolute left-4 text-gray-500" />
           <input
             type="search"
+            aria-label="搜索发行内容"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder={activeKind === 'software' ? '搜索软件、平台、关键词...' : '搜索 Skill、能力、关键词...'}

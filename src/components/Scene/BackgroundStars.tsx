@@ -26,10 +26,10 @@ export const BackgroundStars: React.FC = () => {
 
   const { viewState, visualMode } = useGalaxyStore();
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (viewState === 'THEME' || visualMode === 'silent') return;
     if (pointsRef.current) {
-      pointsRef.current.rotation.y += visualMode === 'focus' ? 0.00012 : 0.0003; // Extremely slow drift
+      pointsRef.current.rotation.y += delta * (visualMode === 'focus' ? 0.0072 : 0.018);
     }
   });
 
@@ -39,12 +39,29 @@ export const BackgroundStars: React.FC = () => {
         <bufferAttribute attach="attributes-position" count={particleCount} args={[positions, 3]} />
         <bufferAttribute attach="attributes-opacity" count={particleCount} args={[opacities, 1]} />
       </bufferGeometry>
-      <pointsMaterial 
-        size={0.72} 
-        color="#2c3446" 
-        transparent 
-        opacity={visualMode === 'silent' ? 0.14 : visualMode === 'focus' ? 0.26 : 0.38}
-        sizeAttenuation 
+      <shaderMaterial
+        uniforms={{ uOpacity: { value: visualMode === 'silent' ? 0.28 : visualMode === 'focus' ? 0.46 : 0.62 } }}
+        vertexShader={`
+          attribute float opacity;
+          varying float vOpacity;
+          void main() {
+            vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+            gl_Position = projectionMatrix * viewPosition;
+            gl_PointSize = clamp((1.5 + opacity * 5.0) * 35.0 / max(1.0, -viewPosition.z), 1.0, 4.0);
+            vOpacity = opacity;
+          }
+        `}
+        fragmentShader={`
+          uniform float uOpacity;
+          varying float vOpacity;
+          void main() {
+            float radius = length(gl_PointCoord - 0.5);
+            float glow = exp(-radius * radius * 18.0) * (1.0 - smoothstep(0.3, 0.5, radius));
+            gl_FragColor = vec4(vec3(0.55, 0.65, 0.85), glow * vOpacity * uOpacity);
+          }
+        `}
+        transparent
+        blending={THREE.AdditiveBlending}
         depthWrite={false}
       />
     </points>

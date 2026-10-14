@@ -15,7 +15,7 @@ export const StackContent: React.FC = () => {
   return (
     <div className="w-full max-w-6xl mx-auto flex flex-col h-full relative" ref={containerRef}>
       {/* Header Info */}
-      <div className="mb-6 pl-4 md:pl-2">
+      <div className="section-heading mb-6 pl-4 md:pl-2">
         <div className="hud-kicker mb-4">
           <span className="hud-dot" />
           <span>STACK CONSTELLATION</span>
@@ -46,7 +46,7 @@ export const StackContent: React.FC = () => {
       </div>
 
       {/* Map Container */}
-      <div className="hud-panel w-full flex-1 relative min-h-[65vh] md:min-h-[70vh] rounded-[32px] overflow-hidden flex flex-col" data-guide-id="stack-map">
+      <div className="stack-map-panel hud-panel w-full flex-none relative rounded-[32px] overflow-hidden flex flex-col" data-guide-id="stack-map">
         {/* Vignette Overlay (Pointer events none so it doesn't block dragging) */}
         <div className="absolute inset-0 pointer-events-none rounded-[32px] shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] z-10" />
         

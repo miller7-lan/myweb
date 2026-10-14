@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { skillsData, type SkillNode } from '../../data/skills';
 
@@ -69,14 +70,17 @@ export const TechDetailBubble: React.FC<TechDetailBubbleProps> = ({ node, onClos
       .filter((n): n is SkillNode => n !== undefined && n.status === status);
   };
 
-  return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+  return createPortal(
+    <div className="fixed inset-0 z-[160] flex items-center justify-center pointer-events-none px-4">
       {/* Invisible backdrop for click-outside */}
-      <div className="absolute inset-0 pointer-events-auto" onClick={handleClose} />
+      <div className="project-detail-backdrop absolute inset-0 pointer-events-auto" onClick={handleClose} />
       
       <div 
         ref={containerRef}
-        className="relative w-[calc(100vw-32px)] md:w-[500px] max-h-[75vh] flex flex-col rounded-[28px] p-6 md:p-8 pointer-events-auto overflow-hidden"
+        role="dialog"
+        aria-label="技能详情"
+        aria-modal="true"
+        className="skill-detail-panel relative w-full max-w-[500px] max-h-[calc(100svh-3rem)] flex flex-col rounded-[28px] p-6 md:p-8 pointer-events-auto overflow-hidden"
         style={{
           background: 'radial-gradient(circle at top right, rgba(180,190,220,0.12), rgba(8,8,12,0.88))',
           border: '1px solid rgba(220,230,255,0.1)',
@@ -86,6 +90,7 @@ export const TechDetailBubble: React.FC<TechDetailBubbleProps> = ({ node, onClos
       >
         <button 
           onClick={handleClose}
+          aria-label="关闭技能详情"
           className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors duration-300 z-10"
         >
           <X size={18} />
@@ -204,6 +209,7 @@ export const TechDetailBubble: React.FC<TechDetailBubbleProps> = ({ node, onClos
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -242,10 +242,10 @@ export const SkillConstellation: React.FC = () => {
       onPointerCancel={handlePointerUp}
     >
       {/* Zoom Controls */}
-      <div className={`absolute bottom-6 right-6 z-20 flex flex-col space-y-2 transition-opacity duration-300 ${selectedNode ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-        <button onClick={handleZoomIn} className="w-8 h-8 flex items-center justify-center rounded-full bg-[#101016]/80 border border-white/10 text-gray-400 hover:text-white hover:bg-[#1a1a24] transition-all backdrop-blur-md shadow-lg pointer-events-auto active:scale-95 text-lg font-light">+</button>
-        <button onClick={handleZoomOut} className="w-8 h-8 flex items-center justify-center rounded-full bg-[#101016]/80 border border-white/10 text-gray-400 hover:text-white hover:bg-[#1a1a24] transition-all backdrop-blur-md shadow-lg pointer-events-auto active:scale-95 text-lg font-light">-</button>
-        <button onClick={handleReset} className="px-3 h-8 flex items-center justify-center rounded-full bg-[#101016]/80 border border-white/10 text-gray-400 hover:text-white hover:bg-[#1a1a24] transition-all backdrop-blur-md shadow-lg pointer-events-auto active:scale-95 text-[10px] tracking-widest uppercase">Reset</button>
+      <div className={`stack-map-controls absolute bottom-6 right-6 z-20 flex flex-col space-y-2 transition-opacity duration-300 ${selectedNode ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <button aria-label="放大技能星图" onClick={handleZoomIn} className="w-11 h-11 flex items-center justify-center rounded-full bg-[#101016]/80 border border-white/10 text-gray-400 hover:text-white hover:bg-[#1a1a24] transition-all backdrop-blur-md shadow-lg pointer-events-auto active:scale-95 text-lg font-light">+</button>
+        <button aria-label="缩小技能星图" onClick={handleZoomOut} className="w-11 h-11 flex items-center justify-center rounded-full bg-[#101016]/80 border border-white/10 text-gray-400 hover:text-white hover:bg-[#1a1a24] transition-all backdrop-blur-md shadow-lg pointer-events-auto active:scale-95 text-lg font-light">-</button>
+        <button aria-label="重置技能星图" onClick={handleReset} className="px-3 h-11 flex items-center justify-center rounded-full bg-[#101016]/80 border border-white/10 text-gray-400 hover:text-white hover:bg-[#1a1a24] transition-all backdrop-blur-md shadow-lg pointer-events-auto active:scale-95 text-[10px] tracking-widest uppercase">Reset</button>
       </div>
 
       <div 
@@ -258,6 +258,10 @@ export const SkillConstellation: React.FC = () => {
           preserveAspectRatio="xMidYMid meet"
         >
           <defs>
+            <radialGradient id="constellation-core-haze">
+              <stop offset="0%" stopColor="#dce6ff" stopOpacity="0.05" />
+              <stop offset="100%" stopColor="#020204" stopOpacity="0" />
+            </radialGradient>
             <filter id="glow-core" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="8" result="blur" />
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
@@ -277,7 +281,7 @@ export const SkillConstellation: React.FC = () => {
           </defs>
 
           <g className="pointer-events-none">
-            <circle cx="0" cy="0" r="150" fill="radial-gradient(circle, rgba(220,230,255,0.03) 0%, rgba(2,2,4,0) 70%)" />
+            <circle cx="0" cy="0" r="150" fill="url(#constellation-core-haze)" />
             <circle cx="0" cy="0" r="130" fill="none" stroke="rgba(255,255,255,0.015)" strokeWidth="1" strokeDasharray="4 8" />
             <circle cx="0" cy="0" r="280" fill="none" stroke="rgba(255,255,255,0.015)" strokeWidth="1" strokeDasharray="2 12" />
           </g>
@@ -422,7 +426,7 @@ export const SkillConstellation: React.FC = () => {
                     x={labelX}
                     y={labelY}
                     textAnchor={labelAnchor}
-                    className="branch-label fill-gray-100 text-[10px] uppercase tracking-[0.2em] font-light pointer-events-none transition-opacity duration-300"
+                    className="branch-label fill-gray-100 text-[14px] uppercase tracking-[0.2em] font-light pointer-events-none transition-opacity duration-300"
                     style={{
                       opacity: (transform.scale < 0.85 && !isHovered) ? 0.55 : (isHovered ? 1 : 0.88),
                       paintOrder: 'stroke',
@@ -432,7 +436,7 @@ export const SkillConstellation: React.FC = () => {
                     }}
                   >
                     {node.name}
-                    <tspan x={labelX} dy="14" className="fill-gray-300 text-[9px] tracking-widest">{node.zhName}</tspan>
+                    <tspan x={labelX} dy="18" className="fill-gray-300 text-[12px] tracking-widest">{node.zhName}</tspan>
                   </text>
                 )}
               </g>
