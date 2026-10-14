@@ -66,7 +66,7 @@ void main() {
   vScreenPos = clipPosition.xy / clipPosition.w;
   
   float shimmer = 0.94 + 0.06 * sin(uTime * 0.65 + aRandom * 62.83);
-  vAlpha = mix(0.48, 0.92, aRandom) * shimmer;
+  vAlpha = mix(0.68, 1.0, aRandom) * shimmer;
   vImpactGlow = wave;
   
   gl_Position = clipPosition;
