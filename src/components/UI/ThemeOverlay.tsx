@@ -89,6 +89,14 @@ export const ThemeOverlay: React.FC = () => {
     <div
       className="theme-shell absolute inset-0 pointer-events-none z-20 flex flex-col"
       style={{ ['--theme-color' as string]: theme.color }}
+      onPointerMove={(event) => {
+        if (event.pointerType !== 'mouse') return;
+        const surface = (event.target as Element).closest<HTMLElement>('.scan-card, .hud-panel');
+        if (!surface || !event.currentTarget.contains(surface)) return;
+        const bounds = surface.getBoundingClientRect();
+        surface.style.setProperty('--glass-x', `${event.clientX - bounds.left}px`);
+        surface.style.setProperty('--glass-y', `${event.clientY - bounds.top}px`);
+      }}
     >
       {/* Background Dimmer & Blur */}
       <div className="theme-backdrop absolute inset-0 bg-[#020204]/75 backdrop-blur-2xl opacity-0 pointer-events-auto">
