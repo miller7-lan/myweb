@@ -57,7 +57,7 @@ export const BackgroundStars: React.FC = () => {
           void main() {
             float radius = length(gl_PointCoord - 0.5);
             float glow = exp(-radius * radius * 18.0) * (1.0 - smoothstep(0.3, 0.5, radius));
-            gl_FragColor = vec4(vec3(0.55, 0.65, 0.85), glow * vOpacity * uOpacity);
+            gl_FragColor = vec4(vec3(0.55, 0.65, 0.85) * 1.3, glow * vOpacity * uOpacity);
           }
         `}
         transparent
