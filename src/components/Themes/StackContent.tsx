@@ -25,8 +25,8 @@ export const StackContent: React.FC = () => {
         </h2>
         <span className="block text-xl text-gray-400 font-extralight tracking-widest mb-3">技能星图</span>
         
-        <p className="text-xs text-gray-500 font-light max-w-sm leading-relaxed tracking-wide mb-3">
-          A project-backed constellation of tools, languages, and systems I have shipped.
+        <p className="text-xs text-gray-500 font-light max-w-2xl leading-relaxed tracking-wide mb-3">
+          从已交付的工具，到正在学习的 Java 后端、C++ 数据结构与销量预测，记录持续扩展的技术路径。
         </p>
 
         <div className="flex flex-wrap gap-3">

@@ -45,12 +45,12 @@ export const skillsData: SkillNode[] = [
     type: "branch",
     status: "learned",
     description: "项目实现使用最频繁的语言组合。",
-    summary: "Python 是主力生产语言，Swift / C# 用于原生桌面工具，JavaScript / TypeScript / Vue / React 承接网页与控制台界面。",
+    summary: "Python 是主力工程语言，Swift / C# 承接原生桌面工具，TypeScript / JavaScript 构建网页；Kotlin / Compose 已用于 Android，近期持续练习 C++ 数据结构。",
     relatedProjects: ["视觉识别系统 3.0", "Dazzle Secretary Pro", "利润助手", "防待机工具集", "代理路线控制台", "内网穿透控制台"],
-    nextSteps: ["把 TypeScript 严格模式贯穿到更多前端工具", "为 Swift 桌面工具沉淀可复用模块", "补齐 Rust / C++ 在性能工具中的实战入口"],
+    nextSteps: ["把 TypeScript 严格模式贯穿到更多前端工具", "为 Swift 桌面工具沉淀可复用模块", "继续练习 C++ 栈、队列、链表与边界条件"],
     x: -75,
     y: -130,
-    links: ["python", "typescript", "swift", "csharp"]
+    links: ["python", "typescript", "swift", "csharp", "cpp-dsa", "kotlin"]
   },
   {
     id: "python",
@@ -59,7 +59,7 @@ export const skillsData: SkillNode[] = [
     type: "skill",
     status: "learned",
     description: "贯穿 AI 原型、OCR 处理、桌面壳、后端服务、数据分析和本地工具的主力语言。",
-    practice: ["用 Python 串起 K210 训练/转换、OCR 解析、Streamlit 工具、FastAPI 服务和本地 SQLite 数据。", "把一次性的脚本需求沉淀为可复用的桌面或网页工具。"],
+    practice: ["用 Python 串起 K210 训练/转换、OCR 解析、Streamlit 工具、FastAPI 服务和本地 SQLite 数据。", "把一次性的脚本需求沉淀为可复用的桌面或网页工具；近期通过课程实验复习高阶函数、闭包和装饰器。"],
     relatedProjects: ["视觉识别系统 3.0", "Dazzle Secretary Pro", "利润助手", "Tokens Monitor", "DevEnv Master", "内网穿透控制台"],
     nextSteps: ["强化异步任务、后台进程和日志体系", "整理通用 CLI / 配置 / 本地数据目录模板"],
     x: -150,
@@ -114,8 +114,8 @@ export const skillsData: SkillNode[] = [
     zhName: "数据清洗与表格处理",
     type: "skill",
     status: "learned",
-    description: "处理名单、账目、统计结果和报表数据的轻量数据层。",
-    practice: ["在名单核查、利润统计和 OCR 结果整理中完成清洗、聚合和导出。"],
+    description: "处理名单、账目和报表数据，近期将数据探索延伸到销量预测学习。",
+    practice: ["在名单核查、利润统计和 OCR 结果整理中完成清洗、聚合和导出。", "结合销量预测学习字段含义、分组统计、类别编码与时间切分。"],
     relatedProjects: ["Dazzle Secretary Pro", "利润助手"],
     nextSteps: ["补齐异常数据审计和可回放处理日志"],
     x: -230,
@@ -125,17 +125,17 @@ export const skillsData: SkillNode[] = [
 
   {
     id: "branch-ai",
-    name: "AI & Vision",
-    zhName: "AI 视觉与文本理解",
+    name: "AI & Models",
+    zhName: "AI 视觉与模型应用",
     type: "branch",
     status: "learned",
     description: "从边缘视觉到 OCR 与本地 LLM 的项目能力。",
-    summary: "已覆盖 K210 端侧目标检测、OCR 文本识别、Ollama 本地解析和 AI 路由建议，重点是把模型能力接进真实工作流。",
+    summary: "以 K210 视觉、OCR 和 Ollama 本地工作流为基础，近期学习销量预测与模型评估，并规划政务多 Agent 的知识更新与协作。",
     relatedProjects: ["视觉识别系统 3.0", "Dazzle Secretary Pro", "代理路线控制台"],
     nextSteps: ["做模型评估面板", "打通 ONNX / TFLite / kmodel 的转换记录", "把 OCR 纠错沉淀成可复用模块"],
     x: 75,
     y: -130,
-    links: ["yolo-k210", "ocr", "local-llm", "gemini-api"]
+    links: ["yolo-k210", "ocr", "local-llm", "gemini-api", "ml-regression", "multi-agent"]
   },
   {
     id: "yolo-k210",
@@ -186,8 +186,8 @@ export const skillsData: SkillNode[] = [
     type: "skill",
     status: "learning",
     description: "用本地大语言模型解析不规整文本，减少人工整理成本。",
-    practice: ["在名单核查中处理群接龙、OCR 文本和粘贴内容的语义解析。"],
-    relatedProjects: ["Dazzle Secretary Pro"],
+    practice: ["在名单核查中处理群接龙、OCR 文本和粘贴内容的语义解析。", "在 Mailweek 中连接只读 IMAP 与本机 Ollama，结合结构校验和模型复核整理邮件。"],
+    relatedProjects: ["Dazzle Secretary Pro", "Mailweek"],
     nextSteps: ["加入提示词版本管理", "记录不同模型的解析准确率"],
     x: 105,
     y: -310,
@@ -300,12 +300,12 @@ export const skillsData: SkillNode[] = [
     type: "branch",
     status: "learned",
     description: "本地服务、实时推送、数据库和可观察数据面板。",
-    summary: "以 FastAPI / SQLite / SQLAlchemy / WebSocket 为主，服务于 Tokens Monitor、视觉识别接口和本地工具的数据持久化。",
+    summary: "项目实践以 FastAPI / SQLite / SQLAlchemy / WebSocket 为主；近期学习 Java Web 与 Spring Boot 的分层、数据访问和接口调试，完整实战仍在推进。",
     relatedProjects: ["Tokens Monitor", "视觉识别系统 3.0", "利润助手"],
     nextSteps: ["统一 API 错误模型", "完善迁移和数据备份", "补齐端到端测试"],
     x: -150,
     y: 0,
-    links: ["fastapi", "sqlite", "websocket"]
+    links: ["fastapi", "sqlite", "websocket", "spring-boot"]
   },
   {
     id: "fastapi",
@@ -470,12 +470,12 @@ export const skillsData: SkillNode[] = [
     type: "branch",
     status: "learned",
     description: "围绕本地环境、代理路线、端口、下载和项目清理的工程效率工具。",
-    summary: "从 DevEnv Master、代理路线控制台到内网穿透控制台，核心是把重复试错变成可扫描、可判断、可回放的工具。",
+    summary: "从本地环境与网络工具，延伸到可复用的 Codex Skills、多 Agent 工作区和 Git worktree；重点是可重复执行、隔离改动与验证结果。",
     relatedProjects: ["DevEnv Master", "代理路线控制台", "内网穿透控制台", "爬虫小程序"],
     nextSteps: ["统一 dry-run 预览和危险操作确认", "把测速、扫描、清理结果导出成报告", "加入更多自动化测试"],
     x: -75,
     y: 130,
-    links: ["streamlit", "pathlib", "networking", "git"]
+    links: ["streamlit", "pathlib", "networking", "git", "codex-skills"]
   },
   {
     id: "streamlit",
@@ -532,5 +532,138 @@ export const skillsData: SkillNode[] = [
     x: -40,
     y: 295,
     links: []
+  },
+  {
+    "id": "cpp-dsa",
+    "name": "C++ / Data Structures",
+    "zhName": "C++ 与数据结构",
+    "type": "skill",
+    "status": "learning",
+    "description": "用 C++ 练习基础算法，并结合课程巩固栈、队列和串的概念。",
+    "practice": [
+      "练习有效括号的栈实现，排查空栈访问、作用域和最终状态判断。",
+      "学习数组、哈希与链表，逐步建立对指针和数据结构的理解。"
+    ],
+    "relatedProjects": [
+      "算法练习与数据结构课程"
+    ],
+    "nextSteps": [
+      "完成链表遍历、反转和双指针练习",
+      "为练习补充空输入、越界与复杂度分析"
+    ],
+    "x": -310,
+    "y": -185,
+    "links": []
+  },
+  {
+    "id": "kotlin",
+    "name": "Kotlin / Compose",
+    "zhName": "Android 应用实践",
+    "type": "skill",
+    "status": "learning",
+    "description": "已在利润助手 Android 端使用 Kotlin 与 Jetpack Compose，持续完善移动端交互与数据流程。",
+    "practice": [
+      "使用 Compose 重建手机端账目交互，围绕共享 SQLite 数据库延续桌面工作流。"
+    ],
+    "relatedProjects": [
+      "利润助手"
+    ],
+    "nextSteps": [
+      "完善 Android 生命周期、状态恢复与导入校验",
+      "加强移动端交互与回归验证"
+    ],
+    "x": -35,
+    "y": -300,
+    "links": []
+  },
+  {
+    "id": "spring-boot",
+    "name": "Java / Spring Boot",
+    "zhName": "Java Web 与后端分层",
+    "type": "skill",
+    "status": "learning",
+    "description": "从 Java Web 原理学习 Spring Boot，当前重心是理解请求链路与分层职责。",
+    "practice": [
+      "学习 Servlet、Session、Filter、MVC 与 IoC / DI。",
+      "梳理 Controller–Service–Mapper、DTO / Entity / VO、参数校验、异常处理与基础 SQL。",
+      "接触 MyBatis-Plus、事务、Redis、JWT 和 Spring Security；开始了解接口调试。"
+    ],
+    "relatedProjects": [
+      "Java Web / Spring Boot 学习"
+    ],
+    "nextSteps": [
+      "用 Postman / Apifox 跑通一次接口调试",
+      "完成包含校验、数据库访问和错误处理的小型 CRUD 实战"
+    ],
+    "x": -360,
+    "y": -150,
+    "links": []
+  },
+  {
+    "id": "ml-regression",
+    "name": "ML / Regression",
+    "zhName": "销量预测与模型评估",
+    "type": "skill",
+    "status": "learning",
+    "description": "以 Walmart 销量预测为学习场景，理解数据探索、特征工程与回归评估的完整流程。",
+    "practice": [
+      "学习类别编码、标准化和时间维度的数据划分。",
+      "区分 Train / Validation / Test 的职责，关注数据泄露、残差与结果的实际含义。"
+    ],
+    "relatedProjects": [
+      "Walmart 销量预测学习"
+    ],
+    "nextSteps": [
+      "独立复现基线与按时间切分的评估",
+      "结合残差解释模型误差，核对预测时特征是否可用"
+    ],
+    "x": 35,
+    "y": -355,
+    "links": []
+  },
+  {
+    "id": "multi-agent",
+    "name": "Multi-Agent / Knowledge",
+    "zhName": "政务多 Agent 协作规划",
+    "type": "skill",
+    "status": "locked",
+    "description": "处于方案设计阶段：主 Agent 更新政策知识，子 Agent 分别面向群众与工作人员提供辅助。",
+    "practice": [
+      "已梳理角色分工、共享知识版本、变更影响和依据溯源的方案。",
+      "计划通过 MCP 工具与 Skills 组织解析、查询和核验流程，尚未作为已交付系统展示。"
+    ],
+    "relatedProjects": [
+      "政务多 Agent 方案（规划中）"
+    ],
+    "nextSteps": [
+      "选定一个事项群，整理带来源的政策样本",
+      "验证版本更新、受影响任务重算和人工复核闭环"
+    ],
+    "x": 315,
+    "y": -190,
+    "links": []
+  },
+  {
+    "id": "codex-skills",
+    "name": "Codex Skills / Worktrees",
+    "zhName": "AI 协作工程与工作区",
+    "type": "skill",
+    "status": "learned",
+    "description": "将项目发现、角色配置、独立 worktree 和任务初始化封装为可安装、可复用的 Skill。",
+    "practice": [
+      "交付 Universal Codex Multi-Agent Workspace，按项目组织 Agent 配置与独立工作区。",
+      "通过能力探测选择后端，验证重复初始化复用与非托管配置保护。",
+      "使用单元测试与真实 app-server 验证工作流，再打包安装产物。"
+    ],
+    "relatedProjects": [
+      "Universal Codex Multi-Agent Workspace"
+    ],
+    "nextSteps": [
+      "持续校验工具协议和版本兼容性",
+      "扩充不同仓库结构的回归样例"
+    ],
+    "x": -295,
+    "y": 225,
+    "links": []
   }
 ];

@@ -42,9 +42,9 @@ const operatingPrinciples = [
 ];
 
 const currentFocus = [
-  'AI 工具与本地模型工作流',
-  '桌面应用与个人效率系统',
-  '自动化脚本、数据清洗和可视化',
+  'Codex Skills、本地模型与多 Agent 工作流',
+  'Java / Spring Boot 与 C++ 数据结构学习',
+  '销量预测、特征工程与模型评估',
 ];
 
 const identitySignals: Array<{
@@ -58,9 +58,9 @@ const identitySignals: Array<{
 ];
 
 const currentMissions = [
-  '把可下载工具与作品档案打通，让“看见能力”到“拿去使用”更顺。',
-  '继续沉淀 AI + OCR + 自动化在真实学生/办公场景里的小工具。',
-  '把界面系统统一成安静、轻量、有一点宇宙感的个人产品语言。',
+  '把 Java Web 分层知识落到小型 Spring Boot 实战，继续练习 C++ 栈、队列与链表。',
+  '复现销量预测基线，理解时间切分、特征含义和误差，让模型结果经得起检查。',
+  '规划政务多 Agent 的知识更新与协作闭环，继续沉淀可复用的 Codex Skills。',
 ];
 
 const growthMilestones = [

@@ -184,6 +184,108 @@ export const guideTargets: GuideTarget[] = [
     openAction: { type: 'select-skill', value: 'ocr' },
   },
   {
+    "id": "skill-cpp-dsa",
+    "label": "C++ 与数据结构",
+    "theme": "stack",
+    "keywords": [
+      "c++",
+      "cpp",
+      "数据结构",
+      "算法",
+      "栈",
+      "队列"
+    ],
+    "description": "用 C++ 练习基础算法，并结合课程巩固栈、队列和串的概念。",
+    "openAction": {
+      "type": "select-skill",
+      "value": "cpp-dsa"
+    }
+  },
+  {
+    "id": "skill-kotlin",
+    "label": "Android 应用实践",
+    "theme": "stack",
+    "keywords": [
+      "kotlin",
+      "compose",
+      "android",
+      "安卓"
+    ],
+    "description": "已在利润助手 Android 端使用 Kotlin 与 Jetpack Compose，持续完善移动端交互与数据流程。",
+    "openAction": {
+      "type": "select-skill",
+      "value": "kotlin"
+    }
+  },
+  {
+    "id": "skill-spring-boot",
+    "label": "Java Web 与后端分层",
+    "theme": "stack",
+    "keywords": [
+      "java",
+      "spring",
+      "spring boot",
+      "mybatis",
+      "后端学习"
+    ],
+    "description": "从 Java Web 原理学习 Spring Boot，当前重心是理解请求链路与分层职责。",
+    "openAction": {
+      "type": "select-skill",
+      "value": "spring-boot"
+    }
+  },
+  {
+    "id": "skill-ml-regression",
+    "label": "销量预测与模型评估",
+    "theme": "stack",
+    "keywords": [
+      "机器学习",
+      "销量预测",
+      "walmart",
+      "回归",
+      "模型评估"
+    ],
+    "description": "以 Walmart 销量预测为学习场景，理解数据探索、特征工程与回归评估的完整流程。",
+    "openAction": {
+      "type": "select-skill",
+      "value": "ml-regression"
+    }
+  },
+  {
+    "id": "skill-multi-agent",
+    "label": "政务多 Agent 协作规划",
+    "theme": "stack",
+    "keywords": [
+      "multi-agent",
+      "多agent",
+      "多 agent",
+      "政务",
+      "知识更新",
+      "mcp"
+    ],
+    "description": "处于方案设计阶段：主 Agent 更新政策知识，子 Agent 分别面向群众与工作人员提供辅助。",
+    "openAction": {
+      "type": "select-skill",
+      "value": "multi-agent"
+    }
+  },
+  {
+    "id": "skill-codex-skills",
+    "label": "AI 协作工程与工作区",
+    "theme": "stack",
+    "keywords": [
+      "codex skills",
+      "worktree",
+      "工作区",
+      "协作工程"
+    ],
+    "description": "将项目发现、角色配置、独立 worktree 和任务初始化封装为可安装、可复用的 Skill。",
+    "openAction": {
+      "type": "select-skill",
+      "value": "codex-skills"
+    }
+  },
+  {
     id: 'theme-orbit',
     label: '软件与 Skill 分栏',
     theme: 'orbit',
