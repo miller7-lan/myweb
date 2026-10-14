@@ -144,6 +144,7 @@ void main() {
   float pointerOpacityBoost = pointerSpot * (0.48 + uFocusBoost * 0.7);
   float finalOpacity = alpha * uOpacity * (1.0 + ambientOpacityBoost + pointerOpacityBoost + clamp(vImpactGlow * 0.24, 0.0, 0.28) + opacityBoost);
   
-  gl_FragColor = vec4(finalColor, finalOpacity);
+  // Raise particle emission only; keep UI, geometry and soft-edge opacity unchanged.
+  gl_FragColor = vec4(finalColor * 1.3, finalOpacity);
 }
 `;
