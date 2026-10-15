@@ -17,7 +17,9 @@ The normal update path is:
 4. Push to GitHub with `git push origin main`.
 5. Let GitHub-connected Cloudflare Pages update `https://dazzle-galaxy-show.pages.dev`.
 
-Use a manual Cloudflare Pages deploy only when GitHub-connected deployment is slow, failed, or explicitly requested:
+As verified in the Cloudflare dashboard on 2026-10-15, this existing Pages project currently shows **No Git connection**. A GitHub push alone does not update production. Keep GitHub `main` as the source of truth, then perform an authenticated manual production deployment and verify the live asset version. Do not claim a push has deployed the site.
+
+Use a manual Cloudflare Pages deploy when GitHub integration is absent, slow, failed, or explicitly requested:
 
 ```bash
 rsync -a --delete --exclude='downloads/' dist/ /private/tmp/dazzle-cf-dist/
@@ -28,6 +30,10 @@ npm exec --yes --registry=https://registry.npmjs.org --package wrangler -- \
   --branch=main \
   --commit-dirty=true
 ```
+
+If CLI authentication is unavailable but the dashboard is logged in, a dashboard ZIP upload is supported. Preserve the backend: first compile `functions/` with Wrangler into the staged `_worker.js` plus `_routes.json`, then ZIP the staged directory contents (not its parent directory). Upload to the existing project with **Production** selected. Do not upload only the static frontend, because the existing admin, announcements, and editable-content APIs must remain available. Keep existing production bindings and secrets.
+
+For dashboard uploads with current Wrangler, use `pages functions build functions --outdir <temporary-worker-directory> --output-routes-path /private/tmp/dazzle-cf-dist/_routes.json`, then copy the generated `index.js` to `/private/tmp/dazzle-cf-dist/_worker.js`. Validate it with `node --check` before zipping. Do not use the deprecated `--outfile` output as `_worker.js`: Wrangler 4.151.0 writes a multipart upload envelope there, which fails when uploaded as JavaScript through the dashboard.
 
 If using Wrangler or changing Cloudflare behavior, load and follow the Cloudflare/Wrangler skill first. Verify current Wrangler syntax rather than relying on memory.
 
