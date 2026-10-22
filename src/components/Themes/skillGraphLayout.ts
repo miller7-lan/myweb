@@ -87,7 +87,10 @@ export function createGraphLayout(): Map<string, GraphPoint> {
       node.x += node.vx * cooling; node.y += node.vy * cooling;
     });
   }
-  const extentX = Math.max(...nodes.map((node) => Math.abs(node.x)), 1);
-  const extentY = Math.max(...nodes.map((node) => Math.abs(node.y)), 1);
-  return new Map(nodes.map((node) => [node.id, { x: node.x / extentX, y: node.y / extentY }]));
+  // Center and normalize by one radial extent, keeping the cloud circular
+  // instead of stretching the two axes independently to fill a wide panel.
+  const centerX = (Math.min(...nodes.map((node) => node.x)) + Math.max(...nodes.map((node) => node.x))) / 2;
+  const centerY = (Math.min(...nodes.map((node) => node.y)) + Math.max(...nodes.map((node) => node.y))) / 2;
+  const extent = Math.max(...nodes.map((node) => Math.hypot(node.x - centerX, node.y - centerY)), 1);
+  return new Map(nodes.map((node) => [node.id, { x: (node.x - centerX) / extent, y: (node.y - centerY) / extent }]));
 }

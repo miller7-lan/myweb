@@ -23,12 +23,13 @@ export function SkillRelationGraph() {
   const pointers = useRef(new Map<number, GraphPoint>());
   const pinchDistance = useRef(0);
   const worldWidth = Math.max(620, size.width / size.height * 800);
+  const graphRadius = Math.min(290, worldWidth / 2 - 100);
 
   const basePositions = useMemo(() => new Map(skillsData.map((node) => {
     const base = initialLayout.get(node.id)!;
-    return [node.id, { x: base.x * (worldWidth / 2 - 115), y: base.y * 290 }];
-  })), [worldWidth]);
-  const physics = useSkillGraphPhysics(basePositions, worldWidth);
+    return [node.id, { x: base.x * graphRadius, y: base.y * graphRadius }];
+  })), [graphRadius]);
+  const physics = useSkillGraphPhysics(basePositions, graphRadius);
   const { positions } = physics;
   const visibleLinks = showShared ? graphLinks : graphLinks.filter((link) => !link.shared);
   const neighbors = useMemo(() => new Set(visibleLinks.flatMap((link) =>
