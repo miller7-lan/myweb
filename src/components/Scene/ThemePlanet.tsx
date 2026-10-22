@@ -7,6 +7,7 @@ import type { ThemeDef } from '../../data/themes';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 import gsap from 'gsap';
 import { createSeededRandom } from '../../utils/random';
+import { createPlanetHaloGeometry } from './planetHaloGeometry';
 
 interface ThemePlanetProps {
   themeDef: ThemeDef;
@@ -28,6 +29,8 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
   const haloRef = useRef<THREE.Mesh>(null);
   const coreGlowRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const haloOrbitPhase = useRef(0);
+  const reducedMotion = useRef(false);
   
   const { viewState, hoveredPlanet, visitedThemes, lastVisitedTheme, visualMode, setHoveredPlanet, activeTheme, setViewState, setActiveTheme, setPlanetPosition } = useGalaxyStore();
   
@@ -65,6 +68,18 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
   );
   const softenedThemeHex = useMemo(() => `#${softenedThemeColor.getHexString()}`, [softenedThemeColor]);
   const idleGlowHex = '#a0a0ab';
+  const haloGeometry = useMemo(
+    () => createPlanetHaloGeometry(shapeProfile.haloRadius, shapeProfile.haloTube),
+    [shapeProfile.haloRadius, shapeProfile.haloTube],
+  );
+  useEffect(() => () => haloGeometry.dispose(), [haloGeometry]);
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => { reducedMotion.current = preference.matches; };
+    sync();
+    preference.addEventListener('change', sync);
+    return () => preference.removeEventListener('change', sync);
+  }, []);
 
   const [positions, randoms, initialPositions] = useMemo(() => {
     const pos = new Float32Array(particleCount * 3);
@@ -375,7 +390,6 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
 
     if (haloRef.current) {
       haloTime.current += delta * haloMotionScale * THREE.MathUtils.lerp(1, 0.46, portraitProgress);
-      const wobble = highlighted && viewState !== 'THEME' ? 1 : 0;
       const nonlinearSpeed = highlighted
         ? 1.25 + (Math.sin(haloTime.current * 1.7 + themeDef.orbitOffset) + 1) * 0.55
         : 0.55;
@@ -401,7 +415,13 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         );
       }
 
-      haloRef.current.rotation.z += delta * (0.8 + wobble * (0.9 + Math.cos(haloTime.current * 2.2) * 0.32));
+      // Spin around the ring's own normal independently of its tilt/wobble.
+      // The arrow shares this geometry, so it always travels with the dashes.
+      if (viewState !== 'THEME' && !reducedMotion.current && visualMode !== 'silent') {
+        const spinSpeed = (visualMode === 'focus' ? 0.3 : 0.55) * (highlighted ? 1.2 : 1);
+        haloOrbitPhase.current = (haloOrbitPhase.current + delta * spinSpeed) % (Math.PI * 2);
+      }
+      haloRef.current.rotation.z = haloOrbitPhase.current;
       const haloScale = highlighted
         ? 1.08 + Math.sin(haloTime.current * 4) * 0.04
         : isLastVisited
@@ -567,8 +587,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         />
       </mesh>
 
-      <mesh ref={haloRef} rotation={[haloDefaultTilt, 0, 0]} visible={viewState !== 'THEME'}>
-        <torusGeometry args={[shapeProfile.haloRadius, shapeProfile.haloTube, 10, 96]} />
+      <mesh ref={haloRef} geometry={haloGeometry} rotation={[haloDefaultTilt, 0, 0]} visible={viewState !== 'THEME'}>
         <meshBasicMaterial
           color={idleGlowHex}
           transparent

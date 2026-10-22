@@ -8,7 +8,7 @@ type Simulation = {
   wake: () => void;
 };
 
-export function useSkillGraphPhysics(base: Map<string, GraphPoint>, worldWidth: number) {
+export function useSkillGraphPhysics(base: Map<string, GraphPoint>, graphRadius: number) {
   const [positions, setPositions] = useState(base);
   const simulation = useRef<Simulation | null>(null);
 
@@ -47,8 +47,9 @@ export function useSkillGraphPhysics(base: Map<string, GraphPoint>, worldWidth: 
           const a = nodes[i], b = nodes[j];
           const dx = b.x - a.x, dy = b.y - a.y;
           const distance = Math.max(1, Math.hypot(dx, dy));
-          if (distance > 55) continue;
-          const force = (55 - distance) * 0.018 * dt;
+          const spacing = 55 * graphRadius / 290;
+          if (distance > spacing) continue;
+          const force = (spacing - distance) * 0.018 * dt;
           const fx = dx / distance * force, fy = dy / distance * force;
           a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy;
         }
@@ -67,9 +68,13 @@ export function useSkillGraphPhysics(base: Map<string, GraphPoint>, worldWidth: 
         // A soft anchor keeps the graph readable while allowing elastic motion.
         body.vx += (origin.x - body.x) * 0.002 * dt;
         body.vy += (origin.y - body.y) * 0.002 * dt;
-        const limitX = worldWidth / 2 - 85;
-        if (Math.abs(body.x) > limitX) body.vx -= Math.sign(body.x) * (Math.abs(body.x) - limitX) * 0.035 * dt;
-        if (Math.abs(body.y) > 305) body.vy -= Math.sign(body.y) * (Math.abs(body.y) - 305) * 0.035 * dt;
+        const distance = Math.hypot(body.x, body.y);
+        const limit = graphRadius + 12;
+        if (distance > limit) {
+          const pull = (distance - limit) * 0.035 * dt;
+          body.vx -= body.x / distance * pull;
+          body.vy -= body.y / distance * pull;
+        }
         const damping = Math.pow(reducedMotion ? 0.65 : 0.85, dt);
         body.vx = Math.max(-18, Math.min(18, body.vx * damping));
         body.vy = Math.max(-18, Math.min(18, body.vy * damping));
@@ -93,7 +98,7 @@ export function useSkillGraphPhysics(base: Map<string, GraphPoint>, worldWidth: 
       cancelAnimationFrame(frame);
       if (simulation.current === engine) simulation.current = null;
     };
-  }, [base, worldWidth]);
+  }, [base, graphRadius]);
 
   const beginDrag = (id: string) => {
     const engine = simulation.current, point = engine?.bodies.get(id);
