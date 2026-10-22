@@ -149,15 +149,15 @@ export const guideTargets: GuideTarget[] = [
     id: 'theme-stack',
     label: '技术栈星图',
     theme: 'stack',
-    keywords: ['技术栈', '技能', 'stack', '星图', '技能星图'],
-    description: '技术栈以可拖拽缩放的星图呈现。',
+    keywords: ['技术栈', '技能', 'stack', '星图', '技能星图', '关系图', '图谱', 'obsidian'],
+    description: '技术栈可在关系图谱和技能星图之间切换，支持拖拽、缩放和查看详情。',
   },
   {
     id: 'stack-map',
     label: '技能星图',
     theme: 'stack',
     keywords: ['星图', '拖拽', '缩放', '技能节点', 'constellation'],
-    description: '拖动和缩放可以探索所有技能节点。',
+    description: '可选择关系图谱或技能星图，拖动和缩放以探索技能节点。',
   },
   {
     id: 'skill-python',

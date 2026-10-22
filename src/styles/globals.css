@@ -2052,6 +2052,54 @@ canvas {
     background: color-mix(in srgb, var(--theme-color) 9%, #0a0e18);
   }
   .stack-map-panel { height: clamp(26rem, calc(100svh - 25rem), 46rem); min-height: 26rem; }
+  .stack-view-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.65rem;
+    padding: 0.55rem 1.2rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    color: #93a1b7;
+    font-size: 0.8rem;
+    transition: color 180ms, background-color 180ms, border-color 180ms;
+  }
+  .stack-view-option:hover { color: #e6ecf5; background: #b6c7df0a; }
+  .stack-view-option[aria-pressed='true'] {
+    color: #e2eafa;
+    background: #a0bce51a;
+    border-color: #b6c7df33;
+    box-shadow: inset 0 1px 0 #ffffff08;
+  }
+  .stack-view-option:focus-visible, .relation-graph-button:focus-visible { outline: 2px solid #a0c0ff; outline-offset: 3px; }
+  .stack-map-panel.stack-relation-panel { height: clamp(34rem, 69svh, 52rem); min-height: 34rem; }
+  .stack-relation-panel > .pointer-events-none { box-shadow: inset 0 0 80px #02050b66; }
+  .skill-relation-graph { background: radial-gradient(ellipse at 50% 48%, #17233344, #080c1644 75%); cursor: grab; }
+  .skill-relation-graph:active { cursor: grabbing; }
+  .relation-graph-node { cursor: pointer; outline: none; transition: opacity 150ms; }
+  .relation-graph-node:focus-visible .relation-node-focus { stroke-opacity: 0.9; stroke-width: 2; }
+  .relation-graph-node text { pointer-events: none; }
+  .relation-graph-node circle[filter] { animation: relation-node-breathe 4.6s ease-in-out infinite; }
+  @keyframes relation-node-breathe { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .relation-graph-node circle[filter] { animation: none; } }
+  .relation-graph-caption .hud-kicker { font-size: 9px; letter-spacing: 0.2em; color: #91a1ba; }
+  .relation-graph-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid #b6c7df24;
+    border-radius: 50%;
+    background: #0b101bcc;
+    color: #9baac1;
+    backdrop-filter: blur(12px);
+    transition: color 180ms, border-color 180ms;
+  }
+  .relation-graph-button:hover { color: #eef3ff; border-color: #b6c7df66; }
+  .relation-graph-settings { background: #0b101bf2; backdrop-filter: blur(18px); }
+  .relation-graph-settings input { accent-color: #a0c0ff; }
   .project-detail-backdrop { background: #02050bb8; backdrop-filter: blur(12px); }
   [data-guide-id='project-detail'], .release-preview-card, .announcement-card { background-color: #0a0f1ac7; border-color: #b6c7df29; }
   .guide-pet-panel { border-color: #b6c7df29; }
@@ -2073,6 +2121,10 @@ canvas {
     .theme-shell .creation-card p { min-height: 0; margin-bottom: 1.5rem; }
     .hud-search, .hud-input { font-size: 16px; }
     .stack-map-panel { min-height: 22rem; height: calc(100svh - 26rem); border-radius: 1.5rem; }
+    .stack-map-panel.stack-relation-panel { min-height: 32rem; height: 68svh; }
+    .stack-view-toolbar { align-items: flex-start; }
+    .stack-view-toolbar > p { font-size: 10px; padding-left: 0.25rem; }
+    .relation-graph-legend { column-gap: 0.75rem; }
     .stack-map-panel .stack-map-controls { left: 1rem; right: auto; bottom: 1rem; flex-direction: row; gap: 0.5rem; }
     .theme-shell .stack-map-panel .stack-map-controls > button { margin: 0; }
     .stack-map-panel .branch-label { font-size: 20px; }
