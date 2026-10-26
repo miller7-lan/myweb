@@ -1,13 +1,17 @@
 import React, { useRef, useMemo, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { particleVertexShader, particleFragmentShader } from '../../shaders/particles';
+import { particleVertexShader, particleFragmentShader, particleSharedUniforms } from '../../shaders/particles';
 import type { ThemeDef } from '../../data/themes';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 import gsap from 'gsap';
 import { createSeededRandom } from '../../utils/random';
 import { createPlanetHaloGeometry } from './planetHaloGeometry';
+import { makePortalPlan, tintParticles, wormholeTintAt, wormholePull } from '../../utils/portal';
+import { raidTiming, raidTrack } from '../../utils/raid';
+
+const planetRest = { color: '#a0a0ab', glow: '#a0a0ab' };
 
 interface ThemePlanetProps {
   themeDef: ThemeDef;
@@ -42,6 +46,11 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
   // "Focused" = this planet is selected or entering; treat same as hovered for color/bubble.
   const isFocused = isActive && (viewState === 'ENTERING_THEME' || viewState === 'THEME');
   
+  // The canvas renders on demand while a theme page is open (see App.tsx).
+  const invalidate = useThree((state) => state.invalidate);
+  const getThree = useThree((state) => state.get);
+  const setPortal = useGalaxyStore((state) => state.setPortal);
+  const introPlaying = useGalaxyStore((state) => state.introPlaying);
   const isReturning = useRef(false);
   const returnProgress = useRef({ value: 0 });
   const returnStartPosition = useRef(new THREE.Vector3(0, 5, 15));
@@ -120,48 +129,77 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     setActiveTheme(themeDef.key);
   };
 
-  // Handle entry animation when state changes to ENTERING_THEME
+  // Where this planet is on screen: centre and visible radius in CSS px.
+  const screenPoint = (world: THREE.Vector3) => {
+    const { camera, gl } = getThree();
+    const group = groupRef.current;
+    const radius = baseRadius * (group ? group.getWorldScale(new THREE.Vector3()).x : 1);
+    const centre = world.clone().project(camera);
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(Math.max(radius, 0.2));
+    const edge = world.clone().add(right).project(camera);
+    const rect = gl.domElement.getBoundingClientRect();
+    const toX = (ndc: number) => rect.left + ((ndc + 1) / 2) * rect.width;
+    const toY = (ndc: number) => rect.top + ((1 - ndc) / 2) * rect.height;
+    return { x: toX(centre.x), y: toY(centre.y), r: Math.max(14, Math.abs(toX(edge.x) - toX(centre.x))) };
+  };
+
+  // The galaxy's centre star on screen (GalaxyScene names its group).
+  const corePoint = () => {
+    const core = getThree().scene.getObjectByName('galaxy-core');
+    if (!core) return null;
+    const { camera, gl } = getThree();
+    const world = core.getWorldPosition(new THREE.Vector3());
+    const radius = 2.0 * core.getWorldScale(new THREE.Vector3()).x;
+    const centre = world.clone().project(camera);
+    const edge = world.clone().add(new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(radius)).project(camera);
+    const rect = gl.domElement.getBoundingClientRect();
+    const toX = (ndc: number) => rect.left + ((ndc + 1) / 2) * rect.width;
+    const toY = (ndc: number) => rect.top + ((1 - ndc) / 2) * rect.height;
+    return { x: toX(centre.x), y: toY(centre.y), r: Math.abs(toX(edge.x) - toX(centre.x)) };
+  };
+
+  // Entering: the planet waits while 星仔 is summoned, then spins down into
+  // the black hole (drawn by PortalTransition). Once the hole covers the
+  // screen it takes the expanded, hidden spot the theme page expects.
   useEffect(() => {
     if (viewState === 'ENTERING_THEME' && isActive && !hasStartedEnterAnimation.current) {
       hasStartedEnterAnimation.current = true;
+      const group = groupRef.current;
+      const material = materialRef.current;
+      if (!group || !material) {
+        setViewState('THEME');
+        return;
+      }
+      const plan = makePortalPlan('enter', screenPoint(group.getWorldPosition(new THREE.Vector3())), themeDef.color, corePoint());
+      setPortal(plan);
+      const { summon, swallow } = plan.timing;
+      if (pointsRef.current) pointsRef.current.visible = true;
+      gsap.killTweensOf(group.scale);
+
       const tl = gsap.timeline({
         onComplete: () => {
+          // Hidden before the page renders, so the expanded planet never flashes through the reveal.
+          if (pointsRef.current) pointsRef.current.visible = false;
+          if (haloRef.current) haloRef.current.visible = false;
+          if (coreGlowRef.current) coreGlowRef.current.visible = false;
+          group.position.set(0, 5, 15);
+          group.scale.setScalar(15);
+          material.uniforms.uParticleSize.value = 12.0;
           setViewState('THEME');
         }
       });
 
-      if (groupRef.current && materialRef.current) {
+      // Press feedback, then hold still while 星仔 arrives.
+      tl.to(group.scale, { x: 1.12, y: 1.12, z: 1.12, duration: 0.12, ease: 'power2.out' }, 0);
+      tl.to(group.scale, { x: 1.24, y: 1.24, z: 1.24, duration: 0.3, ease: 'power2.out' }, 0.12);
+      if (plan.style !== 'wormhole') {
+        // A: swallowed, spinning up and shrinking to a point.
         if (pointsRef.current) {
-          pointsRef.current.visible = true;
+          tl.to(pointsRef.current.rotation, { y: '-=7', duration: swallow * 0.7, ease: 'power2.in' }, summon);
         }
-
-        // Stage 1: Press feedback
-        tl.to(groupRef.current.scale, {
-          x: 0.94, y: 0.94, z: 0.94,
-          duration: 0.12,
-          ease: 'power2.out'
-        });
-
-        // Stage 2: Break from orbit & push to camera
-        tl.to(groupRef.current.position, {
-          x: 0, y: 5, z: 15,
-          duration: 0.8,
-          ease: 'power4.out'
-        }, "+=0.05");
-
-        // Stage 3 & 4: Expand aggressively
-        tl.to(groupRef.current.scale, {
-          x: 15, y: 15, z: 15,
-          duration: 1.0,
-          ease: 'expo.out'
-        }, "-=0.6");
-
-        tl.to(materialRef.current.uniforms.uParticleSize, {
-          value: 12.0,
-          duration: 0.8,
-          ease: 'power2.out'
-        }, "-=0.8");
+        tl.to(group.scale, { x: 0.001, y: 0.001, z: 0.001, duration: swallow * 0.55, ease: 'power3.in' }, summon + swallow * 0.12);
       }
+      tl.to({}, { duration: 0 }, summon + swallow);
     }
 
     if (viewState === 'HOME') {
@@ -176,93 +214,125 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
 
     if (viewState === 'THEME' && isActive && pointsRef.current) {
       pointsRef.current.visible = false;
+      invalidate();
     }
-  }, [viewState, isActive, setViewState]);
+    // screenPoint only reads refs and the current camera.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewState, isActive, setViewState, setPortal, invalidate, themeDef.color]);
 
-  // Handle return animation
+  // Switching straight from one theme to another (bottom switcher) skips the
+  // fly-out / fly-in: under the theme backdrop the old planet just drops back
+  // into its orbit slot and the new one takes the expanded, hidden spot.
+  const wasActiveRef = useRef(isActive);
+  useEffect(() => {
+    const wasActive = wasActiveRef.current;
+    wasActiveRef.current = isActive;
+    if (viewState !== 'THEME' || wasActive === isActive) return;
+    const group = groupRef.current;
+    const material = materialRef.current;
+    if (!group || !material) return;
+    gsap.killTweensOf(group.position);
+    gsap.killTweensOf(group.scale);
+    gsap.killTweensOf(material.uniforms.uParticleSize);
+
+    if (isActive) {
+      hasStartedEnterAnimation.current = true;
+      group.position.set(0, 5, 15);
+      group.scale.setScalar(15);
+      material.uniforms.uParticleSize.value = 12.0;
+      if (pointsRef.current) pointsRef.current.visible = false;
+    } else {
+      hasStartedEnterAnimation.current = false;
+      group.position.copy(blendedPositionRef.current);
+      group.scale.setScalar(1);
+      material.uniforms.uParticleSize.value = 4.0;
+      if (pointsRef.current) pointsRef.current.visible = true;
+    }
+    // The canvas only renders on demand inside a theme; draw the swap once.
+    invalidate();
+  }, [isActive, viewState, invalidate]);
+
+  // The wormhole pulls every planet into the black hole at the centre once
+  // 星仔 has walked in; on the way back the others grow again in their orbits
+  // (the chosen one has its own animation below).
+  const portal = useGalaxyStore((state) => state.portal);
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!group || !portal) return;
+    if (portal.kind === 'enter' && portal.style === 'wormhole' && viewState === 'ENTERING_THEME') {
+      const core = getThree().scene.getObjectByName('galaxy-core');
+      const target = core ? core.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3();
+      const at = portal.timing.summon + wormholePull.start + 0.1 + themeDef.orbitOffset * 0.05;
+      gsap.to(group.position, { x: target.x, y: target.y, z: target.z, delay: at, duration: wormholePull.duration * 0.75, ease: 'power2.in' });
+      gsap.to(group.scale, { x: 0.001, y: 0.001, z: 0.001, delay: at, duration: wormholePull.duration * 0.75, ease: 'power2.in', overwrite: false });
+      // Every planet takes the chosen planet's colour as it is pulled in; the
+      // hover effect turns it back to grey on the way home.
+      if (materialRef.current) tintParticles(materialRef.current.uniforms, portal.color, planetRest, wormholeTintAt(portal));
+      invalidate();
+    }
+    if (portal.kind === 'leave' && viewState === 'LEAVING_THEME' && !isActive && group.scale.x < 0.5) {
+      gsap.to(group.scale, { x: 1, y: 1, z: 1, delay: portal.timing.close + portal.timing.spit * 0.1, duration: portal.timing.spit * 0.8, ease: 'back.out(1.4)' });
+    }
+    // Runs once per plan; the rest only reads refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portal]);
+
+  // Leaving: the page closes into this planet's spot in the galaxy, then
+  // the black hole there spits the planet back out into its orbit.
   useEffect(() => {
     if (viewState === 'LEAVING_THEME' && isActive) {
+      const group = groupRef.current;
+      const material = materialRef.current;
+      if (!group || !material) {
+        setViewState('HOME');
+        setActiveTheme(null);
+        return;
+      }
+      gsap.killTweensOf(group.position);
+      gsap.killTweensOf(group.scale);
+      gsap.killTweensOf(material.uniforms.uParticleSize);
+      gsap.killTweensOf(material.uniforms.uHoverBrightness);
+      gsap.killTweensOf(material.uniforms.uOpacity);
+
+      // Measure at normal size where the planet will reappear.
+      group.position.copy(blendedPositionRef.current);
+      group.scale.setScalar(1);
+      group.updateMatrixWorld(true);
+      const plan = makePortalPlan('leave', screenPoint(group.getWorldPosition(new THREE.Vector3())), themeDef.color, corePoint());
+      setPortal(plan);
+      const { close, spit } = plan.timing;
+
+      const defaultColor = new THREE.Color('#a0a0ab');
+      group.scale.setScalar(0.001);
+      material.uniforms.uParticleSize.value = 4.0;
+      material.uniforms.uHoverBrightness.value = 0.0;
+      material.uniforms.uIsHovered.value = 0.0;
+      material.uniforms.uOpacity.value = 0.82;
+      material.uniforms.uColor.value.copy(defaultColor);
+      material.uniforms.uGlowColor.value.copy(defaultColor);
+      if (pointsRef.current) pointsRef.current.visible = true;
+
+      // Follow the orbit while it grows back (see the frame loop).
+      returnStartPosition.current.copy(blendedPositionRef.current);
+      returnProgress.current.value = 1;
+      isReturning.current = true;
+
       const tl = gsap.timeline({
-        overwrite: 'auto',
         onComplete: () => {
+          isReturning.current = false;
           setViewState('HOME');
           setActiveTheme(null);
         }
       });
-
-      if (groupRef.current && materialRef.current) {
-        gsap.killTweensOf(groupRef.current.position);
-        gsap.killTweensOf(groupRef.current.scale);
-        gsap.killTweensOf(materialRef.current.uniforms.uParticleSize);
-        gsap.killTweensOf(materialRef.current.uniforms.uHoverBrightness);
-        gsap.killTweensOf(materialRef.current.uniforms.uOpacity);
-
-        returnStartPosition.current.copy(groupRef.current.position);
-        gsap.set(materialRef.current.uniforms.uParticleSize, { value: 3.2 });
-        gsap.set(materialRef.current.uniforms.uHoverBrightness, { value: 0.0 });
-        gsap.set(materialRef.current.uniforms.uOpacity, { value: 0.0 });
-        gsap.set(groupRef.current.scale, { x: 2.2, y: 2.2, z: 2.2 });
-        if (pointsRef.current) {
-          pointsRef.current.visible = true;
-        }
-
-        // Step 1: Bring the returning particles back under the fading overlay.
-        tl.to(materialRef.current.uniforms.uOpacity, {
-          value: 1.0,
-          duration: 0.28,
-          ease: 'power2.out',
-          overwrite: 'auto'
-        }, 0.04);
-
-        // Step 2: Keep particle pixels light while the planet returns.
-        tl.to(materialRef.current.uniforms.uParticleSize, {
-          value: 4.0,
-          duration: 0.3,
-          ease: 'power2.out',
-          overwrite: 'auto'
-        }, 0);
-
-        // Step 3: Contract scale back to normal, overlapping the position blend.
-        tl.to(groupRef.current.scale, {
-          x: 1, y: 1, z: 1,
-          duration: 0.8,
-          ease: 'power3.out',
-          overwrite: 'auto'
-        }, 0);
-
-        // Step 4: Revert planet color to default grey when returning
-        const defaultColor = new THREE.Color('#a0a0ab');
-        tl.to(materialRef.current.uniforms.uColor.value, {
-          r: defaultColor.r,
-          g: defaultColor.g,
-          b: defaultColor.b,
-          duration: 0.4,
-          ease: 'power2.out'
-        }, 0);
-
-        tl.to(materialRef.current.uniforms.uGlowColor.value, {
-          r: defaultColor.r,
-          g: defaultColor.g,
-          b: defaultColor.b,
-          duration: 0.4,
-          ease: 'power2.out'
-        }, 0);
-
-        // Step 5: Blend position from its actual expanded position back to orbit.
-        isReturning.current = true;
-        returnProgress.current.value = 0;
-        tl.to(returnProgress.current, {
-          value: 1,
-          duration: 0.8,
-          ease: 'power3.out',
-          overwrite: 'auto',
-          onComplete: () => {
-            isReturning.current = false;
-          }
-        }, 0);
+      if (pointsRef.current) {
+        tl.to(pointsRef.current.rotation, { y: '+=6', duration: spit * 0.8, ease: 'power3.out' }, close + spit * 0.12);
       }
+      tl.to(group.scale, { x: 1, y: 1, z: 1, duration: spit * 0.75, ease: 'back.out(1.6)' }, close + spit * 0.12);
+      tl.to({}, { duration: 0 }, close + spit);
     }
-  }, [viewState, isActive, setViewState, setActiveTheme]);
+    // screenPoint only reads refs and the current camera.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewState, isActive, setViewState, setActiveTheme, setPortal, themeDef.color]);
 
   // Hover / focus color animations
   useEffect(() => {
@@ -359,8 +429,48 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     uImpactPoint: { value: new THREE.Vector3() },
     uImpactStartTime: { value: -999 },
     uImpactStrength: { value: 0.0 },
-    uImpactRadius: { value: 1.0 }
+    uImpactRadius: { value: 1.0 },
+    ...particleSharedUniforms(),
   }), []);
+
+  // The UFO (utils/raid.ts): when it picks this planet, its particles are
+  // pulled up the beam, then fall back and gather when 星仔 hits the UFO.
+  const raid = useGalaxyStore((state) => state.raid);
+  const raidOnMe = raid?.planet === themeDef.key ? raid : null;
+  const suck = useRef({ value: 0 });
+  // Where the UFO hovers, relative to the planet: it moves with it.
+  const suckOffset = useRef(new THREE.Vector3());
+  const raidFlash = useRef(0);
+  const pulling = useRef(false);
+  const suckWorld = useRef(new THREE.Vector3());
+  const trackPoint = useRef(new THREE.Vector3());
+  const camera = useThree((state) => state.camera);
+  const gl = useThree((state) => state.gl);
+  useEffect(() => {
+    const state = suck.current;
+    gsap.killTweensOf(state);
+    if (!raidOnMe) {
+      // Gone (or called off): let go of whatever was taken.
+      if (state.value > 0) gsap.to(state, { value: 0, duration: 0.6, ease: 'power2.out' });
+      return;
+    }
+    if (groupRef.current) suckOffset.current.fromArray(raidOnMe.hoverWorld).sub(groupRef.current.getWorldPosition(trackPoint.current));
+    const t = raidTiming;
+    // The beam pulls until the first star hits; the last one lets go.
+    const pull = gsap.to(state, { value: 1, delay: t.suck, duration: t.firstHit - t.suck + 0.4, ease: 'power2.in' });
+    const tl = gsap.timeline();
+    pulling.current = true;
+    tl.call(() => {
+      pull.kill();
+      pulling.current = false;
+    }, undefined, t.firstHit)
+      .to(state, { value: 0, duration: t.regather, ease: 'expo.out' }, t.lastHit);
+    return () => {
+      pull.kill();
+      tl.kill();
+      pulling.current = false;
+    };
+  }, [raidOnMe]);
 
   const localTime = useRef(0);
   const haloTime = useRef(0);
@@ -379,7 +489,8 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     const portraitProgress = layoutProgressRef.current?.value ?? 0;
     const portraitMotionScale = THREE.MathUtils.lerp(1, 0.18, portraitProgress);
 
-    if (viewState !== 'THEME' && !shouldPauseOrbit) {
+    // Planets hold still while a transition plays and only turn again once it has finished.
+    if ((viewState === 'HOME' || viewState === 'HOVER_PLANET') && !shouldPauseOrbit && !introPlaying) {
       const ferrisMotionScale = THREE.MathUtils.lerp(motionScale, 0.82, portraitProgress);
       localTime.current += delta * ferrisMotionScale * portraitMotionScale;
       
@@ -434,7 +545,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         haloScale,
         highlighted ? 0.12 : 0.024
       );
-      haloRef.current.scale.setScalar(haloScaleRef.current);
+      haloRef.current.scale.setScalar(haloScaleRef.current * (1 - suck.current.value * 0.95));
     }
 
     if (coreGlowRef.current) {
@@ -450,7 +561,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         coreScale,
         highlighted ? 0.12 : 0.026
       );
-      coreGlowRef.current.scale.setScalar(coreScaleRef.current);
+      coreGlowRef.current.scale.setScalar(coreScaleRef.current * (1 - suck.current.value * 0.95));
     }
 
     if (materialRef.current) {
@@ -458,6 +569,38 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       materialRef.current.uniforms.uMousePos.value.copy(mousePosRef.current);
       materialRef.current.uniforms.uMouseScreenPos.value.copy(mouseScreenPosRef.current);
       materialRef.current.uniforms.uAspect.value = screenAspect;
+      materialRef.current.uniforms.uSuck.value = suck.current.value;
+      // While the beam has hold of it, the planet flickers in its own colour.
+      const uniforms = materialRef.current.uniforms;
+      if (raidOnMe && pulling.current && suck.current.value > 0.02) {
+        raidFlash.current += delta;
+        const on = Math.floor(raidFlash.current * 7) % 2 === 0;
+        uniforms.uIsHovered.value = 1;
+        uniforms.uColor.value.copy(softenedThemeColor);
+        uniforms.uGlowColor.value.copy(softenedThemeColor);
+        uniforms.uHoverBrightness.value = (on ? 0.95 : 0.35) * Math.min(1, suck.current.value * 4);
+      } else if (raidFlash.current > 0) {
+        // Back to how it was (the hover effect keeps it lit if it is hovered).
+        raidFlash.current = 0;
+        if (!highlighted) {
+          uniforms.uIsHovered.value = 0;
+          gsap.to(uniforms.uHoverBrightness, { value: 0, duration: 0.8, ease: 'power2.out', overwrite: 'auto' });
+          const rest = new THREE.Color(planetRest.color);
+          gsap.to(uniforms.uColor.value, { r: rest.r, g: rest.g, b: rest.b, duration: 0.8, ease: 'power2.out', overwrite: 'auto' });
+          gsap.to(uniforms.uGlowColor.value, { r: rest.r, g: rest.g, b: rest.b, duration: 0.8, ease: 'power2.out', overwrite: 'auto' });
+        }
+      }
+      if ((raidOnMe || suck.current.value > 0) && pointsRef.current && groupRef.current) {
+        groupRef.current.getWorldPosition(suckWorld.current);
+        if (raidOnMe) {
+          const rect = gl.domElement.getBoundingClientRect();
+          trackPoint.current.copy(suckWorld.current).project(camera);
+          raidTrack.x = rect.left + ((trackPoint.current.x + 1) / 2) * rect.width;
+          raidTrack.y = rect.top + ((1 - trackPoint.current.y) / 2) * rect.height;
+        }
+        suckWorld.current.add(suckOffset.current);
+        pointsRef.current.worldToLocal(materialRef.current.uniforms.uSuckPoint.value.copy(suckWorld.current));
+      }
       if (viewState === 'HOME' || viewState === 'HOVER_PLANET') {
         const defaultParticleSize = visualMode === 'silent' ? 3.0 : visualMode === 'focus' ? 3.45 : 4.0;
         const portraitParticleSize = visualMode === 'silent' ? 1.02 : visualMode === 'focus' ? 1.2 : 1.42;
@@ -534,7 +677,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
   });
 
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} name={`planet-${themeDef.key}`}>
       {/* Invisible sphere for raycasting hit area. It expands on mobile portrait for thumb-friendly taps. */}
       <mesh 
         onPointerOver={(e) => {
@@ -608,7 +751,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
             flex flex-col items-center justify-center
             ${isMobilePortrait ? 'min-w-[5.4rem] px-3 py-2 rounded-xl' : 'px-5 py-2.5 rounded-2xl'} backdrop-blur-xl border border-white/10
             bg-[#0a0a0f]/60 text-gray-200 transition-all duration-300 ease-out
-            ${((isHovered || isFocused) || isMobilePortrait) && viewState !== 'THEME'
+            ${((isHovered || isFocused) || isMobilePortrait) && (viewState === 'HOME' || viewState === 'HOVER_PLANET') && !introPlaying
               ? `translate-y-0 ${isMobilePortrait && !isHovered && !isFocused ? 'opacity-75 scale-90' : 'opacity-100 scale-100'}`
               : 'opacity-0 translate-y-4 scale-90'}
           `}

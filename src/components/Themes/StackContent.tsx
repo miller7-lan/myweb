@@ -60,7 +60,10 @@ export const StackContent: React.FC = () => {
           <button className="stack-view-option" aria-pressed={view === 'graph'} aria-controls="stack-visualization" onClick={() => changeView('graph')}><Network size={14} />关系图谱</button>
           <button className="stack-view-option" aria-pressed={view === 'constellation'} aria-controls="stack-visualization" onClick={() => changeView('constellation')}><Sparkles size={14} />技能星图</button>
         </div>
-        <p className="text-[11px] tracking-wide text-gray-500">{view === 'graph' ? '拖动节点 · 滚动缩放 · 点击查看详情' : '拖动星图 · 滚动缩放 · 点击探索技能'}</p>
+        <p className="text-[11px] tracking-wide text-gray-500">
+          <span className="hidden md:inline">{view === 'graph' ? '拖动节点 · 滚动缩放 · 点击查看详情' : '拖动星图 · 滚动缩放 · 点击探索技能'}</span>
+          <span className="md:hidden">{view === 'graph' ? '双指缩放 · 点分类放大 · 再点看详情' : '拖动星图 · 双指缩放 · 点星看详情'}</span>
+        </p>
       </div>
 
       {/* Map Container */}

@@ -1,9 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { CornerDownRight, LocateFixed, Minus, Search } from 'lucide-react';
 import { guideTargets, petPrompts, type GuideTarget, type PetMood } from '../../data/guide';
 import { themes } from '../../data/themes';
-import { useGalaxyStore, type NonNullThemeKey } from '../../store/useGalaxyStore';
+import { useGalaxyStore } from '../../store/useGalaxyStore';
+import { openTheme } from '../../utils/themeNavigation';
+import type { PetReaction } from '../../utils/raid';
+
+/*
+ * 星仔 — the site's pixel guide.
+ * Behaviour is modelled on desktop pets such as Clawd on Desk: the eyes follow the
+ * cursor, every state has its own animation (idle, thinking, guiding, success,
+ * curious, asleep, dragged), it can tuck itself into a screen edge and peek out,
+ * and it talks through small floating notification cards instead of comic bubbles.
+ */
 
 type ChatLine = {
   from: 'pet' | 'user';
@@ -15,30 +25,29 @@ type PetPosition = {
   y: number;
 };
 
-type PixelEmoji = 'sparkle' | 'smile' | 'cool' | 'star' | 'heart';
+type DockSide = 'left' | 'right' | null;
 
-type BubbleMode = 'text' | 'emoji' | 'mixed';
-
-type IdleAction = 'rest' | 'micro' | 'wave' | 'scan';
-
-type DragDirection = 'idle' | 'left' | 'right';
+type Emote = 'heart' | 'star' | 'note' | 'alert' | 'question' | 'sparkle';
 
 type DragState = {
   pointerId: number;
   startX: number;
   startY: number;
-  lastX: number;
-  lastY: number;
-  directionAnchorX: number;
-  direction: DragDirection;
   originX: number;
   originY: number;
+  lastX: number;
   moved: boolean;
 };
 
-type PanelLaunch = {
-  x: number;
-  y: number;
+type BubbleMode = 'text' | 'emoji' | 'mixed';
+
+type PixelEmoji = 'sparkle' | 'smile' | 'cool' | 'star' | 'heart';
+
+type BubbleState = {
+  id: number;
+  text: string;
+  mode: BubbleMode;
+  emoji: PixelEmoji | null;
 };
 
 type GuideSearchMatch = {
@@ -66,26 +75,190 @@ const quickCommands = [
   { label: '技术栈', targetId: 'theme-stack' },
 ];
 
+// While 星仔 is inside a black hole (the opening animation and the
+// transitions draw a stand-in and set this class), the real one stays put:
+// no strolling, hopping or dragging until it has climbed back out.
+const subscribePortaling = (onChange: () => void) => {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  return () => observer.disconnect();
+};
+const readPortaling = () => document.documentElement.classList.contains('pet-portaling');
+const usePetPortaling = () => useSyncExternalStore(subscribePortaling, readPortaling, () => false);
+
+// Written out so the stylesheet keeps these rules.
+const reactionClass: Record<PetReaction, string> = { shock: 'is-shock', throw: 'is-throw', cheer: 'is-cheer' };
+
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 const petPositionStorageKey = 'galaxy-guide-pet-position';
-const petShellWidth = 68;
-const petShellHeight = 100;
+const petDockStorageKey = 'galaxy-guide-pet-dock';
+const petShellWidth = 72;
+const petShellHeight = 72;
 const petMargin = 12;
-const petEmoji: PixelEmoji[] = ['sparkle', 'smile', 'cool', 'star', 'heart'];
-const petEmojiGlyph: Record<PixelEmoji, string> = {
-  sparkle: '✦',
-  smile: '☺',
-  cool: '☻',
-  star: '★',
-  heart: '♥',
+const sleepAfterMs = 45000;
+const walkSpeed = 36; // px per second, a slow stroll
+const walkPauseMin = 7000;
+const walkPauseMax = 18000;
+const mobileQuery = '(max-width: 768px)';
+
+const moodLabels: Record<PetMood | 'asleep', string> = {
+  idle: '在线',
+  curious: '有点好奇',
+  guiding: '导航中',
+  success: '已定位',
+  thinking: '思考中',
+  asleep: '打盹中',
 };
 
-const defaultPetPosition = (): PetPosition => {
-  if (typeof window === 'undefined') return { x: 24, y: 24 };
-  return clampPetPosition({
-    x: window.innerWidth - petShellWidth - petMargin,
-    y: window.innerHeight - petShellHeight - petMargin,
-  });
+/*
+ * Pixel emotes, drawn as 1-unit squares on a 9x9 grid like a sprite sheet,
+ * in the spirit of Clawd on Desk's pixel bubbles. '#' is the emote's colour,
+ * 'o' a lighter accent, '.' empty.
+ */
+const emoteArt: Record<Emote, string[]> = {
+  heart: [
+    '.##...##.',
+    '####.####',
+    '#########',
+    '#o#######',
+    '.#######.',
+    '..#####..',
+    '...###...',
+    '....#....',
+    '.........',
+  ],
+  star: [
+    '....#....',
+    '....#....',
+    '...o#o...',
+    '#########',
+    '...###...',
+    '..#o#o#..',
+    '.##...##.',
+    '.#.....#.',
+    '.........',
+  ],
+  note: [
+    '......###',
+    '......#o#',
+    '......###',
+    '......#..',
+    '..#####..',
+    '..#...#..',
+    '.###..#..',
+    '.#o#.###.',
+    '.###.#o#.',
+  ],
+  alert: [
+    '...###...',
+    '...#o#...',
+    '...###...',
+    '...###...',
+    '...#o#...',
+    '....#....',
+    '.........',
+    '...###...',
+    '...###...',
+  ],
+  question: [
+    '..#####..',
+    '.##...##.',
+    '......##.',
+    '....###..',
+    '...##....',
+    '...##....',
+    '.........',
+    '...##....',
+    '...##....',
+  ],
+  sparkle: [
+    '....#....',
+    '...o#o...',
+    '....#....',
+    '.#.....#.',
+    '#o#####o#',
+    '.#.....#.',
+    '....#....',
+    '...o#o...',
+    '....#....',
+  ],
+};
+
+const PixelEmote: React.FC<{ type: Emote }> = ({ type }) => (
+  <svg viewBox="0 0 9 9" width="18" height="18" shapeRendering="crispEdges" aria-hidden="true">
+    {emoteArt[type].flatMap((row, y) =>
+      row.split('').map((cell, x) =>
+        cell === '.' ? null : (
+          <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="currentColor" opacity={cell === 'o' ? 0.45 : 1} />
+        ),
+      ),
+    )}
+  </svg>
+);
+
+const idleEmotes: Emote[] = ['heart', 'star', 'note', 'sparkle'];
+
+
+/* ---------- the original pixel speech bubble (restored as dazzle designed it) ---------- */
+
+const petEmoji: PixelEmoji[] = ['sparkle', 'smile', 'cool', 'star', 'heart'];
+const petEmojiGlyph: Record<PixelEmoji, string> = {
+  sparkle: '\u2726',
+  smile: '\u263a',
+  cool: '\u263b',
+  star: '\u2605',
+  heart: '\u2665',
+};
+
+const randomPixelEmoji = (): PixelEmoji => petEmoji[Math.floor(Math.random() * petEmoji.length)];
+
+// Time-of-day leaning for the pet's unprompted emoji bubbles.
+const bubbleEmojiForHour = (hour: number): PixelEmoji => {
+  const pool: PixelEmoji[] =
+    hour >= 23 || hour < 6 ? ['smile', 'star', 'star'] :
+    hour < 10 ? ['sparkle', 'smile', 'cool'] :
+    hour < 18 ? ['cool', 'star', 'sparkle', 'heart'] :
+    ['heart', 'smile', 'star'];
+  return pool[Math.floor(Math.random() * pool.length)];
+};
+
+const shortBubbleText = (text: string) => {
+  if (text.length <= 22) return text;
+  return `${text.slice(0, 20)}...`;
+};
+
+const bubbleWidthRem = (text: string, mode: BubbleMode) => {
+  if (mode === 'emoji') return 4.6;
+  const base = mode === 'mixed' ? 3.8 : 4.4;
+  const charWidth = Array.from(text).some((char) => char.codePointAt(0)! > 255) ? 0.58 : 0.38;
+  const max = mode === 'mixed' ? 10.8 : 12.25;
+  return Math.min(max, Math.max(6.4, base + text.length * charWidth));
+};
+
+const textBubbleFrames = {
+  right: {
+    shadow: 'M20 8h276v8h12v12h8v52h-8v12H76v12H56V92H20v-8H8V20h12z',
+    border: 'M16 0h280v8h16v16h8v56h-8v16H80v16H52V96H16v-8H0V16h16z',
+    fill: 'M20 8h272v8h12v12h8v48h-8v12H72v16H60V88H20v-8H8V24h12z',
+  },
+  left: {
+    shadow: 'M20 8h276v8h12v12h8v52h-8v12h-56v12h-20V92H20v-8H8V20h12z',
+    border: 'M16 0h280v8h16v16h8v56h-8v16h-52v16h-28V96H16v-8H0V16h16z',
+    fill: 'M20 8h272v8h12v12h8v48h-8v12h-56v16h-12V88H20v-8H8V24h12z',
+  },
+};
+
+const emojiBubbleFrames = {
+  right: {
+    shadow: 'M24 4h80v8h12v12h8v56h-8v12H76v8H56v8H40v-8H28v-8H12V80H4V28h8V16h12z',
+    border: 'M20 0h80v8h12v12h8v56h-8v12H78v8H58v12H42V96H24v-8H8V76H0V24h8V12h12z',
+    fill: 'M24 8h72v8h12v12h8v44h-8v12H74v8H58v12h-8V92H28v-8H12V72H4V28h8V16h12z',
+  },
+  left: {
+    shadow: 'M24 4h80v8h12v12h8v56h-8v12H96v8H72v8H56v-8H28v-8H12V80H4V28h8V16h12z',
+    border: 'M20 0h80v8h12v12h8v56h-8v12H96v8H70v12H54V96H24v-8H8V76H0V24h8V12h12z',
+    fill: 'M24 8h72v8h12v12h8v44h-8v12H92v8H66v12h-8V92H28v-8H12V72H4V28h8V16h12z',
+  },
 };
 
 const clampPetPosition = (position: PetPosition): PetPosition => {
@@ -98,9 +271,33 @@ const clampPetPosition = (position: PetPosition): PetPosition => {
   };
 };
 
+const defaultPetPosition = (): PetPosition => {
+  if (typeof window === 'undefined') return { x: 24, y: 24 };
+  return clampPetPosition({
+    x: window.innerWidth - petShellWidth - petMargin - 8,
+    y: window.innerHeight - petShellHeight - petMargin - 8,
+  });
+};
+
+const readStorage = (key: string) => {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const writeStorage = (key: string, value: string) => {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Storage can be unavailable in private windows; the pet just forgets its spot.
+  }
+};
+
 const readPetPosition = () => {
   if (typeof window === 'undefined') return defaultPetPosition();
-  const stored = window.localStorage.getItem(petPositionStorageKey);
+  const stored = readStorage(petPositionStorageKey);
   if (!stored) return defaultPetPosition();
 
   try {
@@ -109,10 +306,16 @@ const readPetPosition = () => {
       return clampPetPosition({ x: parsed.x, y: parsed.y });
     }
   } catch {
-    window.localStorage.removeItem(petPositionStorageKey);
+    // Fall through to the default spot.
   }
 
   return defaultPetPosition();
+};
+
+const readDockSide = (): DockSide => {
+  if (typeof window === 'undefined') return null;
+  const stored = readStorage(petDockStorageKey);
+  return stored === 'left' || stored === 'right' ? stored : null;
 };
 
 const normalizeQuery = (value: string) =>
@@ -219,25 +422,6 @@ const findBestTarget = (query: string) => {
     .sort((a, b) => b.score - a.score)[0];
 };
 
-const waitForTheme = async (theme: NonNullThemeKey) => {
-  const deadline = Date.now() + 4200;
-  while (Date.now() < deadline) {
-    const state = useGalaxyStore.getState();
-    if (state.activeTheme === theme && state.viewState === 'THEME') return true;
-    await wait(80);
-  }
-  return false;
-};
-
-const waitForHomeAfterLeaving = async () => {
-  const deadline = Date.now() + 2600;
-  while (Date.now() < deadline) {
-    const current = useGalaxyStore.getState();
-    if (!current.activeTheme && (current.viewState === 'HOME' || current.viewState === 'HOVER_PLANET')) break;
-    await wait(80);
-  }
-};
-
 const waitForElement = async (selector: string) => {
   const deadline = Date.now() + 2400;
   while (Date.now() < deadline) {
@@ -248,70 +432,104 @@ const waitForElement = async (selector: string) => {
   return null;
 };
 
-const currentPrompt = (theme: NonNullThemeKey | null) => {
+// Every so often 星仔 reminds visitors it can show them around.
+const guideHints = ['点我，可以快速导览哦', '想去哪？点我带路', '迷路了？点我一下'];
+
+const currentPrompt = (theme: string | null) => {
   const key = theme ?? 'HOME';
   return petPrompts.find((prompt) => prompt.theme === key)?.text ?? petPrompts[0].text;
 };
 
-const occasionalPixelEmoji = (): PixelEmoji | null => {
-  if (Math.random() > 0.34) return null;
-  return petEmoji[Math.floor(Math.random() * petEmoji.length)];
-};
-
-const randomPixelEmoji = (): PixelEmoji => petEmoji[Math.floor(Math.random() * petEmoji.length)];
-
-const shortBubbleText = (text: string) => {
-  if (text.length <= 22) return text;
-  return `${text.slice(0, 20)}...`;
-};
-
-const randomBubbleMode = (): BubbleMode => {
-  const roll = Math.random();
-  if (roll < 0.18) return 'emoji';
-  if (roll < 0.48) return 'mixed';
-  return 'text';
-};
-
-const bubbleWidthRem = (text: string, mode: BubbleMode) => {
-  if (mode === 'emoji') return 4.6;
-  const base = mode === 'mixed' ? 3.8 : 4.4;
-  const charWidth = Array.from(text).some((char) => char.codePointAt(0)! > 255) ? 0.58 : 0.38;
-  const max = mode === 'mixed' ? 10.8 : 12.25;
-  return Math.min(max, Math.max(6.4, base + text.length * charWidth));
-};
+/** 20 × 18 pixel sprite. Every moving part is its own group so CSS can animate it per state. */
+export const PetSprite: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={`pet-sprite ${className ?? ''}`} viewBox="0 0 20 18" shapeRendering="crispEdges" aria-hidden="true">
+    <ellipse className="pet-shadow" cx="10" cy="17.4" rx="6.5" ry="0.7" />
+    <g className="pet-legs">
+      <rect className="pet-leg pet-leg-1" x="4" y="14" width="2" height="3" />
+      <rect className="pet-leg pet-leg-2" x="7" y="14" width="2" height="3" />
+      <rect className="pet-leg pet-leg-3" x="11" y="14" width="2" height="3" />
+      <rect className="pet-leg pet-leg-4" x="14" y="14" width="2" height="3" />
+    </g>
+    <g className="pet-body">
+      <g className="pet-antenna">
+        <rect className="pet-antenna-stem" x="10" y="1" width="1" height="2" />
+        <rect className="pet-antenna-tip" x="10" y="0" width="1" height="1" />
+      </g>
+      <rect className="pet-arm pet-arm-left" x="1" y="8" width="2" height="3" />
+      <rect className="pet-arm pet-arm-right" x="17" y="8" width="2" height="3" />
+      <rect className="pet-fill" x="4" y="3" width="12" height="11" />
+      <rect className="pet-fill" x="3" y="4" width="14" height="9" />
+      <rect className="pet-shade" x="3" y="11" width="14" height="2" />
+      <rect className="pet-shade" x="4" y="13" width="12" height="1" />
+      <rect className="pet-light" x="4" y="4" width="2" height="1" />
+      <rect className="pet-light" x="4" y="5" width="1" height="1" />
+      <rect className="pet-visor" x="6" y="5" width="8" height="5" />
+      <rect className="pet-visor" x="5" y="6" width="10" height="3" />
+      <g className="pet-eyes">
+        <g className="pet-eyes-open">
+          <rect x="7" y="6" width="2" height="3" />
+          <rect x="11" y="6" width="2" height="3" />
+        </g>
+        <g className="pet-eyes-happy">
+          <rect x="6" y="7" width="1" height="1" />
+          <rect x="7" y="6" width="1" height="1" />
+          <rect x="8" y="7" width="1" height="1" />
+          <rect x="11" y="7" width="1" height="1" />
+          <rect x="12" y="6" width="1" height="1" />
+          <rect x="13" y="7" width="1" height="1" />
+        </g>
+        <g className="pet-eyes-closed">
+          <rect x="7" y="8" width="2" height="1" />
+          <rect x="11" y="8" width="2" height="1" />
+        </g>
+      </g>
+      <rect className="pet-cheek" x="5" y="10" width="1" height="1" />
+      <rect className="pet-cheek" x="14" y="10" width="1" height="1" />
+    </g>
+  </svg>
+);
 
 export const GuidePet: React.FC = () => {
-  const { viewState, activeTheme, hoveredPlanet, visualMode, setActiveTheme, setViewState } = useGalaxyStore();
+  const { viewState, activeTheme, hoveredPlanet, visualMode } = useGalaxyStore();
   const [panelOpen, setPanelOpen] = useState(false);
-  const [bubbleVisible, setBubbleVisible] = useState(false);
+  const [panelClosing, setPanelClosing] = useState(false);
+  const [bubble, setBubble] = useState<BubbleState | null>(null);
   const [bubbleClosing, setBubbleClosing] = useState(false);
-  const [bubbleText, setBubbleText] = useState(() => petPrompts[0].text);
-  const [bubbleEmoji, setBubbleEmoji] = useState<PixelEmoji | null>(null);
-  const [bubbleMode, setBubbleMode] = useState<BubbleMode>('text');
   const [inputValue, setInputValue] = useState('');
   const [mood, setMood] = useState<PetMood>('idle');
+  const [reaction, setReaction] = useState<PetReaction | null>(null);
+  const [asleep, setAsleep] = useState(false);
+  const [emote, setEmote] = useState<{ id: number; type: Emote } | null>(null);
+  const [poke, setPoke] = useState(0);
+  const [hop, setHop] = useState(0);
   const [petPosition, setPetPosition] = useState<PetPosition>(() => readPetPosition());
-  const [panelLaunch, setPanelLaunch] = useState<PanelLaunch>({ x: 0, y: 0 });
-  const [panelClosing, setPanelClosing] = useState(false);
+  const [dockSide, setDockSide] = useState<DockSide>(() => readDockSide());
   const [isDragging, setIsDragging] = useState(false);
-  const [dragDirection, setDragDirection] = useState<DragDirection>('idle');
-  const [frameIndex, setFrameIndex] = useState(0);
-  const [idleAction, setIdleAction] = useState<IdleAction>('rest');
+  const [isWalking, setIsWalking] = useState(false);
+  const [facing, setFacing] = useState<'left' | 'right'>('left');
+  const [dragLean, setDragLean] = useState<'left' | 'right' | 'none'>('none');
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia(mobileQuery).matches);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
+  const [hiddenByScroll, setHiddenByScroll] = useState(false);
   const [chatLines, setChatLines] = useState<ChatLine[]>([
-    { from: 'pet', text: '导航小助手在线。你可以问我：下载利润助手、看证书、联系你、技术栈。' },
+    { from: 'pet', text: '我是星仔，这里的导航员。你可以问我：下载利润助手、看证书、联系你、技术栈。' },
   ]);
-  const idleTimerRef = useRef<number | null>(null);
-  const bubbleTimerRef = useRef<number | null>(null);
-  const bubbleCloseTimerRef = useRef<number | null>(null);
-  const panelOpenTimerRef = useRef<number | null>(null);
-  const panelCloseTimerRef = useRef<number | null>(null);
+  const spriteWrapRef = useRef<HTMLButtonElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const livePositionRef = useRef<PetPosition>(petPosition);
   const dragStateRef = useRef<DragState | null>(null);
   const suppressNextClickRef = useRef(false);
-  const bubbleVisibleRef = useRef(bubbleVisible);
-  const bubbleClosingRef = useRef(bubbleClosing);
+  const bubbleTimerRef = useRef<number | null>(null);
+  const bubbleCloseTimerRef = useRef<number | null>(null);
+  const panelCloseTimerRef = useRef<number | null>(null);
+  const lastActivityRef = useRef(0);
+  const lookOverrideUntilRef = useRef(0);
+  const bubbleIdRef = useRef(0);
   const visibleTheme = activeTheme ?? hoveredPlanet;
-  const themeColor = visibleTheme ? themes[visibleTheme].color : '#e2e8f0';
+  const themeColor = visibleTheme ? themes[visibleTheme].color : '#bfe3ff';
   const isInTheme = viewState === 'THEME' || viewState === 'LEAVING_THEME' || viewState === 'ENTERING_THEME';
+  const reduceMotion = visualMode === 'silent';
+  const portaling = usePetPortaling();
 
   const relatedTargets = useMemo(() => {
     const theme = activeTheme ?? hoveredPlanet;
@@ -329,67 +547,93 @@ export const GuidePet: React.FC = () => {
   }, [inputValue]);
   const queryPattern = useMemo(() => parseGuideRegex(inputValue)?.source ?? null, [inputValue]);
 
-  useEffect(() => {
-    bubbleVisibleRef.current = bubbleVisible;
-    bubbleClosingRef.current = bubbleClosing;
-  }, [bubbleClosing, bubbleVisible]);
+  /* ---------- bubble ---------- */
 
   const clearBubbleTimers = useCallback(() => {
-    if (bubbleTimerRef.current) {
-      window.clearTimeout(bubbleTimerRef.current);
-      bubbleTimerRef.current = null;
-    }
-    if (bubbleCloseTimerRef.current) {
-      window.clearTimeout(bubbleCloseTimerRef.current);
-      bubbleCloseTimerRef.current = null;
-    }
+    if (bubbleTimerRef.current) window.clearTimeout(bubbleTimerRef.current);
+    if (bubbleCloseTimerRef.current) window.clearTimeout(bubbleCloseTimerRef.current);
+    bubbleTimerRef.current = null;
+    bubbleCloseTimerRef.current = null;
   }, []);
 
-  const hideBubbleImmediately = useCallback(() => {
+  const hideBubble = useCallback((immediate = false) => {
     clearBubbleTimers();
-    bubbleVisibleRef.current = false;
-    bubbleClosingRef.current = false;
-    setBubbleVisible(false);
-    setBubbleClosing(false);
-  }, [clearBubbleTimers]);
-
-  const hideBubble = useCallback((force = false) => {
-    if (!force && !bubbleVisibleRef.current && !bubbleClosingRef.current) return;
-    clearBubbleTimers();
-    bubbleClosingRef.current = true;
+    if (immediate) {
+      setBubble(null);
+      setBubbleClosing(false);
+      return;
+    }
     setBubbleClosing(true);
     bubbleCloseTimerRef.current = window.setTimeout(() => {
-      bubbleVisibleRef.current = false;
-      bubbleClosingRef.current = false;
-      setBubbleVisible(false);
+      setBubble(null);
       setBubbleClosing(false);
       bubbleCloseTimerRef.current = null;
     }, 220);
   }, [clearBubbleTimers]);
 
-  const showBubble = (
+  const showBubble = useCallback((
     text: string,
-    emoji: PixelEmoji | null = occasionalPixelEmoji(),
-    mode: BubbleMode = emoji ? 'mixed' : 'text',
-    autoHideMs = 4200,
+    options: { mode?: BubbleMode; emoji?: PixelEmoji | null; autoHideMs?: number } = {},
   ) => {
+    const autoHideMs = options.autoHideMs ?? 5200;
+    const mode = options.mode ?? (options.emoji ? 'mixed' : 'text');
+    const emoji = mode === 'emoji' ? options.emoji ?? randomPixelEmoji() : options.emoji ?? null;
     clearBubbleTimers();
-    setBubbleText(mode === 'mixed' ? shortBubbleText(text) : text);
-    setBubbleEmoji(mode === 'emoji' ? emoji ?? randomPixelEmoji() : emoji);
-    setBubbleMode(mode);
-    bubbleVisibleRef.current = true;
-    bubbleClosingRef.current = false;
+    bubbleIdRef.current += 1;
     setBubbleClosing(false);
-    setBubbleVisible(true);
+    setBubble({ id: bubbleIdRef.current, text: mode === 'mixed' ? shortBubbleText(text) : text, mode, emoji });
     if (autoHideMs > 0) {
-      bubbleTimerRef.current = window.setTimeout(() => {
-        hideBubble(true);
-        bubbleTimerRef.current = null;
-      }, autoHideMs);
+      bubbleTimerRef.current = window.setTimeout(() => hideBubble(), autoHideMs);
     }
-  };
+  }, [clearBubbleTimers, hideBubble]);
 
-  const closePanel = () => {
+  const showEmote = useCallback((type: Emote) => {
+    setEmote({ id: Date.now(), type });
+  }, []);
+
+  // The UFO (UfoRaid): jump in shock, throw stars at it, cheer when it flees.
+  useEffect(() => {
+    let timer = 0;
+    const react = (event: WindowEventMap['galaxy-pet-react']) => {
+      const next = event.detail.reaction;
+      window.clearTimeout(timer);
+      setAsleep(false);
+      setReaction(next);
+      if (next === 'shock') {
+        showEmote('alert');
+        setHop((value) => value + 1);
+      } else if (next === 'cheer') {
+        showEmote('star');
+        setHop((value) => value + 1);
+      }
+      timer = window.setTimeout(() => setReaction(null), next === 'throw' ? 260 : next === 'shock' ? 1100 : 1600);
+    };
+    window.addEventListener('galaxy-pet-react', react);
+    return () => {
+      window.removeEventListener('galaxy-pet-react', react);
+      window.clearTimeout(timer);
+    };
+  }, [showEmote]);
+
+  useEffect(() => {
+    if (!emote) return;
+    const timer = window.setTimeout(() => setEmote(null), 1700);
+    return () => window.clearTimeout(timer);
+  }, [emote]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => hideBubble(), 0);
+    return () => window.clearTimeout(timer);
+  }, [activeTheme, hideBubble]);
+
+  useEffect(() => () => {
+    clearBubbleTimers();
+    if (panelCloseTimerRef.current) window.clearTimeout(panelCloseTimerRef.current);
+  }, [clearBubbleTimers]);
+
+  /* ---------- panel ---------- */
+
+  const closePanel = useCallback(() => {
     if (!panelOpen || panelClosing) return;
     if (panelCloseTimerRef.current) window.clearTimeout(panelCloseTimerRef.current);
     setPanelClosing(true);
@@ -397,158 +641,38 @@ export const GuidePet: React.FC = () => {
       setPanelOpen(false);
       setPanelClosing(false);
       panelCloseTimerRef.current = null;
-    }, 360);
+    }, 320);
+  }, [panelClosing, panelOpen]);
+
+  const openPanel = () => {
+    hideBubble(true);
+    setPanelClosing(false);
+    setPanelOpen(true);
+    setAsleep(false);
   };
 
-  const showIdleBubble = (text: string) => {
-    const mode = randomBubbleMode();
-    showBubble(
-      text,
-      mode === 'text' ? occasionalPixelEmoji() : randomPixelEmoji(),
-      mode,
-    );
-  };
+  useEffect(() => {
+    if (!panelOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closePanel();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [closePanel, panelOpen]);
+
+  /* ---------- layout: mobile, resize, scroll ---------- */
 
   useEffect(() => {
-    const timer = window.setTimeout(() => hideBubble(), 0);
-    return () => window.clearTimeout(timer);
-  }, [activeTheme, hideBubble]);
-
-  useEffect(() => {
-    if (idleTimerRef.current) window.clearInterval(idleTimerRef.current);
-    if (visualMode !== 'silent') return;
-
-    idleTimerRef.current = window.setInterval(() => {
-      hideBubble();
-    }, 9000);
-
-    return () => {
-      if (idleTimerRef.current) window.clearInterval(idleTimerRef.current);
-    };
-  }, [hideBubble, visualMode]);
-
-  useEffect(() => {
-    return () => {
-      clearBubbleTimers();
-      if (panelOpenTimerRef.current) window.clearTimeout(panelOpenTimerRef.current);
-      if (panelCloseTimerRef.current) window.clearTimeout(panelCloseTimerRef.current);
-    };
-  }, [clearBubbleTimers]);
-
-  useEffect(() => {
-    let timer: number | null = null;
-    let nextActionTimer: number | null = null;
-    let startTimer: number | null = null;
-    
-    const runFrameSequence = async (
-      sequence: { frame: number; duration: number; action?: IdleAction }[],
-    ) => {
-      for (const step of sequence) {
-        setIdleAction(step.action ?? 'micro');
-        setFrameIndex(step.frame);
-        await new Promise(resolve => {
-          timer = window.setTimeout(resolve, step.duration);
-        });
-      }
-      setFrameIndex(0);
-      setIdleAction('rest');
-    };
-
-    const scheduleNextExpression = () => {
-      const delay = Math.random() * 3000 + 2600;
-      nextActionTimer = window.setTimeout(async () => {
-        if (mood === 'idle' || mood === 'curious') {
-          const rand = Math.random();
-          if (rand < 0.48) {
-            await runFrameSequence([{ frame: 1, duration: 140, action: 'micro' }]);
-          } else if (rand < 0.68) {
-            await runFrameSequence([
-              { frame: 1, duration: 110, action: 'micro' },
-              { frame: 0, duration: 90, action: 'rest' },
-              { frame: 1, duration: 120, action: 'micro' },
-            ]);
-          } else if (rand < 0.86) {
-            await runFrameSequence([
-              { frame: 2, duration: 520, action: 'wave' },
-              { frame: 3, duration: 520, action: 'wave' },
-              { frame: 2, duration: 420, action: 'wave' },
-            ]);
-          } else {
-            await runFrameSequence([
-              { frame: 3, duration: 720, action: 'scan' },
-              { frame: 1, duration: 160, action: 'scan' },
-              { frame: 3, duration: 580, action: 'scan' },
-            ]);
-          }
-        }
-        scheduleNextExpression();
-      }, delay);
-    };
-
-    startTimer = window.setTimeout(() => {
-      if (mood === 'thinking') {
-        setIdleAction('scan');
-        const runThinkingLoop = () => {
-          const delay = Math.random() * 2000 + 1500;
-          timer = window.setTimeout(async () => {
-            setFrameIndex(1);
-            await new Promise(r => { timer = window.setTimeout(r, 120); });
-            setFrameIndex(3);
-            runThinkingLoop();
-          }, delay);
-        };
-        setFrameIndex(3);
-        runThinkingLoop();
-      } else if (mood === 'guiding') {
-        setIdleAction('wave');
-        const runGuidingLoop = () => {
-          const cycle = [0, 2, 3];
-          let step = 0;
-          const nextStep = () => {
-            setFrameIndex(cycle[step]);
-            step = (step + 1) % cycle.length;
-            timer = window.setTimeout(nextStep, 250);
-          };
-          nextStep();
-        };
-        runGuidingLoop();
-      } else if (mood === 'success') {
-        setIdleAction('wave');
-        const runSuccessLoop = () => {
-          const delay = Math.random() * 3000 + 2000;
-          timer = window.setTimeout(async () => {
-            setFrameIndex(1);
-            await new Promise(r => { timer = window.setTimeout(r, 120); });
-            setFrameIndex(2);
-            runSuccessLoop();
-          }, delay);
-        };
-        setFrameIndex(2);
-        runSuccessLoop();
-      } else {
-        setFrameIndex(0);
-        setIdleAction('rest');
-        scheduleNextExpression();
-      }
-    }, 0);
-
-    return () => {
-      if (startTimer) window.clearTimeout(startTimer);
-      if (timer) window.clearTimeout(timer);
-      if (nextActionTimer) window.clearTimeout(nextActionTimer);
-      setIdleAction('rest');
-    };
-  }, [mood]);
+    const query = window.matchMedia(mobileQuery);
+    const sync = () => setIsMobile(query.matches);
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
-      setPetPosition((position) => {
-        const next = clampPetPosition(position);
-        window.localStorage.setItem(petPositionStorageKey, JSON.stringify(next));
-        return next;
-      });
+      setPetPosition((position) => clampPetPosition(position));
     };
-
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
     return () => {
@@ -557,66 +681,219 @@ export const GuidePet: React.FC = () => {
     };
   }, []);
 
-  const finishDrag = useCallback((clientX: number, clientY: number) => {
-    const dragState = dragStateRef.current;
-    if (!dragState) return;
+  // On phones the pet slides out of the way while the page scrolls, then peeks back.
+  useEffect(() => {
+    if (!isMobile || !isInTheme) return;
+    const container = document.querySelector<HTMLElement>('[data-guide-scroll-container="theme"]');
+    if (!container) return;
+    let timer: number | null = null;
+    const handleScroll = () => {
+      setHiddenByScroll(true);
+      setMobileExpanded(false);
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => setHiddenByScroll(false), 900);
+    };
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [isInTheme, isMobile, viewState]);
 
-    const finalPosition = clampPetPosition({
-      x: dragState.originX + clientX - dragState.startX,
-      y: dragState.originY + clientY - dragState.startY,
-    });
-    setPetPosition(finalPosition);
-    window.localStorage.setItem(petPositionStorageKey, JSON.stringify(finalPosition));
-    suppressNextClickRef.current = dragState.moved;
-    if (dragState.moved && document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-    dragStateRef.current = null;
-    setIsDragging(false);
-    setDragDirection('idle');
+  // A tapped-out pet tucks itself back into the edge once it has nothing to say.
+  useEffect(() => {
+    if (!isMobile || !mobileExpanded || bubble || panelOpen) return;
+    const timer = window.setTimeout(() => setMobileExpanded(false), 2600);
+    return () => window.clearTimeout(timer);
+  }, [bubble, isMobile, mobileExpanded, panelOpen]);
+
+  /* ---------- eyes follow the cursor, sleep when nobody is around ---------- */
+
+  useEffect(() => {
+    const sprite = spriteWrapRef.current;
+    if (!sprite) return;
+    lastActivityRef.current = Date.now();
+    let frame = 0;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      lastActivityRef.current = Date.now();
+      if (Date.now() < lookOverrideUntilRef.current) return;
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        const rect = sprite.getBoundingClientRect();
+        const dx = event.clientX - (rect.left + rect.width / 2);
+        const dy = event.clientY - (rect.top + rect.height * 0.38);
+        const distance = Math.hypot(dx, dy) || 1;
+        const reach = Math.min(1, distance / 160);
+        sprite.style.setProperty('--eye-x', ((dx / distance) * reach).toFixed(2));
+        sprite.style.setProperty('--eye-y', ((dy / distance) * reach * 0.75).toFixed(2));
+      });
+    };
+    const markActive = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    window.addEventListener('keydown', markActive);
+    window.addEventListener('wheel', markActive, { passive: true });
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('keydown', markActive);
+      window.removeEventListener('wheel', markActive);
+    };
   }, []);
 
   useEffect(() => {
-    if (!isDragging) return;
+    if (!isWalking) livePositionRef.current = petPosition;
+  }, [isWalking, petPosition]);
 
-    const finishFromWindow = (clientX?: number, clientY?: number) => {
-      const dragState = dragStateRef.current;
-      if (!dragState) return;
-      finishDrag(clientX ?? dragState.lastX, clientY ?? dragState.lastY);
+  const lookAt = useCallback((x: number, y: number, ms: number) => {
+    const sprite = spriteWrapRef.current;
+    if (!sprite) return;
+    lookOverrideUntilRef.current = Date.now() + ms;
+    sprite.style.setProperty('--eye-x', String(x));
+    sprite.style.setProperty('--eye-y', String(y));
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const idleFor = Date.now() - lastActivityRef.current;
+      if (asleep) {
+        if (idleFor < 1500) {
+          setAsleep(false);
+          showEmote('alert');
+        }
+        return;
+      }
+      if (idleFor > sleepAfterMs && mood === 'idle' && !panelOpen && !bubble && !isDragging) {
+        setAsleep(true);
+      }
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [asleep, bubble, isDragging, mood, panelOpen, showEmote]);
+
+  // Small idle routines: glance around, hop, or float a little emote.
+  useEffect(() => {
+    if (asleep || mood !== 'idle' || isDragging || reduceMotion || portaling) return;
+    let timer: number;
+    const schedule = () => {
+      timer = window.setTimeout(() => {
+        const roll = Math.random();
+        if (roll < 0.45) {
+          lookAt(Math.random() > 0.5 ? 1 : -1, Math.random() * 0.6 - 0.3, 1100);
+        } else if (roll < 0.7) {
+          setHop((value) => value + 1);
+        } else if (roll < 0.85) {
+          showEmote(idleEmotes[Math.floor(Math.random() * idleEmotes.length)]);
+        }
+        schedule();
+      }, 4200 + Math.random() * 4200);
     };
-    const handlePointerDone = (event: PointerEvent) => finishFromWindow(event.clientX, event.clientY);
-    const handleMouseDone = (event: MouseEvent) => finishFromWindow(event.clientX, event.clientY);
-    const handleBlur = () => finishFromWindow();
+    schedule();
+    return () => window.clearTimeout(timer);
+  }, [asleep, isDragging, lookAt, mood, portaling, reduceMotion, showEmote]);
 
-    window.addEventListener('pointerup', handlePointerDone);
-    window.addEventListener('pointercancel', handlePointerDone);
-    window.addEventListener('mouseup', handleMouseDone);
-    window.addEventListener('blur', handleBlur);
+  // Every so often the pet pops an emoji bubble that suits the time of day,
+  // or says it can show the visitor around (tapping the bubble opens the guide).
+  // The first time is a reminder, a few seconds after the opening animation.
+  const introPlaying = useGalaxyStore((state) => state.introPlaying);
+  const raidActive = useGalaxyStore((state) => Boolean(state.raid));
+  const hintedRef = useRef(false);
+  useEffect(() => {
+    if (introPlaying || portaling || asleep || isDragging || panelOpen || bubble) return;
+    const first = !hintedRef.current;
+    if (reduceMotion && !first) return;
+    const timer = window.setTimeout(() => {
+      if (first || Math.random() < 0.5) {
+        hintedRef.current = true;
+        showBubble(guideHints[Math.floor(Math.random() * guideHints.length)], { autoHideMs: 5600 });
+        return;
+      }
+      showBubble('', { mode: 'emoji', emoji: bubbleEmojiForHour(new Date().getHours()), autoHideMs: 2600 });
+    }, first ? 3500 : 18000 + Math.random() * 26000);
+    return () => window.clearTimeout(timer);
+  }, [asleep, bubble, introPlaying, isDragging, panelOpen, portaling, reduceMotion, showBubble]);
 
+  /* ---------- wandering (desktop) ---------- */
+
+  // Like a desktop pet, 星仔 strolls to a new spot now and then and stays there.
+  const canWander =
+    !isMobile && !portaling && !introPlaying && !raidActive && !isDragging && !panelOpen && !bubble && !asleep && !dockSide && !reduceMotion && mood === 'idle';
+
+  useEffect(() => {
+    if (!canWander) return;
+    let frame = 0;
+    let timer = 0;
+    let cancelled = false;
+
+    const strollTo = (target: PetPosition) => {
+      const start = { ...livePositionRef.current };
+      const distance = Math.hypot(target.x - start.x, target.y - start.y);
+      if (distance < 40) {
+        queue();
+        return;
+      }
+      const duration = (distance / walkSpeed) * 1000;
+      const startedAt = performance.now();
+      setFacing(target.x < start.x ? 'left' : 'right');
+      setIsWalking(true);
+
+      const step = (now: number) => {
+        if (cancelled) return;
+        const progress = Math.min(1, (now - startedAt) / duration);
+        const position = {
+          x: start.x + (target.x - start.x) * progress,
+          y: start.y + (target.y - start.y) * progress,
+        };
+        livePositionRef.current = position;
+        if (shellRef.current) {
+          shellRef.current.style.transform = `translate3d(${position.x}px, ${position.y}px, 0)`;
+        }
+        if (progress < 1) {
+          frame = window.requestAnimationFrame(step);
+          return;
+        }
+        frame = 0;
+        setIsWalking(false);
+        setPetPosition(position);
+        writeStorage(petPositionStorageKey, JSON.stringify(position));
+        queue();
+      };
+
+      frame = window.requestAnimationFrame(step);
+    };
+
+    const queue = () => {
+      if (cancelled) return;
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
+        const maxX = Math.max(petMargin, window.innerWidth - petShellWidth - petMargin);
+        const maxY = Math.max(petMargin, window.innerHeight - petShellHeight - petMargin);
+        // Stay in the lower band of the screen, where it does not cover the content.
+        const minY = Math.max(petMargin, maxY - 240);
+        strollTo({
+          x: petMargin + Math.random() * (maxX - petMargin),
+          y: minY + Math.random() * Math.max(1, maxY - minY),
+        });
+      }, walkPauseMin + Math.random() * (walkPauseMax - walkPauseMin));
+    };
+
+    queue();
     return () => {
-      window.removeEventListener('pointerup', handlePointerDone);
-      window.removeEventListener('pointercancel', handlePointerDone);
-      window.removeEventListener('mouseup', handleMouseDone);
-      window.removeEventListener('blur', handleBlur);
+      cancelled = true;
+      if (frame) window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+      setIsWalking(false);
+      setPetPosition(clampPetPosition(livePositionRef.current));
     };
-  }, [finishDrag, isDragging]);
+  }, [canWander]);
+
+  /* ---------- guiding ---------- */
 
   const addChat = (line: ChatLine) => {
     setChatLines((lines) => [...lines.slice(-5), line]);
-  };
-
-  const ensureTheme = async (theme: NonNullThemeKey) => {
-    const state = useGalaxyStore.getState();
-    if (state.activeTheme === theme && state.viewState === 'THEME') return true;
-
-    if (state.viewState === 'THEME' && state.activeTheme && state.activeTheme !== theme) {
-      setViewState('LEAVING_THEME');
-      await waitForHomeAfterLeaving();
-    }
-
-    setActiveTheme(theme);
-    setViewState('ENTERING_THEME');
-    return waitForTheme(theme);
   };
 
   const highlightElement = (element: HTMLElement) => {
@@ -652,14 +929,17 @@ export const GuidePet: React.FC = () => {
     const target = guideTargets.find((item) => item.id === targetId);
     if (!target) return false;
 
+    setAsleep(false);
     setMood('guiding');
-    showBubble(`正在定位：${target.label}`, 'sparkle', 'mixed');
+    showBubble(`正在前往：${target.label}`, { autoHideMs: 0 });
     closePanel();
 
-    const themeReady = await ensureTheme(target.theme);
+    const themeReady = await openTheme(target.theme);
     if (!themeReady) {
       setMood('curious');
-      showBubble('主题还没有完成展开，稍后再试一次。', 'smile', 'mixed');
+      showEmote('question');
+      showBubble('页面还在展开，稍后再试一次。');
+      window.setTimeout(() => setMood('idle'), 2400);
       return false;
     }
 
@@ -673,7 +953,9 @@ export const GuidePet: React.FC = () => {
 
     if (!element) {
       setMood('curious');
-      showBubble('我进入了对应区域，但没有找到可高亮的锚点。', 'smile', 'mixed');
+      showEmote('question');
+      showBubble('到了对应区域，但没找到可以高亮的位置。');
+      window.setTimeout(() => setMood('idle'), 2400);
       return false;
     }
 
@@ -681,7 +963,7 @@ export const GuidePet: React.FC = () => {
     await wait(380);
     highlightElement(element);
     setMood('success');
-    showBubble(target.description, 'sparkle', 'mixed');
+    showBubble(target.description);
     addChat({ from: 'pet', text: `已定位：${target.label}。${target.description}` });
     window.setTimeout(() => setMood('idle'), 2200);
     return true;
@@ -695,13 +977,15 @@ export const GuidePet: React.FC = () => {
     addChat({ from: 'user', text: query });
     setInputValue('');
     setMood('thinking');
+    await wait(420);
 
     const best = findBestTarget(query);
     if (!best || best.score < 4) {
       setMood('curious');
+      showEmote('question');
       const fallback = petPrompts.find((prompt) => prompt.id === 'fail')?.text ?? '我暂时没匹配到目标。';
-      showBubble(fallback, 'smile', 'mixed');
       addChat({ from: 'pet', text: fallback });
+      window.setTimeout(() => setMood('idle'), 2400);
       return;
     }
 
@@ -709,183 +993,152 @@ export const GuidePet: React.FC = () => {
     await guideTo(best.target.id);
   };
 
-  const updateDragDirection = (clientX: number, dragState: DragState) => {
-    const current = dragState.direction;
-    const startDelta = clientX - dragState.startX;
-    const anchorDelta = clientX - dragState.directionAnchorX;
-
-    if (current === 'idle') {
-      if (startDelta > 5) {
-        dragState.directionAnchorX = clientX;
-        dragState.direction = 'right';
-        setDragDirection('right');
-      } else if (startDelta < -5) {
-        dragState.directionAnchorX = clientX;
-        dragState.direction = 'left';
-        setDragDirection('left');
-      }
-      return;
-    }
-
-    if (current === 'right') {
-      if (clientX > dragState.directionAnchorX) {
-        dragState.directionAnchorX = clientX;
-      } else if (anchorDelta < -14) {
-        dragState.directionAnchorX = clientX;
-        dragState.direction = 'left';
-        setDragDirection('left');
-      }
-      return;
-    }
-
-    if (clientX < dragState.directionAnchorX) {
-      dragState.directionAnchorX = clientX;
-    } else if (anchorDelta > 14) {
-      dragState.directionAnchorX = clientX;
-      dragState.direction = 'right';
-      setDragDirection('right');
-    }
-  };
+  /* ---------- drag (desktop) ---------- */
 
   const startDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (event.button !== 0) return;
+    if (isMobile || portaling || event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     dragStateRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      lastX: event.clientX,
-      lastY: event.clientY,
-      directionAnchorX: event.clientX,
-      direction: 'idle',
       originX: petPosition.x,
       originY: petPosition.y,
+      lastX: event.clientX,
       moved: false,
     };
-    setIsDragging(true);
-    setDragDirection('idle');
-    hideBubble();
   };
 
   const moveDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
     const dragState = dragStateRef.current;
     if (!dragState || dragState.pointerId !== event.pointerId) return;
-
     const dx = event.clientX - dragState.startX;
     const dy = event.clientY - dragState.startY;
-    dragState.lastX = event.clientX;
-    dragState.lastY = event.clientY;
-    if (Math.abs(dx) + Math.abs(dy) > 5) {
+    if (!dragState.moved && Math.abs(dx) + Math.abs(dy) > 5) {
       dragState.moved = true;
+      setIsDragging(true);
+      setDockSide(null);
+      setAsleep(false);
+      hideBubble();
     }
-    updateDragDirection(event.clientX, dragState);
-
-    setPetPosition(clampPetPosition({
-      x: dragState.originX + dx,
-      y: dragState.originY + dy,
-    }));
+    if (!dragState.moved) return;
+    const step = event.clientX - dragState.lastX;
+    if (Math.abs(step) > 1) setDragLean(step > 0 ? 'right' : 'left');
+    dragState.lastX = event.clientX;
+    setPetPosition(clampPetPosition({ x: dragState.originX + dx, y: dragState.originY + dy }));
   };
 
   const endDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
     const dragState = dragStateRef.current;
     if (!dragState || dragState.pointerId !== event.pointerId) return;
+    dragStateRef.current = null;
+    if (!dragState.moved) return;
 
-    finishDrag(event.clientX, event.clientY);
+    const finalPosition = clampPetPosition({
+      x: dragState.originX + event.clientX - dragState.startX,
+      y: dragState.originY + event.clientY - dragState.startY,
+    });
+    const maxX = window.innerWidth - petShellWidth - petMargin;
+    // Dropping the pet against a side edge tucks it in, like a desktop pet's mini mode.
+    const nextDock: DockSide = finalPosition.x <= petMargin + 2 ? 'left' : finalPosition.x >= maxX - 2 ? 'right' : null;
+    setPetPosition(finalPosition);
+    setDockSide(nextDock);
+    writeStorage(petPositionStorageKey, JSON.stringify(finalPosition));
+    writeStorage(petDockStorageKey, nextDock ?? '');
+    suppressNextClickRef.current = true;
+    setIsDragging(false);
+    setDragLean('none');
+    if (nextDock) showEmote('note');
   };
 
-  const startMouseDrag = (event: React.MouseEvent<HTMLButtonElement>) => {
-    if (event.button !== 0 || dragStateRef.current) return;
-
-    dragStateRef.current = {
-      pointerId: -1,
-      startX: event.clientX,
-      startY: event.clientY,
-      lastX: event.clientX,
-      lastY: event.clientY,
-      directionAnchorX: event.clientX,
-      direction: 'idle',
-      originX: petPosition.x,
-      originY: petPosition.y,
-      moved: false,
-    };
-    setIsDragging(true);
-    setDragDirection('idle');
-    hideBubble();
-
-    const handleMove = (moveEvent: MouseEvent) => {
-      const dragState = dragStateRef.current;
-      if (!dragState || dragState.pointerId !== -1) return;
-
-      const dx = moveEvent.clientX - dragState.startX;
-      const dy = moveEvent.clientY - dragState.startY;
-      dragState.lastX = moveEvent.clientX;
-      dragState.lastY = moveEvent.clientY;
-      if (Math.abs(dx) + Math.abs(dy) > 5) {
-        dragState.moved = true;
-      }
-      updateDragDirection(moveEvent.clientX, dragState);
-
-      setPetPosition(clampPetPosition({
-        x: dragState.originX + dx,
-        y: dragState.originY + dy,
-      }));
-    };
-
-    const handleUp = (upEvent: MouseEvent) => {
-      finishDrag(upEvent.clientX, upEvent.clientY);
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
-    };
-
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
-  };
+  /* ---------- clicks ---------- */
 
   const clickAvatar = () => {
     if (suppressNextClickRef.current) {
       suppressNextClickRef.current = false;
       return;
     }
+    lastActivityRef.current = Date.now();
+    setPoke((value) => value + 1);
 
-    closePanel();
-    showIdleBubble(currentPrompt(useGalaxyStore.getState().activeTheme));
+    if (asleep) {
+      setAsleep(false);
+      showEmote('alert');
+      return;
+    }
+
+    if (isMobile && !mobileExpanded) {
+      setMobileExpanded(true);
+      showBubble(currentPrompt(useGalaxyStore.getState().activeTheme), { autoHideMs: 7000 });
+      return;
+    }
+
+    if (panelOpen) {
+      closePanel();
+      return;
+    }
+
+    if (bubble && !bubbleClosing) {
+      openPanel();
+      return;
+    }
+
+    showBubble(currentPrompt(useGalaxyStore.getState().activeTheme), { autoHideMs: 7000 });
   };
 
-  const openPanelFromBubble = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const rect = event.currentTarget.getBoundingClientRect();
-    setPanelLaunch({
-      x: rect.left + rect.width / 2 - window.innerWidth / 2,
-      y: rect.top + rect.height / 2 - window.innerHeight / 2,
-    });
-    setPanelClosing(false);
-    hideBubbleImmediately();
-    if (panelOpenTimerRef.current) window.clearTimeout(panelOpenTimerRef.current);
-    panelOpenTimerRef.current = null;
-    setPanelOpen(true);
+  /* ---------- render ---------- */
+
+  const petState = asleep ? 'asleep' : isDragging ? 'dragging' : mood;
+  const stateLabel = moodLabels[asleep ? 'asleep' : mood];
+  const bubbleSide = isMobile || dockSide === 'right' || petPosition.x > window.innerWidth * 0.5 ? 'left' : 'right';
+  const bubblePlacement = !isMobile && petPosition.y < 190 ? 'below' : 'above';
+  const bubbleTail: 'left' | 'right' = bubbleSide === 'left' ? 'left' : 'right';
+
+  // On desktop the guide opens next to 星仔 and follows it: above it in the
+  // lower half of the screen, below it in the upper half, and toward the
+  // middle of the screen on whichever side 星仔 is, growing out of its corner.
+  const panelPlacement = (): React.CSSProperties => {
+    if (isMobile) return {};
+    const gap = 10;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const onRight = petPosition.x + petShellWidth / 2 > vw / 2;
+    const below = petPosition.y + petShellHeight / 2 < vh / 2;
+    const horizontal = onRight
+      ? { left: 'auto', right: Math.max(16, vw - petPosition.x - petShellWidth) }
+      : { right: 'auto', left: Math.max(16, petPosition.x) };
+    const vertical = below
+      ? { bottom: 'auto', top: Math.min(vh - 220, petPosition.y + petShellHeight + gap) }
+      : { top: 'auto', bottom: Math.min(vh - 220, vh - petPosition.y + gap) };
+    return {
+      ...horizontal,
+      ...vertical,
+      maxHeight: `min(36rem, ${Math.round(below ? vh - (vertical.top as number) - 16 : vh - (vertical.bottom as number) - 16)}px)`,
+      transformOrigin: `${onRight ? '90%' : '10%'} ${below ? '0%' : '100%'}`,
+    };
   };
 
   const panel = panelOpen ? (
     <div
-      className={`guide-pet-panel scan-card ${panelClosing ? 'is-closing' : 'is-opening'}`}
+      className={`guide-pet-panel ${panelClosing ? 'is-closing' : 'is-opening'}`}
       role="dialog"
-      aria-label="网页宠物导览助手"
-      style={{
-        ['--theme-color' as string]: themeColor,
-        ['--guide-panel-launch-x' as string]: `${panelLaunch.x}px`,
-        ['--guide-panel-launch-y' as string]: `${panelLaunch.y}px`,
-      }}
+      aria-label="星仔导览助手"
+      style={{ ['--theme-color' as string]: themeColor, ...panelPlacement() }}
     >
       <div className="guide-pet-panel-head">
-        <div>
-          <span className="guide-pet-bubble-kicker">
-            <span className="hud-dot" />
-            Pixel Navigator
+        <div className="guide-pet-panel-id">
+          <span className={`guide-pet-panel-avatar state-${petState}`}>
+            <PetSprite />
           </span>
-          <h2>太空小助手</h2>
+          <div>
+            <h2>星仔</h2>
+            <span className="guide-pet-panel-status">
+              <i />
+              {stateLabel} · 太空导览
+            </span>
+          </div>
         </div>
-        <button type="button" onClick={closePanel} aria-label="最小化导览助手">
+        <button type="button" onClick={closePanel} aria-label="收起导览助手">
           <Minus size={16} />
         </button>
       </div>
@@ -896,6 +1149,11 @@ export const GuidePet: React.FC = () => {
             {line.text}
           </div>
         ))}
+        {mood === 'thinking' && (
+          <div className="guide-pet-line pet is-typing" aria-label="星仔正在思考">
+            <span /><span /><span />
+          </div>
+        )}
       </div>
 
       <div className="guide-pet-chips" aria-label="快捷导览">
@@ -912,7 +1170,7 @@ export const GuidePet: React.FC = () => {
         <input
           value={inputValue}
           onChange={(event) => setInputValue(event.target.value)}
-          placeholder="试试：下载利润助手 / /apk|dmg/i / 证书"
+          placeholder="试试：下载利润助手 / 证书 / 联系"
           aria-label="输入导览问题"
         />
         <button type="submit" aria-label="发送导览问题">
@@ -921,10 +1179,10 @@ export const GuidePet: React.FC = () => {
       </form>
 
       {inputValue.trim() && (
-        <div className="guide-pet-matches" aria-label="高匹配导览结果">
+        <div className="guide-pet-matches" aria-label="匹配结果">
           <div className="guide-pet-matches-head">
-            <span>REGEX</span>
-            <code>{queryPattern ?? 'INVALID'}</code>
+            <span>匹配</span>
+            <code>{queryPattern ?? '无效表达式'}</code>
           </div>
           {searchMatches.length > 0 ? (
             searchMatches.map((match) => (
@@ -934,11 +1192,11 @@ export const GuidePet: React.FC = () => {
                   <strong>{match.target.label}</strong>
                   <small>{match.reason}</small>
                 </span>
-                <span className="guide-pet-match-theme">{themes[match.target.theme].label}</span>
+                <span className="guide-pet-match-theme">{themes[match.target.theme].chineseName}</span>
               </button>
             ))
           ) : (
-            <div className="guide-pet-match-empty">没有找到高匹配结果</div>
+            <div className="guide-pet-match-empty">没有找到匹配的位置</div>
           )}
         </div>
       )}
@@ -952,80 +1210,63 @@ export const GuidePet: React.FC = () => {
       </div>
     </div>
   ) : null;
-  const bubbleWidth = bubbleWidthRem(bubbleText, bubbleMode);
-  const bubbleSide =
-    typeof window !== 'undefined' && petPosition.x < window.innerWidth * 0.46
-      ? 'right'
-      : 'left';
-  const textBubbleFrame =
-    bubbleSide === 'right'
-      ? {
-          shadow: 'M20 8h276v8h12v12h8v52h-8v12H76v12H56V92H20v-8H8V20h12z',
-          border: 'M16 0h280v8h16v16h8v56h-8v16H80v16H52V96H16v-8H0V16h16z',
-          fill: 'M20 8h272v8h12v12h8v48h-8v12H72v16H60V88H20v-8H8V24h12z',
-        }
-      : {
-          shadow: 'M20 8h276v8h12v12h8v52h-8v12h-56v12h-20V92H20v-8H8V20h12z',
-          border: 'M16 0h280v8h16v16h8v56h-8v16h-52v16h-28V96H16v-8H0V16h16z',
-          fill: 'M20 8h272v8h12v12h8v48h-8v12h-56v16h-12V88H20v-8H8V24h12z',
-        };
-  const emojiBubbleFrame =
-    bubbleSide === 'right'
-      ? {
-          shadow: 'M24 4h80v8h12v12h8v56h-8v12H76v8H56v8H40v-8H28v-8H12V80H4V28h8V16h12z',
-          border: 'M20 0h80v8h12v12h8v56h-8v12H78v8H58v12H42V96H24v-8H8V76H0V24h8V12h12z',
-          fill: 'M24 8h72v8h12v12h8v44h-8v12H74v8H58v12h-8V92H28v-8H12V72H4V28h8V16h12z',
-        }
-      : {
-          shadow: 'M24 4h80v8h12v12h8v56h-8v12H96v8H72v8H56v-8H28v-8H12V80H4V28h8V16h12z',
-          border: 'M20 0h80v8h12v12h8v56h-8v12H96v8H70v12H54V96H24v-8H8V76H0V24h8V12h12z',
-          fill: 'M24 8h72v8h12v12h8v44h-8v12H92v8H66v12h-8V92H28v-8H12V72H4V28h8V16h12z',
-        };
+
+  const shellClasses = [
+    'guide-pet-shell',
+    isMobile ? 'is-mobile' : 'is-desktop',
+    isInTheme ? 'is-theme' : 'is-home',
+    isDragging ? 'is-dragging' : '',
+    isWalking ? 'is-walking' : '',
+    `face-${facing}`,
+    dockSide && !isMobile ? `is-docked dock-${dockSide}` : '',
+    isMobile && !mobileExpanded && !panelOpen ? 'is-peeking' : '',
+    isMobile && hiddenByScroll && !panelOpen ? 'is-tucked' : '',
+    panelOpen ? 'is-open' : '',
+  ].filter(Boolean).join(' ');
 
   return (
     <>
       <div
-        className={`guide-pet-shell ${isInTheme ? 'is-theme' : 'is-home'} ${panelOpen ? 'is-open' : ''} ${isDragging ? 'is-dragging' : ''} drag-${dragDirection}`}
+        ref={shellRef}
+        className={shellClasses}
         style={{
           ['--theme-color' as string]: themeColor,
-          transform: `translate3d(${petPosition.x}px, ${petPosition.y}px, 0)`,
+          ...(isMobile ? {} : { transform: `translate3d(${petPosition.x}px, ${petPosition.y}px, 0)` }),
         }}
       >
-        {(bubbleVisible || bubbleClosing) && (!panelOpen || bubbleClosing) && (
+        {bubble && !panelOpen && (
           <button
+            key={bubble.id}
             type="button"
-            className={`guide-pet-bubble is-${bubbleMode} bubble-${bubbleSide} ${bubbleClosing ? 'is-closing' : 'is-opening'}`}
-            onClick={openPanelFromBubble}
-            aria-label="打开网页宠物导览助手"
-            style={{ ['--bubble-width' as string]: `${bubbleWidth}rem` }}
+            className={`guide-pet-bubble is-${bubble.mode} bubble-${bubbleSide === 'left' ? 'left' : 'right'} place-${bubblePlacement} ${bubbleClosing ? 'is-closing' : 'is-opening'}`}
+            onClick={openPanel}
+            aria-label="打开星仔导览助手"
+            style={{ ['--bubble-width' as string]: `${bubbleWidthRem(bubble.text, bubble.mode)}rem` }}
           >
             <div className="guide-pet-bubble-body">
-              {bubbleMode === 'emoji' ? (
+              {bubble.mode === 'emoji' ? (
                 <svg className="guide-pet-bubble-frame" viewBox="0 0 128 112" preserveAspectRatio="none" aria-hidden="true">
-                  <path className="guide-pet-frame-shadow" d={emojiBubbleFrame.shadow} />
-                  <path className="guide-pet-frame-border" d={emojiBubbleFrame.border} />
-                  <path className="guide-pet-frame-fill" d={emojiBubbleFrame.fill} />
+                  <path className="guide-pet-frame-shadow" d={emojiBubbleFrames[bubbleTail].shadow} />
+                  <path className="guide-pet-frame-border" d={emojiBubbleFrames[bubbleTail].border} />
+                  <path className="guide-pet-frame-fill" d={emojiBubbleFrames[bubbleTail].fill} />
                 </svg>
               ) : (
                 <svg className="guide-pet-bubble-frame" viewBox="0 0 320 112" preserveAspectRatio="none" aria-hidden="true">
-                  <path className="guide-pet-frame-shadow" d={textBubbleFrame.shadow} />
-                  <path className="guide-pet-frame-border" d={textBubbleFrame.border} />
-                  <path className="guide-pet-frame-fill" d={textBubbleFrame.fill} />
+                  <path className="guide-pet-frame-shadow" d={textBubbleFrames[bubbleTail].shadow} />
+                  <path className="guide-pet-frame-border" d={textBubbleFrames[bubbleTail].border} />
+                  <path className="guide-pet-frame-fill" d={textBubbleFrames[bubbleTail].fill} />
                 </svg>
               )}
-              {bubbleMode === 'emoji' ? (
-                <span
-                  className={`pixel-emoji pixel-emoji-${bubbleEmoji ?? 'smile'} pixel-emoji-char`}
-                  aria-hidden="true"
-                >
-                  {petEmojiGlyph[bubbleEmoji ?? 'smile']}
+              {bubble.mode === 'emoji' ? (
+                <span className={`pixel-emoji pixel-emoji-${bubble.emoji ?? 'smile'} pixel-emoji-char`} aria-hidden="true">
+                  {petEmojiGlyph[bubble.emoji ?? 'smile']}
                 </span>
               ) : (
                 <p>
-                  <span>{bubbleText}</span>
-                  {bubbleEmoji && (
-                    <span className={`pixel-emoji pixel-emoji-${bubbleEmoji} pixel-emoji-char`} aria-hidden="true">
-                      {petEmojiGlyph[bubbleEmoji]}
+                  <span>{bubble.text}</span>
+                  {bubble.emoji && (
+                    <span className={`pixel-emoji pixel-emoji-${bubble.emoji} pixel-emoji-char`} aria-hidden="true">
+                      {petEmojiGlyph[bubble.emoji]}
                     </span>
                   )}
                 </p>
@@ -1035,22 +1276,36 @@ export const GuidePet: React.FC = () => {
         )}
 
         <button
+          ref={spriteWrapRef}
           type="button"
-          className={`guide-pet-avatar mood-${mood} action-${idleAction}`}
+          className={`guide-pet-avatar state-${petState} lean-${dragLean} ${reaction ? reactionClass[reaction] : ''}`}
           onPointerDown={startDrag}
           onPointerMove={moveDrag}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
-          onMouseDown={startMouseDrag}
           onClick={clickAvatar}
-          aria-label="打开像素太空导览助手"
-          title="拖动移动 · 点击打开像素太空导览助手"
+          aria-label="星仔导览助手"
+          title={isMobile ? '点一下和星仔说话' : '拖动移动 · 拖到屏幕边缘可收起 · 点击说话'}
         >
-          <span
-            className="guide-pet-sprite"
-            aria-hidden="true"
-            style={{ backgroundPosition: `${(frameIndex * 100) / 3}% 0` }}
-          />
+          <span key={`hop-${hop}`} className={`guide-pet-hop ${hop ? 'is-hopping' : ''}`}>
+            <span key={`poke-${poke}`} className={`guide-pet-squish ${poke ? 'is-poked' : ''}`}>
+              <PetSprite />
+            </span>
+          </span>
+          {mood === 'thinking' && !asleep && (
+            <span className="guide-pet-thinking" aria-hidden="true"><i /><i /><i /></span>
+          )}
+          {mood === 'success' && !asleep && (
+            <span className="guide-pet-sparkles" aria-hidden="true"><i /><i /><i /><i /></span>
+          )}
+          {asleep && (
+            <span className="guide-pet-zzz" aria-hidden="true"><i>z</i><i>z</i><i>Z</i></span>
+          )}
+          {emote && (
+            <span key={emote.id} className={`guide-pet-emote emote-${emote.type}`} aria-hidden="true">
+              <PixelEmote type={emote.type} />
+            </span>
+          )}
         </button>
       </div>
       {panel && createPortal(panel, document.body)}

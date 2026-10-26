@@ -1,11 +1,16 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { particleVertexShader, particleFragmentShader } from '../../shaders/particles';
+import { particleVertexShader, particleFragmentShader, particleSharedUniforms } from '../../shaders/particles';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 import { createSeededRandom } from '../../utils/random';
+import { tintParticles, wormholeTintAt } from '../../utils/portal';
 import { MeteorImpact, type ManualMeteorEvent, type RingImpactEvent } from './MeteorImpact';
 import { RingShip, type RingImpactSlot } from './RingShip';
+import { wakeTrail } from '../../utils/wakeTrail';
+import { WakeSurface } from './WakeSurface';
+
+const ringRest = { color: '#8a8a98', glow: '#aeb7c8' };
 
 interface ParticleRingProps {
   mousePosRef: React.RefObject<THREE.Vector3>;
@@ -66,9 +71,13 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
       
       rnd[i] = random();
 
-      initPos[i * 3] = (random() - 0.5) * 120;
-      initPos[i * 3 + 1] = (random() - 0.5) * 120;
-      initPos[i * 3 + 2] = (random() - 0.5) * 120 - 20;
+      // The opening animation spreads the rings out of the centre star:
+      // every particle starts inside it, on its own spoke.
+      const startRadius = 0.6 + random() * 1.2;
+      initPos[i * 3] = Math.cos(angle) * startRadius;
+      initPos[i * 3 + 1] = (random() - 0.5) * 0.3;
+      initPos[i * 3 + 2] = Math.sin(angle) * startRadius;
+      random(); // keeps the seeded layout the same as before
     }
     return [pos, rnd, initPos];
   }, []);
@@ -91,12 +100,29 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
     uImpactStrengths: { value: Array.from({ length: 4 }, () => 0.0) },
     uImpactRadius: { value: 6.8 },
     uShipPos: { value: new THREE.Vector3() },
+    ...particleSharedUniforms(),
+    uWakePoints: { value: wakeTrail.points },
+    uWakeMotion: { value: wakeTrail.motion },
+    uWakeLife: { value: wakeTrail.life },
     uShipLightStrength: { value: 0.0 }
   }), []);
 
   const { viewState, visualMode } = useGalaxyStore();
   const isMobilePortrait = size.width <= 768 && size.height > size.width;
   const localTime = useRef(0);
+
+  // The wormhole: the rings take the chosen planet's colour as they are
+  // pulled in, and turn back to grey on the way home.
+  const portal = useGalaxyStore((state) => state.portal);
+  useEffect(() => {
+    const material = materialRef.current;
+    if (!material) return;
+    if (portal?.kind === 'enter' && portal.style === 'wormhole') {
+      tintParticles(material.uniforms, portal.color, ringRest, wormholeTintAt(portal));
+    } else if (viewState === 'LEAVING_THEME' || viewState === 'HOME') {
+      tintParticles(material.uniforms, null, ringRest);
+    }
+  }, [portal, viewState]);
   const tempMastPos = useMemo(() => new THREE.Vector3(), []);
   const mastOffset = useMemo(() => new THREE.Vector3(0, 0.39, 0), []);
   const manualTarget = useMemo(() => new THREE.Vector3(), []);
@@ -180,7 +206,7 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
 
   return (
     <group ref={groupRef}>
-      <points ref={pointsRef}>
+      <points ref={pointsRef} name="ring-particles">
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" count={particleCount} args={[positions, 3]} />
           <bufferAttribute attach="attributes-aInitialPos" count={particleCount} args={[initialPositions, 3]} />
@@ -196,6 +222,9 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
           blending={THREE.AdditiveBlending}
         />
       </points>
+      {visualMode !== 'silent' && (
+        <WakeSurface shipPositionRef={shipPositionRef} timeRef={localTime} opacity={(visualMode === 'focus' ? 0.7 : 1) * (isMobilePortrait ? 0.75 : 1)} />
+      )}
       <RingShip impactsRef={impactSlots} ringTimeRef={localTime} shipPositionRef={shipPositionRef} />
       <MeteorImpact impactQueueRef={impactQueueRef} manualMeteorQueueRef={manualMeteorQueueRef} protectedPositionRef={shipPositionRef} />
       <mesh

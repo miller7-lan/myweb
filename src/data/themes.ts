@@ -7,6 +7,8 @@ export interface ThemeDef {
   subtitle: string;
   chineseName: string;
   description?: string;
+  /** Short Chinese line used by the mobile planet dock and the module switcher. */
+  tagline: string;
   color: string;
   orbitRadius: number;
   orbitSpeed: number;
@@ -16,6 +18,7 @@ export interface ThemeDef {
 export const themes: Record<Exclude<ThemeKey, null>, ThemeDef> = {
   identity: {
     key: 'identity',
+    tagline: '我是谁 · 定位与原则',
     label: 'Identity',
     title: 'Identity',
     subtitle: 'Who I Am',
@@ -28,6 +31,7 @@ export const themes: Record<Exclude<ThemeKey, null>, ThemeDef> = {
   },
   creations: {
     key: 'creations',
+    tagline: '做过什么 · 项目档案',
     label: 'Creations',
     title: 'Creations',
     subtitle: 'What I Build',
@@ -39,6 +43,7 @@ export const themes: Record<Exclude<ThemeKey, null>, ThemeDef> = {
   },
   stack: {
     key: 'stack',
+    tagline: '会什么 · 技能星图',
     label: 'Stack',
     title: 'Stack',
     subtitle: 'Tools, Languages, Systems',
@@ -50,6 +55,7 @@ export const themes: Record<Exclude<ThemeKey, null>, ThemeDef> = {
   },
   orbit: {
     key: 'orbit',
+    tagline: '软件发行 · 下载与 Skill',
     label: 'Orbit',
     title: 'Orbit',
     subtitle: 'Where I Am Going',
@@ -61,6 +67,7 @@ export const themes: Record<Exclude<ThemeKey, null>, ThemeDef> = {
   },
   signal: {
     key: 'signal',
+    tagline: '联系我 · 合作与交流',
     label: 'Signal',
     title: 'Signal',
     subtitle: 'Find Me Online',

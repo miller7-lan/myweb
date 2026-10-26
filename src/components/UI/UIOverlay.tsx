@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Gauge, Lock, LogOut, Moon, Pencil, Plus, RefreshCw, Save, Sparkles, Trash2, Upload, type LucideIcon } from 'lucide-react';
+import { Check, ChevronDown, Gauge, Lock, LogOut, Moon, Pencil, Plus, RefreshCw, Save, Sparkles, Trash2, Upload, type LucideIcon } from 'lucide-react';
 import { themeCount, useGalaxyStore, type NonNullThemeKey, type VisualMode } from '../../store/useGalaxyStore';
 import { themes } from '../../data/themes';
+import { canRaid } from '../../utils/raid';
 import {
   createCertificateAddon,
   createCreationAddon,
@@ -85,18 +86,40 @@ const joinListInput = (items: string[]) => items.join('，');
 const visualModes: Array<{
   key: VisualMode;
   label: string;
+  zh: string;
   title: string;
+  description: string;
   Icon: LucideIcon;
 }> = [
-  { key: 'cinematic', label: 'Cine', title: 'Cinematic · 全效', Icon: Sparkles },
-  { key: 'focus', label: 'Focus', title: 'Focus · 清晰', Icon: Gauge },
-  { key: 'silent', label: 'Silent', title: 'Silent · 低功耗', Icon: Moon },
+  { key: 'cinematic', label: 'Cinematic', zh: '全效', title: 'Cinematic · 全效', description: '粒子、流星和光效全部开启', Icon: Sparkles },
+  { key: 'focus', label: 'Focus', zh: '清晰', title: 'Focus · 清晰', description: '减弱动效，让文字和星球更清楚', Icon: Gauge },
+  { key: 'silent', label: 'Silent', zh: '低功耗', title: 'Silent · 低功耗', description: '只保留必要动画，适合省电', Icon: Moon },
 ];
+
+const ExplorationStars: React.FC<{
+  visitedThemes: Partial<Record<NonNullThemeKey, boolean>>;
+  activeKey?: NonNullThemeKey | null;
+}> = ({ visitedThemes, activeKey }) => (
+  <span className="exploration-stars" aria-hidden="true">
+    {Object.values(themes).map((theme) => {
+      const key = theme.key as NonNullThemeKey;
+      return (
+        <span
+          key={key}
+          className={`exploration-star ${visitedThemes[key] ? 'is-lit' : ''} ${activeKey === key ? 'is-active' : ''}`}
+          style={{ ['--theme-color' as string]: theme.color }}
+        />
+      );
+    })}
+  </span>
+);
 
 const themeList = Object.values(themes);
 
 export const UIOverlay: React.FC = () => {
-  const { viewState, hoveredPlanet, visitedThemes, visitSequence, lastVisitedTheme, completionPulseId, visualMode, setVisualMode, setViewState, setHoveredPlanet, setActiveTheme } = useGalaxyStore();
+  const { viewState, hoveredPlanet, visitedThemes, lastVisitedTheme, completionPulseId, visualMode, setVisualMode, setViewState, setHoveredPlanet, setActiveTheme } = useGalaxyStore();
+  const transitionStyle = useGalaxyStore((state) => state.transitionStyle);
+  const setTransitionStyle = useGalaxyStore((state) => state.setTransitionStyle);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [announcementClosing, setAnnouncementClosing] = useState(false);
   const [announcement, setAnnouncement] = useState<AnnouncementDocument>(defaultAnnouncement);
@@ -111,7 +134,7 @@ export const UIOverlay: React.FC = () => {
   const [adminBusy, setAdminBusy] = useState(false);
   const [adminError, setAdminError] = useState('');
   const [uploadingCertificateId, setUploadingCertificateId] = useState<string | null>(null);
-  const [isMobilePortrait, setIsMobilePortrait] = useState(false);
+  const [isMobilePortrait, setIsMobilePortrait] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768 && window.innerHeight > window.innerWidth);
   const announcementButtonRef = useRef<HTMLButtonElement>(null);
   const announcementPanelRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<number | null>(null);
@@ -123,35 +146,23 @@ export const UIOverlay: React.FC = () => {
   const hudThemeColor = focusedTheme?.color ?? (isComplete ? '#f8fafc' : lastVisited?.color) ?? '#e2e8f0';
   const focusedThemeKey = focusedTheme?.key as NonNullThemeKey | undefined;
   const hudTitle = focusedTheme && focusedThemeKey
-    ? visitedThemes[focusedThemeKey] ? 'SIGNAL RELOCKED' : 'SIGNAL LOCKED'
+    ? visitedThemes[focusedThemeKey] ? '再次锁定' : '信号锁定'
     : completionPulseId > 0 && isComplete
-      ? 'GALAXY MAP COMPLETE'
-      : lastVisited
-        ? 'LAST MODULE VISITED'
-        : 'SELECT A SIGNAL';
+      ? '星图已全部点亮'
+      : '探索进度';
   const hudText = focusedTheme && focusedThemeKey
-    ? `${focusedTheme.subtitle} · ${focusedTheme.chineseName} · ${visitedThemes[focusedThemeKey] ? 'VISITED' : 'LOCKED'}`
+    ? `${focusedTheme.chineseName} · ${focusedTheme.tagline}`
     : completionPulseId > 0 && isComplete
-      ? `ALL ${themeCount} MODULES ONLINE · ${visitSequence.length}/${themeCount}`
+      ? `${themeCount} 个模块都已探索，随时可以重访`
       : lastVisited
-        ? `${lastVisited.title} · ${lastVisited.chineseName} · ${visitedCount}/${themeCount} MODULES SYNCED`
-        : isMobilePortrait
-          ? `${themeCount} SIGNALS ONLINE · 点击星球进入档案`
-          : `ORBITING ${themeCount} MODULES · 点击星球或导航进入档案`;
-  const mobileLabels: Record<string, string> = {
-    identity: 'ID',
-    creations: 'WORK',
-    stack: 'STACK',
-    orbit: 'ORBIT',
-    signal: 'SIG',
-  };
+        ? `上次停留：${lastVisited.chineseName} · 已点亮 ${visitedCount}/${themeCount}`
+        : `点击星球或导航进入档案 · 已点亮 ${visitedCount}/${themeCount}`;
   const activeVisualMode = visualModes.find((mode) => mode.key === visualMode) ?? visualModes[0];
   const ActiveVisualModeIcon = activeVisualMode.Icon;
-  const cycleVisualMode = () => {
-    const currentIndex = visualModes.findIndex((mode) => mode.key === visualMode);
-    const nextMode = visualModes[(currentIndex + 1) % visualModes.length];
-    setVisualMode(nextMode.key);
-  };
+  const [visualMenuOpen, setVisualMenuOpen] = useState(false);
+  const visualMenuRef = useRef<HTMLDivElement>(null);
+  const raidActive = useGalaxyStore((state) => Boolean(state.raid));
+  const requestRaid = useGalaxyStore((state) => state.requestRaid);
   const openAnnouncement = useCallback(() => {
     if (closeTimerRef.current) {
       window.clearTimeout(closeTimerRef.current);
@@ -437,6 +448,22 @@ export const UIOverlay: React.FC = () => {
   }, [loadAnnouncement]);
 
   useEffect(() => {
+    if (!visualMenuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!visualMenuRef.current?.contains(event.target as Node)) setVisualMenuOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setVisualMenuOpen(false);
+    };
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [visualMenuOpen]);
+
+  useEffect(() => {
     if (!announcementOpen) return;
     const timeoutId = window.setTimeout(() => {
       void loadAnnouncement(true);
@@ -623,8 +650,8 @@ export const UIOverlay: React.FC = () => {
                 aria-label={`${theme.title} | ${theme.chineseName}`}
               >
                 <span className={`hud-dot transition-all duration-300 ${hoveredPlanet === themeKey || isLastVisited ? 'opacity-100 scale-125' : visited ? 'opacity-80' : 'opacity-55 group-hover:opacity-100'}`} />
-                <span className="max-w-full truncate text-[9px] font-medium uppercase tracking-[0.1em]">{mobileLabels[String(theme.key)] ?? theme.label}</span>
-                <span className="text-[10px] tracking-wider text-gray-500 group-hover:text-gray-300">{visited ? '已访' : theme.chineseName}</span>
+                <span className="max-w-full truncate text-xs font-medium">{theme.chineseName}</span>
+                <span className="text-[10px] tracking-wider text-gray-500 group-hover:text-gray-300">{visited ? '已探索' : theme.label}</span>
               </button>
             </li>
           );
@@ -632,39 +659,99 @@ export const UIOverlay: React.FC = () => {
         </ul>
       </nav>
 
-      <button
-        type="button"
-        onClick={cycleVisualMode}
-        className="visual-mode-control hud-panel group pointer-events-auto absolute left-4 top-4 flex h-10 items-center gap-2 rounded-full px-3 text-gray-500 opacity-45 transition-all duration-300 hover:opacity-100 hover:text-gray-200 focus:outline-none focus-visible:opacity-100 focus-visible:text-white md:left-8 md:top-28"
-        style={{
-          ['--theme-color' as string]: hudThemeColor,
-          ['--hud-x' as string]: '12%',
-          ['--hud-y' as string]: '18%',
-        }}
-        aria-label={`视觉模式：${activeVisualMode.title}，点击切换`}
-        title={`${activeVisualMode.title} · 点击切换`}
+      <div
+        ref={visualMenuRef}
+        className="visual-mode-control pointer-events-auto absolute left-4 top-4 md:left-8 md:top-28"
+        style={{ ['--theme-color' as string]: hudThemeColor }}
       >
-        <ActiveVisualModeIcon size={14} />
-        <span className="max-w-0 overflow-hidden whitespace-nowrap text-[10px] uppercase tracking-[0.16em] opacity-0 transition-all duration-300 group-hover:max-w-16 group-hover:opacity-100 group-focus-visible:max-w-16 group-focus-visible:opacity-100">
-          {activeVisualMode.label}
-        </span>
-        <span className="h-1.5 w-1.5 rounded-full bg-[var(--theme-color)] opacity-60 shadow-[0_0_8px_var(--theme-color)]" />
-      </button>
-
-      <div className={`home-status absolute left-1/2 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 text-center md:bottom-8 md:left-8 md:w-auto md:translate-x-0 md:text-left ${isMobilePortrait ? 'bottom-6' : 'bottom-[6rem]'}`}>
-        <div
-          className={`hud-panel inline-flex flex-col items-center rounded-2xl transition-all duration-500 md:items-start ${isMobilePortrait ? 'px-4 py-2.5 opacity-80' : 'px-5 py-3'}`}
-          style={{
-            ['--theme-color' as string]: hudThemeColor,
-          }}
+        <button
+          type="button"
+          onClick={() => setVisualMenuOpen((open) => !open)}
+          className="visual-mode-trigger hud-panel"
+          aria-haspopup="menu"
+          aria-expanded={visualMenuOpen}
+          aria-label={`视觉模式：${activeVisualMode.title}`}
         >
-          <div className="hud-kicker">
-            <span className="hud-dot" />
-            <span>{hudTitle}</span>
+          <ActiveVisualModeIcon size={15} />
+          <span className="visual-mode-label">视觉<span aria-hidden="true">·</span><strong>{activeVisualMode.zh}</strong></span>
+          <ChevronDown size={13} className={`transition-transform duration-300 ${visualMenuOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {(viewState === 'HOME' || viewState === 'HOVER_PLANET') && (
+          <button
+            type="button"
+            className="ufo-trigger hud-panel"
+            onClick={() => { if (canRaid()) requestRaid(); }}
+            disabled={raidActive}
+            aria-label="召唤外星飞船"
+            title="召唤外星飞船"
+          >
+            UFO
+          </button>
+        )}
+        {visualMenuOpen && (
+          <div className="visual-mode-menu hud-panel" role="menu" aria-label="选择视觉模式">
+            {visualModes.map((mode) => {
+              const ModeIcon = mode.Icon;
+              const selected = mode.key === visualMode;
+              return (
+                <button
+                  key={mode.key}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={selected}
+                  className={`visual-mode-option ${selected ? 'is-selected' : ''}`}
+                  onClick={() => {
+                    setVisualMode(mode.key);
+                    setVisualMenuOpen(false);
+                  }}
+                >
+                  <span className="visual-mode-option-icon"><ModeIcon size={15} /></span>
+                  <span className="min-w-0">
+                    <span className="visual-mode-option-title">{mode.zh}<em>{mode.label}</em></span>
+                    <span className="visual-mode-option-desc">{mode.description}</span>
+                  </span>
+                  {selected && <Check size={14} className="ml-auto shrink-0" />}
+                </button>
+              );
+            })}
+            <div className="transition-style-row">
+              <span className="transition-style-label">
+                转场动画
+                <em>{visualMode === 'silent' ? '低功耗模式下自动简短' : transitionStyle === 'full' ? '黑洞或虫洞，随机' : '快速黑洞'}</em>
+              </span>
+              <span className="transition-style-toggle" role="group" aria-label="转场动画">
+                {(['full', 'short'] as const).map((style) => (
+                  <button
+                    key={style}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={transitionStyle === style}
+                    className={transitionStyle === style ? 'is-selected' : ''}
+                    onClick={() => setTransitionStyle(style)}
+                  >
+                    {style === 'full' ? '动效' : '简短'}
+                  </button>
+                ))}
+              </span>
+            </div>
           </div>
-          <p className="mt-2 text-xs font-light tracking-[0.18em] text-gray-400">
-            {hudText}
-          </p>
+        )}
+      </div>
+
+      <div className={`home-status absolute left-1/2 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 md:bottom-8 md:left-8 md:w-auto md:translate-x-0 ${isMobilePortrait ? 'bottom-6' : 'bottom-[6rem]'}`}>
+        <div
+          className="hud-panel home-status-card"
+          style={{ ['--theme-color' as string]: hudThemeColor }}
+          aria-live="polite"
+        >
+          <div className="home-status-head">
+            <span className="hud-kicker">
+              <span className="hud-dot" />
+              <span>{hudTitle}</span>
+            </span>
+            <ExplorationStars visitedThemes={visitedThemes} activeKey={focusedThemeKey ?? (lastVisitedTheme as NonNullThemeKey | null)} />
+          </div>
+          <p>{hudText}</p>
         </div>
       </div>
 

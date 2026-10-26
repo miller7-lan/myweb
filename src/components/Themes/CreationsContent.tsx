@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { Activity, ArrowRight, Bot, Calculator, ChartNoAxesColumnIncreasing, Cpu, Eye, FolderSearch, MailSearch, Moon, Network, Route, Search, SearchCode, X, type LucideIcon } from 'lucide-react';
@@ -427,6 +427,203 @@ const ProjectDetailBubble: React.FC<{
   );
 };
 
+const CreationCard: React.FC<{ project: Project; index: number; copy: boolean; onOpen: () => void }> = ({ project, index, copy, onOpen }) => {
+  const Icon = project.icon;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="creation-card creation-strip-card scan-card group min-h-[23rem] text-left p-7 md:p-8 backdrop-blur-md focus:outline-none"
+      data-guide-id={copy ? undefined : projectGuideIds[project.title]}
+      aria-hidden={copy || undefined}
+      tabIndex={copy ? -1 : undefined}
+      style={{ ['--theme-color' as string]: '#93c5fd' }}
+    >
+      <div className="absolute right-6 top-6 text-[10px] font-light tracking-[0.24em] text-gray-600 transition-colors group-hover:text-blue-200/70">
+        FILE {String(index + 1).padStart(2, '0')}
+      </div>
+
+      <div className="relative text-gray-100 mb-7 bg-white/5 w-16 h-16 flex items-center justify-center rounded-2xl border border-white/[0.08] shadow-[inset_0_0_24px_rgba(255,255,255,0.03),0_0_28px_rgba(147,197,253,0.08)] transition-transform duration-300 group-hover:scale-105">
+        <Icon size={30} />
+      </div>
+
+      <div className="relative">
+        <div className="hud-kicker mb-3">
+          <span className="hud-dot opacity-80" />
+          <span>MISSION LOG</span>
+        </div>
+        <h3 className="text-2xl text-white font-light tracking-wide mb-2">
+          {project.title}
+        </h3>
+        <div className="text-xs text-gray-500 tracking-widest uppercase mb-4">
+          {project.subtitle}
+        </div>
+
+        <p className="text-gray-400 font-light leading-relaxed mb-8 min-h-[96px]">
+          {project.desc}
+        </p>
+
+        <div className="flex flex-wrap gap-2">
+          {project.highlights.map((tag) => (
+            <span key={tag} className="hud-chip">
+              {tag}
+            </span>
+          ))}
+        </div>
+      </div>
+    </button>
+  );
+};
+
+/*
+ * One row of the creations archive, drifting slowly sideways in a loop
+ * (direction -1 is to the left). The set of cards is drawn twice so the
+ * loop has no seam; the copy is hidden from screen readers and the tab
+ * order. It stops while hovered, focused or `paused`, and can be dragged.
+ * A set that fits on screen (a short search result) stands still, centred.
+ */
+const stripSpeed = { desktop: 28, mobile: 20 }; // px per second
+
+const CreationStrip: React.FC<{
+  direction: -1 | 1;
+  paused: boolean;
+  count: number;
+  renderSet: (copy: boolean) => React.ReactNode;
+}> = ({ direction, paused, count, renderSet }) => {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [looping, setLooping] = useState(false);
+  const pausedRef = useRef(paused);
+  const motion = useRef({ offset: 0, hover: false, focus: false, visible: true, drag: null as null | { x: number; offset: number; moved: boolean }, suppressClick: false });
+
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
+
+  // Loop only when one set is wider than the strip.
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    const track = trackRef.current;
+    if (!viewport || !track) return;
+    const measure = () => {
+      const cards = track.children as HTMLCollectionOf<HTMLElement>;
+      const lastCard = cards[count - 1];
+      if (!lastCard) return;
+      const setWidth = lastCard.offsetLeft + lastCard.offsetWidth - cards[0].offsetLeft;
+      setLooping(setWidth > viewport.clientWidth + 1);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(viewport);
+    observer.observe(track);
+    return () => observer.disconnect();
+  }, [looping, count]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const track = trackRef.current;
+    if (!viewport || !track) return;
+    const state = motion.current;
+    if (!looping) {
+      state.offset = 0;
+      gsap.set(track, { clearProps: 'transform' });
+      return;
+    }
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const visibility = new IntersectionObserver(([entry]) => {
+      state.visible = entry.isIntersecting;
+    });
+    visibility.observe(viewport);
+
+    let frame = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 0.1);
+      last = now;
+      const cards = track.children as HTMLCollectionOf<HTMLElement>;
+      // One set plus the gap before the copy.
+      const setWidth = cards[count] ? cards[count].offsetLeft - cards[0].offsetLeft : 0;
+      const still = reduced || state.hover || state.focus || state.drag || pausedRef.current || !state.visible || document.hidden;
+      if (!still) {
+        const speed = window.innerWidth <= 768 ? stripSpeed.mobile : stripSpeed.desktop;
+        state.offset += direction * speed * dt;
+      }
+      if (setWidth > 0) {
+        // Keep the offset in (-setWidth, 0] so the copy always fills the gap.
+        state.offset = ((state.offset % setWidth) - setWidth) % setWidth;
+      }
+      track.style.transform = `translate3d(${state.offset}px, 0, 0)`;
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(frame);
+      visibility.disconnect();
+    };
+  }, [looping, direction, count]);
+
+  const onPointerDown = (event: React.PointerEvent) => {
+    if (!looping || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    motion.current.drag = { x: event.clientX, offset: motion.current.offset, moved: false };
+  };
+  const onPointerMove = (event: React.PointerEvent) => {
+    const drag = motion.current.drag;
+    if (!drag) return;
+    const dx = event.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) > 5) {
+      drag.moved = true;
+      viewportRef.current?.setPointerCapture(event.pointerId);
+    }
+    if (drag.moved) motion.current.offset = drag.offset + dx;
+  };
+  const endDrag = () => {
+    const drag = motion.current.drag;
+    motion.current.drag = null;
+    if (drag?.moved) {
+      // The click that ends a drag shouldn't open a card.
+      motion.current.suppressClick = true;
+      window.setTimeout(() => { motion.current.suppressClick = false; }, 0);
+    }
+  };
+
+  // Bring a card reached with Tab fully into view.
+  const onFocus = (event: React.FocusEvent) => {
+    motion.current.focus = true;
+    const viewport = viewportRef.current;
+    if (!looping || !viewport) return;
+    const box = viewport.getBoundingClientRect();
+    const card = (event.target as HTMLElement).getBoundingClientRect();
+    if (card.left < box.left + 16) motion.current.offset += box.left + 24 - card.left;
+    else if (card.right > box.right - 16) motion.current.offset -= card.right - box.right + 24;
+  };
+
+  return (
+    <div
+      ref={viewportRef}
+      className={`creation-strip ${looping ? 'is-looping' : 'is-still'}`}
+      onPointerEnter={(event) => { if (event.pointerType === 'mouse') motion.current.hover = true; }}
+      onPointerLeave={() => { motion.current.hover = false; }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onClickCapture={(event) => {
+        if (motion.current.suppressClick) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
+      onFocus={onFocus}
+      onBlur={() => { motion.current.focus = false; }}
+    >
+      <div ref={trackRef} className="creation-strip-track">
+        {renderSet(false)}
+        {looping && renderSet(true)}
+      </div>
+    </div>
+  );
+};
+
 export const CreationsContent: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -559,53 +756,29 @@ export const CreationsContent: React.FC = () => {
       </div>
 
       {filteredProjects.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredProjects.map((project, index) => {
-          const Icon = project.icon;
-
-          return (
-            <button
-              type="button"
-              key={project.title}
-              onClick={() => setSelectedProject(project)}
-              className="creation-card scan-card group min-h-[23rem] text-left p-7 md:p-8 backdrop-blur-md focus:outline-none"
-              data-guide-id={projectGuideIds[project.title]}
-              style={{ ['--theme-color' as string]: '#93c5fd' }}
-            >
-              <div className="absolute right-6 top-6 text-[10px] font-light tracking-[0.24em] text-gray-600 transition-colors group-hover:text-blue-200/70">
-                FILE {String(index + 1).padStart(2, '0')}
-              </div>
-
-              <div className="relative text-gray-100 mb-7 bg-white/5 w-16 h-16 flex items-center justify-center rounded-2xl border border-white/[0.08] shadow-[inset_0_0_24px_rgba(255,255,255,0.03),0_0_28px_rgba(147,197,253,0.08)] transition-transform duration-300 group-hover:scale-105">
-                <Icon size={30} />
-              </div>
-
-              <div className="relative">
-                <div className="hud-kicker mb-3">
-                  <span className="hud-dot opacity-80" />
-                  <span>MISSION LOG</span>
-                </div>
-                <h3 className="text-2xl text-white font-light tracking-wide mb-2">
-                  {project.title}
-                </h3>
-                <div className="text-xs text-gray-500 tracking-widest uppercase mb-4">
-                  {project.subtitle}
-                </div>
-
-                <p className="text-gray-400 font-light leading-relaxed mb-8 min-h-[96px]">
-                  {project.desc}
-                </p>
-
-                <div className="flex flex-wrap gap-2">
-                  {project.highlights.map((tag) => (
-                    <span key={tag} className="hud-chip">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </button>
-          );
+        <div className="creation-strips">
+          {[0, 1].map((row) => {
+            const items = filteredProjects
+              .map((project, index) => ({ project, index }))
+              .filter(({ index }) => index % 2 === row);
+            if (items.length === 0) return null;
+            return (
+              <CreationStrip
+                key={row}
+                direction={row === 0 ? -1 : 1}
+                paused={selectedProject !== null}
+                count={items.length}
+                renderSet={(copy) => items.map(({ project, index }) => (
+                  <CreationCard
+                    key={project.title}
+                    project={project}
+                    index={index}
+                    copy={copy}
+                    onOpen={() => setSelectedProject(project)}
+                  />
+                ))}
+              />
+            );
           })}
         </div>
       ) : (

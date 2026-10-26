@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { particleVertexShader, particleFragmentShader } from '../../shaders/particles';
+import gsap from 'gsap';
+import { particleVertexShader, particleFragmentShader, particleSharedUniforms } from '../../shaders/particles';
 import { themeCount, useGalaxyStore } from '../../store/useGalaxyStore';
 import { themes } from '../../data/themes';
 import { createSeededRandom } from '../../utils/random';
@@ -80,6 +81,7 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
     uFocusBoost: { value: 0.0 },
     uOpacity: { value: 1.0 },
     uIntroProgress: { value: 0.0 },
+    ...particleSharedUniforms(),
     uImpactPoint: { value: new THREE.Vector3() },
     uImpactStartTime: { value: -999 },
     uImpactStrength: { value: 0.0 },
@@ -87,6 +89,28 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
   }), []);
 
   const localTime = useRef(0);
+
+  // The wormhole: the centre star takes the chosen planet's colour before
+  // the dive, and turns back to grey on the way home.
+  const portal = useGalaxyStore((state) => state.portal);
+  useEffect(() => {
+    const material = materialRef.current;
+    if (!material) return;
+    const { uColor, uGlowColor, uHoverBrightness, uIsHovered } = material.uniforms;
+    if (portal?.kind === 'enter' && portal.style === 'wormhole') {
+      const tint = new THREE.Color(portal.color);
+      uIsHovered.value = 1;
+      gsap.to(uColor.value, { r: tint.r, g: tint.g, b: tint.b, duration: 0.6, ease: 'power2.out' });
+      gsap.to(uGlowColor.value, { r: tint.r, g: tint.g, b: tint.b, duration: 0.6, ease: 'power2.out' });
+      gsap.to(uHoverBrightness, { value: 0.8, duration: 0.6, ease: 'power2.out' });
+    } else if (viewState === 'LEAVING_THEME' || viewState === 'HOME') {
+      gsap.killTweensOf([uColor.value, uGlowColor.value, uHoverBrightness]);
+      uIsHovered.value = 0;
+      uColor.value.set('#a0a0ab');
+      uGlowColor.value.set('#aeb7c8');
+      uHoverBrightness.value = 0;
+    }
+  }, [portal, viewState]);
 
   useEffect(() => {
     if (completionPulseId <= 0 || !isComplete || !isVisible) return;

@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
 import { createPortal } from 'react-dom';
 import { ArrowDownToLine, CheckCircle2, Search, X } from 'lucide-react';
 import { isReleaseKey, releases, type ReleaseDownload, type ReleaseKey, type ReleaseKind, type ReleaseScreenshot } from '../../data/releases';
@@ -271,6 +272,88 @@ export const OrbitContent: React.FC = () => {
     ...(activeItem.links ?? []),
   ].filter((download): download is ReleaseDownload & { sha256: string } => Boolean(download?.sha256));
 
+  // Switching nodes: a spark slides along the track from the old node to the
+  // new one with a fading tail, a ring flashes where it lands, the highlight
+  // frame glides over to the new card, and the details below slide in from
+  // the direction the spark came from.
+  const trackRef = useRef<HTMLDivElement>(null);
+  const travelerRef = useRef<HTMLSpanElement>(null);
+  const trailRef = useRef<HTMLSpanElement>(null);
+  const ringRef = useRef<HTMLSpanElement>(null);
+  const frameRef = useRef<HTMLSpanElement>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const lastNodeRef = useRef<{ key: string; x: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const track = trackRef.current;
+    const traveler = travelerRef.current;
+    const trail = trailRef.current;
+    const ring = ringRef.current;
+    const frame = frameRef.current;
+    if (!track || !traveler || !trail || !ring || !frame) return;
+
+    const place = (animate: boolean) => {
+      const button = track.querySelector<HTMLElement>(`[data-release-node="${activeItem.key}"]`);
+      const card = button?.lastElementChild as HTMLElement | null;
+      if (!button || !card) {
+        gsap.set(frame, { autoAlpha: 0 });
+        lastNodeRef.current = null;
+        return;
+      }
+      const x = button.offsetLeft + button.offsetWidth / 2;
+      const box = { x: button.offsetLeft + card.offsetLeft, y: button.offsetTop + card.offsetTop, width: card.offsetWidth, height: card.offsetHeight };
+      const last = lastNodeRef.current;
+      lastNodeRef.current = { key: activeItem.key, x };
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (!animate || !last || last.key === activeItem.key || reduce) {
+        gsap.killTweensOf([frame, traveler, trail, ring]);
+        gsap.set([traveler, trail, ring], { autoAlpha: 0 });
+        gsap.set(frame, { autoAlpha: 1, ...box });
+        return;
+      }
+
+      const travel = 0.62;
+      const from = last.x;
+      const dir = x > from ? 1 : -1;
+      gsap.killTweensOf([frame, traveler, trail, ring]);
+      gsap.to(frame, { autoAlpha: 1, ...box, duration: travel, ease: 'power3.inOut' });
+
+      gsap.set(traveler, { x: from, autoAlpha: 1, scale: 1.4 });
+      gsap.to(traveler, { x, scale: 1, duration: travel, ease: 'power3.inOut' });
+      gsap.to(traveler, { autoAlpha: 0, duration: 0.25, delay: travel - 0.05 });
+
+      // The tail stretches out behind the spark, then catches up with it.
+      trail.style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, transparent, color-mix(in srgb, var(--theme-color) 85%, #fff))`;
+      gsap.set(trail, { x: Math.min(from, x), width: Math.abs(x - from), scaleX: 0, transformOrigin: dir > 0 ? 'left center' : 'right center', autoAlpha: 1 });
+      gsap.timeline()
+        .to(trail, { scaleX: 1, duration: travel * 0.55, ease: 'power2.in' })
+        .set(trail, { transformOrigin: dir > 0 ? 'right center' : 'left center' })
+        .to(trail, { scaleX: 0, autoAlpha: 0.4, duration: travel * 0.6, ease: 'power2.out' });
+
+      gsap.fromTo(ring, { x, scale: 0.4, autoAlpha: 0 }, { scale: 2.1, autoAlpha: 0, duration: 0.7, ease: 'expo.out', delay: travel - 0.08, keyframes: { autoAlpha: [0, 1, 0] } });
+
+      const detail = detailRef.current;
+      if (detail) {
+        gsap.fromTo(detail.children, { autoAlpha: 0, x: dir * 28 }, { autoAlpha: 1, x: 0, duration: 0.5, ease: 'power3.out', stagger: 0.05, delay: travel * 0.45, clearProps: 'transform,opacity,visibility' });
+      }
+    };
+
+    place(true);
+    // Only a real change of size re-places it (the observer also reports
+    // once on observe, which would cut the slide short).
+    let width = track.offsetWidth;
+    let height = track.offsetHeight;
+    const observer = new ResizeObserver(() => {
+      if (track.offsetWidth === width && track.offsetHeight === height) return;
+      width = track.offsetWidth;
+      height = track.offsetHeight;
+      place(false);
+    });
+    observer.observe(track);
+    return () => observer.disconnect();
+  }, [activeItem.key, filteredReleases.length]);
+
   return (
     <div className="w-full">
       {downloadNotice && createPortal(
@@ -381,7 +464,8 @@ export const OrbitContent: React.FC = () => {
           <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#020204]/35 p-4 md:p-5">
             <div className="release-orbit-line hidden md:block" />
             <div className="overflow-x-auto pb-4 [scrollbar-color:rgba(196,181,253,0.45)_rgba(255,255,255,0.06)] [scrollbar-width:thin]">
-              <div className="flex min-w-max gap-4 md:min-w-0">
+              <div ref={trackRef} className="relative flex min-w-max gap-4 md:min-w-0">
+                <span ref={trailRef} className="release-trail" aria-hidden="true" />
                 {filteredReleases.map((item, index) => {
                   const Icon = item.icon;
                   const isActive = activeItem.key === item.key;
@@ -394,6 +478,7 @@ export const OrbitContent: React.FC = () => {
                       aria-pressed={isActive}
                       className={`group relative w-[18rem] shrink-0 pt-10 text-left ${filteredReleases.length === 1 ? 'md:w-full' : 'md:w-1/3'} ${isActive ? 'text-white' : 'text-gray-400'}`}
                       data-guide-id={`release-${item.key}`}
+                      data-release-node={item.key}
                     >
                       <div className="absolute left-1/2 top-0 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-[#07070b] shadow-[0_0_22px_rgba(196,181,253,0.12)] transition-transform duration-300 group-hover:scale-110">
                         <span className={`h-2.5 w-2.5 rounded-full bg-[var(--theme-color)] shadow-[0_0_16px_var(--theme-color)] transition-transform ${isActive ? 'scale-125' : 'scale-90 opacity-60'}`} />
@@ -401,7 +486,7 @@ export const OrbitContent: React.FC = () => {
                       {isActive && (
                         <div className="absolute left-1/2 top-8 h-8 w-px -translate-x-1/2 bg-gradient-to-b from-[var(--theme-color)]/70 to-transparent shadow-[0_0_18px_var(--theme-color)]" />
                       )}
-                      <div className={`rounded-2xl border p-4 transition-all duration-300 ${isActive ? 'border-[var(--theme-color)]/40 bg-white/[0.055] shadow-[0_0_34px_rgba(196,181,253,0.12)]' : 'border-white/[0.06] bg-white/[0.025] hover:border-white/15 hover:bg-white/[0.04]'}`}>
+                      <div className={`rounded-2xl border p-4 transition-all duration-300 ${isActive ? 'border-white/[0.06] bg-white/[0.055]' : 'border-white/[0.06] bg-white/[0.025] hover:border-white/15 hover:bg-white/[0.04]'}`}>
                         <div className="mb-2 flex items-center justify-between gap-3">
                           <span className="text-[10px] uppercase tracking-[0.2em] text-gray-500">{item.date}</span>
                           <span className="text-[10px] uppercase tracking-[0.18em] text-gray-600">{item.node || `Node ${String(index + 1).padStart(2, '0')}`}</span>
@@ -420,6 +505,9 @@ export const OrbitContent: React.FC = () => {
                     </button>
                   );
                 })}
+                <span ref={frameRef} className="release-frame" aria-hidden="true" />
+                <span ref={ringRef} className="release-ring" aria-hidden="true" />
+                <span ref={travelerRef} className="release-traveler" aria-hidden="true" />
               </div>
             </div>
             {filteredReleases.length === 0 && (
@@ -443,7 +531,7 @@ export const OrbitContent: React.FC = () => {
             left: filteredReleases.length > 0 ? `${((activeNodeIndex + 0.5) / filteredReleases.length) * 100}%` : '50%',
           }}
         />
-        <div className="hud-panel rounded-2xl p-6 mb-8" data-guide-id={`release-${activeItem.key}-detail`}>
+        <div ref={detailRef} className="hud-panel rounded-2xl p-6 mb-8" data-guide-id={`release-${activeItem.key}-detail`}>
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-gray-100">

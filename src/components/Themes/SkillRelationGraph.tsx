@@ -23,6 +23,18 @@ export function SkillRelationGraph() {
   const pointers = useRef(new Map<number, GraphPoint>());
   const pinchDistance = useRef(0);
   const worldWidth = Math.max(620, size.width / size.height * 800);
+  // Phones show only category labels until the reader zooms into a branch.
+  const compact = size.width < 520;
+  const skillLabelsVisible = !compact || transform.scale >= 1.5;
+  const baseScale = compact ? 1.25 : 1;
+  const appliedBaseScale = useRef(false);
+
+  useEffect(() => {
+    // Start phones slightly zoomed in so the graph fills the tall panel.
+    if (appliedBaseScale.current || !compact) return;
+    appliedBaseScale.current = true;
+    setTransform((previous) => (previous.scale === 1 && previous.x === 0 && previous.y === 0 ? { x: 0, y: 0, scale: baseScale } : previous));
+  }, [baseScale, compact]);
   const graphRadius = Math.min(290, worldWidth / 2 - 100);
 
   const basePositions = useMemo(() => new Map(skillsData.map((node) => {
@@ -84,7 +96,7 @@ export function SkillRelationGraph() {
   });
   const reset = () => {
     physics.reset();
-    setTransform({ x: 0, y: 0, scale: 1 });
+    setTransform({ x: 0, y: 0, scale: baseScale });
     setHovered(null);
   };
   const endPointer = (event: React.PointerEvent<SVGSVGElement>, cancelled = false) => {
@@ -92,7 +104,16 @@ export function SkillRelationGraph() {
     physics.endDrag();
     pointers.current.delete(event.pointerId);
     if (!cancelled && current?.id && current.distance < 5 && pinchDistance.current === 0) {
-      setSelected(skillsData.find((node) => node.id === current.id) ?? null);
+      const node = skillsData.find((item) => item.id === current.id) ?? null;
+      const point = node ? positions.get(node.id) : undefined;
+      if (compact && node?.type === 'branch' && point && transform.scale < 1.5) {
+        // On phones the first tap on a category zooms into it; a second tap opens its details.
+        const scale = 1.9;
+        setTransform({ scale, x: -point.x * scale, y: -point.y * scale });
+        setHovered(node.id);
+      } else {
+        setSelected(node);
+      }
     }
     // End the whole gesture after a pinch, so releasing the last finger never clicks a node.
     gesture.current = null;
@@ -107,7 +128,7 @@ export function SkillRelationGraph() {
         <p className="mt-1 text-[11px] text-gray-500">{skillsData.length} 个节点 · {visibleLinks.length} 条关联</p>
       </div>
 
-      <div className="absolute right-4 top-4 z-20 flex flex-col gap-2">
+      <div className="relation-graph-tools absolute right-4 top-4 z-20 flex flex-col gap-2">
         <button className="relation-graph-button" aria-label="关系图显示设置" aria-expanded={settingsOpen} aria-controls="relation-graph-settings" onClick={() => setSettingsOpen(!settingsOpen)}><Settings2 size={17} /></button>
         <button className="relation-graph-button" aria-label="重置关系图" title="重新排列并居中" onClick={reset}><RotateCcw size={16} /></button>
       </div>
@@ -197,7 +218,7 @@ export function SkillRelationGraph() {
                 <circle r={glowRadius * (active ? 1.25 : 1)} fill={color} fillOpacity={node.status === 'locked' ? 0.07 : 0.16} filter="url(#relation-node-glow)" className="pointer-events-none" />
                 <circle className="relation-node-focus" r={glowRadius + 6} fill="none" stroke={color} strokeOpacity={active ? 0.35 : 0} strokeWidth={0.7} />
                 <circle r={radius} fill={color} fillOpacity={node.status === 'locked' ? 0.28 : node.status === 'learning' ? 0.66 : 0.95} />
-                {(showLabels || active) && <text y={radius + 18} textAnchor="middle" fill={active ? '#f0f4fc' : node.type === 'skill' ? '#b2bdd0' : '#dce3ef'} fontSize={node.type === 'core' ? 17 : node.type === 'branch' ? 15 : 12.5} fontWeight={node.type === 'core' ? 500 : 400} style={{ paintOrder: 'stroke', stroke: '#080c16', strokeWidth: 3, strokeLinejoin: 'round' }}>{node.type === 'skill' ? node.name : node.zhName}</text>}
+                {((showLabels && (node.type !== 'skill' || skillLabelsVisible || neighbors.has(node.id))) || active) && <text y={radius + 18} textAnchor="middle" fill={active ? '#f0f4fc' : node.type === 'skill' ? '#b2bdd0' : '#dce3ef'} fontSize={node.type === 'core' ? 17 : node.type === 'branch' ? 15 : 12.5} fontWeight={node.type === 'core' ? 500 : 400} style={{ paintOrder: 'stroke', stroke: '#080c16', strokeWidth: 3, strokeLinejoin: 'round' }}>{node.type === 'skill' ? node.name : node.zhName}</text>}
               </g>
             );
           })}
@@ -207,7 +228,7 @@ export function SkillRelationGraph() {
       <div className="relation-graph-legend pointer-events-none absolute bottom-5 left-5 right-24 z-10 flex flex-wrap gap-x-4 gap-y-2">
         {([{ label: '能力核心', glow: 10 }, { label: '技术分类', glow: 6 }, { label: '技能节点', glow: 2 }]).map(({ label, glow }) => <span key={label} className="flex items-center gap-2 text-[10px] text-gray-400"><span className="h-1 w-1 rounded-full bg-[#e0e5ff]" style={{ boxShadow: `0 0 ${glow}px ${glow / 3}px #e0e5ff66` }} />{label}</span>)}
       </div>
-      <div className="absolute bottom-5 right-4 z-20 flex flex-col gap-2">
+      <div className="relation-graph-zoom absolute bottom-5 right-4 z-20 flex flex-col gap-2">
         <button className="relation-graph-button" aria-label="放大关系图" onClick={() => zoom(1.25)}><Plus size={17} /></button>
         <button className="relation-graph-button" aria-label="缩小关系图" onClick={() => zoom(0.8)}><Minus size={17} /></button>
       </div>
