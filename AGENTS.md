@@ -53,6 +53,10 @@ Only use the Netlify skill/CLI when:
 
 When changing Netlify config, deploy it intentionally:
 
+Before a Netlify CDN deployment, restore **all** currently linked legacy packages from the existing CDN into `public/downloads/`, then run `npm run build`. The authoritative download list and SHA-256 values are in `src/data/releases.ts`. Verify each restored file against its listed SHA-256 and confirm every Netlify-linked package is present in `dist/downloads/` before publishing. Stop if any package cannot be recovered or verified. A new Netlify deployment is a complete snapshot; do not deploy an empty or partial downloads directory.
+
+Local legacy package copies and `dist/` were intentionally cleaned on 2026-10-26. Normal Cloudflare website deployments exclude `downloads/` and do not need these copies. Updating another package on the Netlify CDN still requires restoring the other existing packages first.
+
 ```bash
 npm exec --yes --registry=https://registry.npmjs.org --package netlify-cli -- \
   netlify deploy --prod --dir=dist --message "Update download CDN redirects"
@@ -73,6 +77,8 @@ Expected behavior:
 ## Download Asset Rules
 
 Every visible download button on `https://dazzle-galaxy-show.pages.dev` must work.
+
+Keep all currently linked `release-assets/` files tracked on GitHub `main`. Their public URLs read directly from that branch, so committing a local deletion breaks the download immediately. Never include an unrelated local package deletion in a cleanup commit. Unused old package versions may be removed after confirming they have no current download entry.
 
 Cloudflare Pages has a practical single-file limit around 25 MiB. Do not assume files in `public/downloads/` are available on Cloudflare Pages, because `public/downloads/*` is ignored by Git except `README.txt`.
 
