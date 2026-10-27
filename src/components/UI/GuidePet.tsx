@@ -87,7 +87,9 @@ const readPortaling = () => document.documentElement.classList.contains('pet-por
 const usePetPortaling = () => useSyncExternalStore(subscribePortaling, readPortaling, () => false);
 
 // Written out so the stylesheet keeps these rules.
-const reactionClass: Record<PetReaction, string> = { shock: 'is-shock', throw: 'is-throw', cheer: 'is-cheer' };
+const reactionClass: Record<PetReaction, string> = { shock: 'is-shock', throw: 'is-throw', cheer: 'is-cheer', catch: 'is-catch', read: 'is-read' };
+// How long each reaction lasts, in ms.
+const reactionLength: Record<PetReaction, number> = { shock: 1100, throw: 260, cheer: 1600, catch: 600, read: 4200 };
 
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 const petPositionStorageKey = 'galaxy-guide-pet-position';
@@ -592,6 +594,7 @@ export const GuidePet: React.FC = () => {
   }, []);
 
   // The UFO (UfoRaid): jump in shock, throw stars at it, cheer when it flees.
+  // A visitor's message (PaperPlane): catch the paper plane, unfold it and read it.
   useEffect(() => {
     let timer = 0;
     const react = (event: WindowEventMap['galaxy-pet-react']) => {
@@ -605,8 +608,14 @@ export const GuidePet: React.FC = () => {
       } else if (next === 'cheer') {
         showEmote('star');
         setHop((value) => value + 1);
+      } else if (next === 'catch') {
+        setHop((value) => value + 1);
       }
-      timer = window.setTimeout(() => setReaction(null), next === 'throw' ? 260 : next === 'shock' ? 1100 : 1600);
+      timer = window.setTimeout(() => {
+        setReaction(null);
+        // Done reading: it liked the message.
+        if (next === 'read') showEmote('heart');
+      }, reactionLength[next]);
     };
     window.addEventListener('galaxy-pet-react', react);
     return () => {
@@ -820,7 +829,7 @@ export const GuidePet: React.FC = () => {
 
   // Like a desktop pet, 星仔 strolls to a new spot now and then and stays there.
   const canWander =
-    !isMobile && !portaling && !introPlaying && !raidActive && !isDragging && !panelOpen && !bubble && !asleep && !dockSide && !reduceMotion && mood === 'idle';
+    !isMobile && !portaling && !introPlaying && !raidActive && !reaction && !isDragging && !panelOpen && !bubble && !asleep && !dockSide && !reduceMotion && mood === 'idle';
 
   useEffect(() => {
     if (!canWander) return;
@@ -1300,6 +1309,21 @@ export const GuidePet: React.FC = () => {
           )}
           {asleep && (
             <span className="guide-pet-zzz" aria-hidden="true"><i>z</i><i>z</i><i>Z</i></span>
+          )}
+          {(reaction === 'catch' || reaction === 'read') && (
+            <span className="guide-pet-letter" aria-hidden="true">
+              <svg viewBox="0 0 14 11" shapeRendering="crispEdges">
+                <rect className="letter-edge" x="0" y="0" width="14" height="11" />
+                <rect className="letter-paper" x="1" y="1" width="12" height="9" />
+                <rect className="letter-fold" x="7" y="1" width="1" height="9" />
+                <rect className="letter-ink" x="2" y="3" width="4" height="1" />
+                <rect className="letter-ink" x="2" y="5" width="3" height="1" />
+                <rect className="letter-ink" x="2" y="7" width="4" height="1" />
+                <rect className="letter-ink" x="9" y="3" width="3" height="1" />
+                <rect className="letter-ink" x="9" y="5" width="2" height="1" />
+                <rect className="letter-stamp" x="9" y="7" width="2" height="2" />
+              </svg>
+            </span>
           )}
           {emote && (
             <span key={emote.id} className={`guide-pet-emote emote-${emote.type}`} aria-hidden="true">

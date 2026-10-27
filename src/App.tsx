@@ -8,6 +8,8 @@ import { LiquidGlass } from './components/UI/LiquidGlass';
 import { PortalTransition } from './components/UI/PortalTransition';
 import { IntroSequence } from './components/UI/IntroSequence';
 import { UfoRaid } from './components/UI/UfoRaid';
+import { PaperPlane } from './components/UI/PaperPlane';
+import { CoreTether } from './components/UI/CoreTether';
 import { glassSurfaceSelector } from './utils/glassSurfaces';
 import { useGalaxyStore } from './store/useGalaxyStore';
 
@@ -80,9 +82,11 @@ function App() {
         <UIOverlay />
         <ThemeOverlay />
       </div>
+      <CoreTether />
       <PortalTransition />
       <IntroSequence />
       <UfoRaid />
+      <PaperPlane />
       <GuidePet />
       <LiquidGlass />
     </div>

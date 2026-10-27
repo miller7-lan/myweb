@@ -7,6 +7,7 @@ import { particleVertexShader, particleFragmentShader, particleSharedUniforms } 
 import { themeCount, useGalaxyStore } from '../../store/useGalaxyStore';
 import { themes } from '../../data/themes';
 import { createSeededRandom } from '../../utils/random';
+import { tetherImpactAt } from '../../utils/portal';
 
 interface SaturnCoreProps {
   mousePosRef: React.RefObject<THREE.Vector3>;
@@ -90,8 +91,9 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
 
   const localTime = useRef(0);
 
-  // The wormhole: the centre star takes the chosen planet's colour before
-  // the dive, and turns back to grey on the way home.
+  // The wormhole: the centre star takes the chosen planet's colour as the
+  // planet sinks into it (with a brief flare), and turns back to grey on the
+  // way home.
   const portal = useGalaxyStore((state) => state.portal);
   useEffect(() => {
     const material = materialRef.current;
@@ -99,10 +101,12 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
     const { uColor, uGlowColor, uHoverBrightness, uIsHovered } = material.uniforms;
     if (portal?.kind === 'enter' && portal.style === 'wormhole') {
       const tint = new THREE.Color(portal.color);
-      uIsHovered.value = 1;
-      gsap.to(uColor.value, { r: tint.r, g: tint.g, b: tint.b, duration: 0.6, ease: 'power2.out' });
-      gsap.to(uGlowColor.value, { r: tint.r, g: tint.g, b: tint.b, duration: 0.6, ease: 'power2.out' });
-      gsap.to(uHoverBrightness, { value: 0.8, duration: 0.6, ease: 'power2.out' });
+      const delay = portal.timing.lead > 0 ? tetherImpactAt(portal) : 0;
+      gsap.delayedCall(delay, () => { uIsHovered.value = 1; });
+      gsap.to(uColor.value, { r: tint.r, g: tint.g, b: tint.b, delay, duration: 0.6, ease: 'power2.out' });
+      gsap.to(uGlowColor.value, { r: tint.r, g: tint.g, b: tint.b, delay, duration: 0.6, ease: 'power2.out' });
+      gsap.fromTo(uHoverBrightness, { value: 0 }, { value: 1.3, delay, duration: 0.14, ease: 'power2.out', immediateRender: false });
+      gsap.to(uHoverBrightness, { value: 0.8, delay: delay + 0.14, duration: 0.6, ease: 'power2.inOut' });
     } else if (viewState === 'LEAVING_THEME' || viewState === 'HOME') {
       gsap.killTweensOf([uColor.value, uGlowColor.value, uHoverBrightness]);
       uIsHovered.value = 0;

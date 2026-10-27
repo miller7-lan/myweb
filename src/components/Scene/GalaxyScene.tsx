@@ -174,7 +174,7 @@ export const GalaxyScene: React.FC = () => {
     if (wormhole && viewState === 'ENTERING_THEME') {
       // The wormhole: once 星仔 has walked in, the core and its rings swirl
       // down into the black hole that sits on top of them.
-      const at = plan.timing.summon + wormholePull.start;
+      const at = plan.timing.lead + plan.timing.summon + wormholePull.start;
       gsap.killTweensOf(galaxyGroup.current.scale);
       gsap.to(galaxyGroup.current.scale, { x: 0.01, y: 0.01, z: 0.01, delay: at, duration: wormholePull.duration, ease: 'power1.in' });
       gsap.to(galaxyGroup.current.rotation, { y: '+=3.6', delay: at, duration: wormholePull.duration, ease: 'sine.in' });

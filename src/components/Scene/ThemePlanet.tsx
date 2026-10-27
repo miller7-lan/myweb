@@ -8,7 +8,7 @@ import { useGalaxyStore } from '../../store/useGalaxyStore';
 import gsap from 'gsap';
 import { createSeededRandom } from '../../utils/random';
 import { createPlanetHaloGeometry } from './planetHaloGeometry';
-import { makePortalPlan, tintParticles, wormholeTintAt, wormholePull } from '../../utils/portal';
+import { makePortalPlan, rippleCore, tetherImpactAt, tetherTrack, tintParticles, wormholeTintAt, wormholePull } from '../../utils/portal';
 import { raidTiming, raidTrack } from '../../utils/raid';
 
 const planetRest = { color: '#a0a0ab', glow: '#a0a0ab' };
@@ -172,7 +172,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       }
       const plan = makePortalPlan('enter', screenPoint(group.getWorldPosition(new THREE.Vector3())), themeDef.color, corePoint());
       setPortal(plan);
-      const { summon, swallow } = plan.timing;
+      const { lead, summon, swallow } = plan.timing;
       if (pointsRef.current) pointsRef.current.visible = true;
       gsap.killTweensOf(group.scale);
 
@@ -192,6 +192,43 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
       // Press feedback, then hold still while 星仔 arrives.
       tl.to(group.scale, { x: 1.12, y: 1.12, z: 1.12, duration: 0.12, ease: 'power2.out' }, 0);
       tl.to(group.scale, { x: 1.24, y: 1.24, z: 1.24, duration: 0.3, ease: 'power2.out' }, 0.12);
+      if (plan.style === 'wormhole' && lead > 0) {
+        // B opens with the centre star reeling the planet in on a dashed line
+        // (drawn by CoreTether): the line shoots out, pulls taut and holds a
+        // beat, then hauls the planet in faster and faster until it sinks in.
+        const core = getThree().scene.getObjectByName('galaxy-core');
+        const target = core ? core.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3();
+        const from = group.position.clone();
+        const reel = { t: 0 };
+        const impact = tetherImpactAt(plan);
+        const world = new THREE.Vector3();
+        const track = () => {
+          const planet = screenPoint(group.getWorldPosition(world));
+          const centre = corePoint() ?? plan.core;
+          if (!centre) return;
+          Object.assign(tetherTrack, { x1: centre.x, y1: centre.y, r1: centre.r, x2: planet.x, y2: planet.y, r2: planet.r });
+        };
+        Object.assign(tetherTrack, { reach: 0, tension: 0, color: themeDef.color });
+        tl.call(() => { track(); tetherTrack.active = true; }, undefined, 0.1)
+          .to(tetherTrack, { reach: 1, duration: 0.32, ease: 'power2.out' }, 0.1)
+          .to(tetherTrack, { tension: 1, duration: 0.25, ease: 'power2.in' }, 0.45)
+          .to(reel, { t: 0.05, duration: 0.14, ease: 'back.out(3)' }, 0.55)
+          .to(reel, { t: 1, duration: impact - 0.8, ease: 'power3.in' }, 0.8)
+          .to(group.scale, { x: 0.3, y: 0.3, z: 0.3, duration: impact - 0.8, ease: 'power2.in' }, 0.8)
+          .to(group.scale, { x: 0.001, y: 0.001, z: 0.001, duration: 0.08, ease: 'power1.in' }, impact - 0.04)
+          .to({}, {
+            duration: impact,
+            onUpdate: () => {
+              group.position.lerpVectors(from, target, reel.t);
+              track();
+            },
+          }, 0)
+          .call(() => {
+            tetherTrack.active = false;
+            const centre = corePoint() ?? plan.core;
+            if (centre) rippleCore({ ...centre, color: themeDef.color });
+          }, undefined, impact);
+      }
       if (plan.style !== 'wormhole') {
         // A: swallowed, spinning up and shrinking to a point.
         if (pointsRef.current) {
@@ -199,11 +236,12 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
         }
         tl.to(group.scale, { x: 0.001, y: 0.001, z: 0.001, duration: swallow * 0.55, ease: 'power3.in' }, summon + swallow * 0.12);
       }
-      tl.to({}, { duration: 0 }, summon + swallow);
+      tl.to({}, { duration: 0 }, lead + summon + swallow);
     }
 
     if (viewState === 'HOME') {
       hasStartedEnterAnimation.current = false;
+      tetherTrack.active = false;
       if (pointsRef.current) {
         pointsRef.current.visible = true;
       }
@@ -262,7 +300,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
     if (portal.kind === 'enter' && portal.style === 'wormhole' && viewState === 'ENTERING_THEME') {
       const core = getThree().scene.getObjectByName('galaxy-core');
       const target = core ? core.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3();
-      const at = portal.timing.summon + wormholePull.start + 0.1 + themeDef.orbitOffset * 0.05;
+      const at = portal.timing.lead + portal.timing.summon + wormholePull.start + 0.1 + themeDef.orbitOffset * 0.05;
       gsap.to(group.position, { x: target.x, y: target.y, z: target.z, delay: at, duration: wormholePull.duration * 0.75, ease: 'power2.in' });
       gsap.to(group.scale, { x: 0.001, y: 0.001, z: 0.001, delay: at, duration: wormholePull.duration * 0.75, ease: 'power2.in', overwrite: false });
       // Every planet takes the chosen planet's colour as it is pulled in; the

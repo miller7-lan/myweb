@@ -50,7 +50,7 @@ export const BackgroundStars: React.FC = () => {
       gsap.to(tint.uTintMix, { value: 1, delay: wormholeTintAt(portal), duration: 0.5, ease: 'power2.out', overwrite: 'auto' });
       gsap.to(points.scale, {
         x: 0.02, y: 0.02, z: 0.02,
-        delay: portal.timing.summon + wormholePull.start + 0.15,
+        delay: portal.timing.lead + portal.timing.summon + wormholePull.start + 0.15,
         duration: wormholePull.duration,
         ease: 'power1.in',
         overwrite: 'auto',

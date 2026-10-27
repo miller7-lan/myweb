@@ -22,19 +22,43 @@ import { useGalaxyStore, type PortalPlan, type TransitionStyle } from '../store/
  */
 
 const timings: Record<TransitionStyle, PortalPlan['timing']> = {
-  full: { summon: 1.4, swallow: 1.05, reveal: 0.8, close: 0.6, spit: 0.92 },
+  full: { lead: 0, summon: 1.4, swallow: 1.05, reveal: 0.8, close: 0.6, spit: 0.92 },
   // B: the centre star becomes a black hole and 星仔 is summoned beside it;
   // then (swallow) 星仔 walks in, every particle is pulled in after it and
   // the stars stretch into a tunnel; the page comes out of it (reveal).
-  wormhole: { summon: 1.4, swallow: 2.35, reveal: 0.9, close: 0.75, spit: 1.1 },
-  short: { summon: 0, swallow: 0.45, reveal: 0.6, close: 0.35, spit: 0.45 },
+  // First (lead) the centre star shoots a dashed line at the planet and
+  // reels it in; the planet sinks into it and dyes it the theme's colour.
+  wormhole: { lead: 1.6, summon: 1.4, swallow: 2.35, reveal: 0.9, close: 0.75, spit: 1.1 },
+  short: { lead: 0, summon: 0, swallow: 0.45, reveal: 0.6, close: 0.35, spit: 0.45 },
 };
 
 /** Within the wormhole's swallow: when (s after the summon) and for how long everything is pulled into the hole. */
 export const wormholePull = { start: 0.4, duration: 1.3 };
 
 /** When everything takes the planet's colour as it is pulled into the wormhole. */
-export const wormholeTintAt = (plan: PortalPlan) => plan.timing.summon + wormholePull.start - 0.15;
+export const wormholeTintAt = (plan: PortalPlan) => plan.timing.lead + plan.timing.summon + wormholePull.start - 0.15;
+
+/** When the reeled-in planet sinks into the centre star (s after the click). */
+export const tetherImpactAt = (plan: PortalPlan) => plan.timing.lead - 0.24;
+
+/**
+ * The wormhole's opening: the dashed line between the centre star and the
+ * planet, on screen in CSS px. ThemePlanet writes it every frame while the
+ * line is out; CoreTether draws it. reach 0-1 is how far the line has shot
+ * out, tension 0-1 how taut it is.
+ */
+export const tetherTrack = { active: false, x1: 0, y1: 0, r1: 0, x2: 0, y2: 0, r2: 0, reach: 0, tension: 0, color: '#ffffff' };
+
+declare global {
+  interface WindowEventMap {
+    'galaxy-core-ripple': CustomEvent<{ x: number; y: number; r: number; color: string }>;
+  }
+}
+
+/** The planet has sunk into the centre star: a ring of its colour spreads out from there. */
+export const rippleCore = (detail: { x: number; y: number; r: number; color: string }) => {
+  window.dispatchEvent(new CustomEvent('galaxy-core-ripple', { detail }));
+};
 
 /**
  * Tints a particle material (shaders/particles.ts) to `color`, or (null)

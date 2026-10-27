@@ -91,7 +91,8 @@ export const PortalTransition: React.FC = () => {
       html.classList.remove('pet-portaling');
       if (useGalaxyStore.getState().portal?.id === portal.id) setPortal(null);
     };
-    const tl = gsap.timeline({ onComplete: done });
+    // The wormhole's opening (the centre star reeling the planet in) is ThemePlanet's and CoreTether's.
+    const tl = gsap.timeline({ onComplete: done, delay: portal.kind === 'enter' ? timing.lead : 0 });
 
     if (portal.kind === 'enter') {
       const { summon, swallow, reveal } = timing;
@@ -115,8 +116,8 @@ export const PortalTransition: React.FC = () => {
         qx = Math.min(Math.max(qx, w / 2 + 8), W - w / 2 - 8);
         qy = Math.min(Math.max(qy, h / 2 + 8), H - h / 2 - 8);
 
-        html.classList.add('pet-portaling');
-        gsap.set(pet, { left: px, top: py, width: w, height: h, autoAlpha: 1, scale: 1, rotation: 0, y: 0 });
+        gsap.set(pet, { left: px, top: py, width: w, height: h, scale: 1, rotation: 0, y: 0 });
+        tl.call(() => html.classList.add('pet-portaling'), undefined, 0).set(pet, { autoAlpha: 1 }, 0);
         gsap.set(holeA, { width: holeW, height: holeW, left: px + w / 2 - holeW / 2, top: py + h * 0.9 - holeW / 2, scaleY: 0.42, scaleX: 0 });
         gsap.set(holeB, { width: holeW, height: holeW, left: qx - holeW / 2, top: qy + h * 0.4 - holeW / 2, scaleY: 0, scaleX: 0 });
 

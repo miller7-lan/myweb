@@ -17,6 +17,7 @@ import {
   BatteryCharging
 } from 'lucide-react';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
+import { launchPaperPlane } from '../../utils/raid';
 
 type FormState = {
   name: string;
@@ -162,6 +163,8 @@ export const SignalContent: React.FC = () => {
   const setViewState = useGalaxyStore((state) => state.setViewState);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [status, setStatus] = useState<SubmitStatus>('idle');
+  // The paper plane is taking off from the send button; the success view waits for it.
+  const [launching, setLaunching] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
   const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
@@ -334,7 +337,18 @@ export const SignalContent: React.FC = () => {
         saveSendMeter(next);
         return next;
       });
-      setStatus('success');
+      // The paper plane grows out of the button's icon, then the success view replaces the form.
+      const icon = document.querySelector('[data-guide-id="signal-submit"] > svg')?.getBoundingClientRect();
+      if (icon) {
+        setLaunching(true);
+        launchPaperPlane({ x: icon.left + icon.width / 2, y: icon.top + icon.height / 2 });
+        window.setTimeout(() => {
+          setLaunching(false);
+          setStatus('success');
+        }, 900);
+      } else {
+        setStatus('success');
+      }
     } catch (error) {
       setStatus('error');
       setErrorMessage(error instanceof Error ? error.message : '消息暂时发送失败，请稍后再试。');
@@ -811,11 +825,11 @@ export const SignalContent: React.FC = () => {
                   <span className="absolute bottom-1 left-1 w-1.5 h-1.5 border-b border-l border-white/20 group-hover:border-[var(--theme-color)]/60 transition-colors" />
                   <span className="absolute bottom-1 right-1 w-1.5 h-1.5 border-b border-r border-white/20 group-hover:border-[var(--theme-color)]/60 transition-colors" />
 
-                  <span>{isSending ? 'Transmitting...' : '[ Launch Signal Transmission ]'}</span>
-                  {isSending ? (
+                  <span>{launching ? 'Signal Launched' : isSending ? 'Transmitting...' : '[ Launch Signal Transmission ]'}</span>
+                  {isSending && !launching ? (
                     <Loader2 size={15} className="animate-spin" />
                   ) : (
-                    <Send size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    <Send size={14} className={launching ? 'opacity-0' : 'group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform'} />
                   )}
                 </button>
 

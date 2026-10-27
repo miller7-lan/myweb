@@ -23,7 +23,8 @@ export interface PortalPlan {
   core: { x: number; y: number; r: number } | null;
   /** Where 星仔 stands when it is summoned; null skips its part. */
   pet: { x: number; y: number; width: number; height: number } | null;
-  timing: { summon: number; swallow: number; reveal: number; close: number; spit: number };
+  /** lead: (wormhole) how long the centre star reels the planet in before everything else starts. */
+  timing: { lead: number; summon: number; swallow: number; reveal: number; close: number; spit: number };
 }
 
 /** Where the opening animation's pieces are on screen, in CSS px (see utils/intro.ts). */

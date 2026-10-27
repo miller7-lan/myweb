@@ -41,8 +41,8 @@ export const canRaid = () => {
   return (viewState === 'HOME' || viewState === 'HOVER_PLANET') && !introPlaying && !portal && !raid;
 };
 
-/** What UfoRaid asks 星仔 (GuidePet) to do. */
-export type PetReaction = 'shock' | 'throw' | 'cheer';
+/** What UfoRaid and PaperPlane ask 星仔 (GuidePet) to do. */
+export type PetReaction = 'shock' | 'throw' | 'cheer' | 'catch' | 'read';
 
 declare global {
   interface WindowEventMap {
@@ -52,4 +52,19 @@ declare global {
 
 export const petReact = (reaction: PetReaction) => {
   window.dispatchEvent(new CustomEvent('galaxy-pet-react', { detail: { reaction } }));
+};
+
+/*
+ * The paper plane: when a message goes out from the signal form, a pixel
+ * paper plane takes off from the send button and glides over to 星仔, who
+ * catches it, unfolds the letter and reads it. PaperPlane draws the flight.
+ */
+declare global {
+  interface WindowEventMap {
+    'galaxy-paper-plane': CustomEvent<{ x: number; y: number }>;
+  }
+}
+
+export const launchPaperPlane = (from: { x: number; y: number }) => {
+  window.dispatchEvent(new CustomEvent('galaxy-paper-plane', { detail: from }));
 };
