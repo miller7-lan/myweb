@@ -51,6 +51,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
   const getThree = useThree((state) => state.get);
   const setPortal = useGalaxyStore((state) => state.setPortal);
   const introPlaying = useGalaxyStore((state) => state.introPlaying);
+  const finaleRunning = useGalaxyStore((state) => Boolean(state.finale));
   const isReturning = useRef(false);
   const returnProgress = useRef({ value: 0 });
   const returnStartPosition = useRef(new THREE.Vector3(0, 5, 15));
@@ -789,7 +790,7 @@ export const ThemePlanet: React.FC<ThemePlanetProps> = ({ themeDef, mousePosRef,
             flex flex-col items-center justify-center
             ${isMobilePortrait ? 'min-w-[5.4rem] px-3 py-2 rounded-xl' : 'px-5 py-2.5 rounded-2xl'} backdrop-blur-xl border border-white/10
             bg-[#0a0a0f]/60 text-gray-200 transition-all duration-300 ease-out
-            ${((isHovered || isFocused) || isMobilePortrait) && (viewState === 'HOME' || viewState === 'HOVER_PLANET') && !introPlaying
+            ${((isHovered || isFocused) || isMobilePortrait) && (viewState === 'HOME' || viewState === 'HOVER_PLANET') && !introPlaying && !finaleRunning
               ? `translate-y-0 ${isMobilePortrait && !isHovered && !isFocused ? 'opacity-75 scale-90' : 'opacity-100 scale-100'}`
               : 'opacity-0 translate-y-4 scale-90'}
           `}

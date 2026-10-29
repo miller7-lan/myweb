@@ -3,7 +3,7 @@ import gsap from 'gsap';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 import { PetSprite } from './GuidePet';
 import { createWarpField } from '../../utils/warpField';
-import { wormholePull } from '../../utils/portal';
+import { hopThroughHoles, wormholePull } from '../../utils/portal';
 
 /*
  * The DOM half of the black-hole transition (see utils/portal.ts for the
@@ -100,7 +100,6 @@ export const PortalTransition: React.FC = () => {
       // 1. 星仔 drops through a hole under itself and pops out beside the planet.
       if (portal.pet && summon > 0) {
         const { x: px, y: py, width: w, height: h } = portal.pet;
-        const holeW = Math.max(48, w * 0.95);
         // 星仔 lands beside the planet, or (wormhole) just below the black
         // hole on the centre star, ready to walk into it.
         let qx: number;
@@ -118,21 +117,9 @@ export const PortalTransition: React.FC = () => {
 
         gsap.set(pet, { left: px, top: py, width: w, height: h, scale: 1, rotation: 0, y: 0 });
         tl.call(() => html.classList.add('pet-portaling'), undefined, 0).set(pet, { autoAlpha: 1 }, 0);
-        gsap.set(holeA, { width: holeW, height: holeW, left: px + w / 2 - holeW / 2, top: py + h * 0.9 - holeW / 2, scaleY: 0.42, scaleX: 0 });
-        gsap.set(holeB, { width: holeW, height: holeW, left: qx - holeW / 2, top: qy + h * 0.4 - holeW / 2, scaleY: 0, scaleX: 0 });
 
         // Choreographed at 1.05s, stretched to whatever the summon lasts.
-        const summonTl = gsap.timeline();
-        tl.add(summonTl.timeScale(1.05 / summon), 0);
-        summonTl.to(pet, { scale: 1.12, duration: 0.1, ease: 'power2.out', yoyo: true, repeat: 1 }, 0)
-          .to(holeA, { autoAlpha: 1, scaleX: 1, duration: 0.24, ease: 'back.out(2)' }, 0.14)
-          .to(pet, { scale: 0, rotation: 300, y: h * 0.4, duration: 0.28, ease: 'power2.in' }, 0.34)
-          .to(holeA, { scaleX: 0, scaleY: 0, duration: 0.16, ease: 'power2.in' }, 0.6)
-          .to(holeB, { autoAlpha: 1, scaleX: 1, scaleY: 0.42, duration: 0.2, ease: 'back.out(2)' }, 0.55)
-          .set(pet, { left: qx - w / 2, top: qy - h / 2, rotation: -300, y: h * 0.4 }, 0.7)
-          .to(pet, { scale: 1, rotation: 0, y: -h * 0.3, duration: 0.22, ease: 'power2.out' }, 0.72)
-          .to(pet, { y: 0, duration: 0.14, ease: 'power2.in' }, 0.94)
-          .to(holeB, { scaleX: 0, scaleY: 0, duration: 0.15, ease: 'power2.in' }, 0.9);
+        tl.add(hopThroughHoles(pet, holeA, holeB, portal.pet, { x: qx, y: qy }).timeScale(1.05 / summon), 0);
       }
 
       const burst = summon + swallow;

@@ -624,6 +624,17 @@ export const GuidePet: React.FC = () => {
     };
   }, [showEmote]);
 
+  // The finale (FinaleSequence): 星仔 calls the visitor along.
+  useEffect(() => {
+    const say = (event: WindowEventMap['galaxy-pet-say']) => {
+      setAsleep(false);
+      if (isMobile) setMobileExpanded(true);
+      showBubble(event.detail.text, { autoHideMs: 2600 });
+    };
+    window.addEventListener('galaxy-pet-say', say);
+    return () => window.removeEventListener('galaxy-pet-say', say);
+  }, [isMobile, showBubble]);
+
   useEffect(() => {
     if (!emote) return;
     const timer = window.setTimeout(() => setEmote(null), 1700);

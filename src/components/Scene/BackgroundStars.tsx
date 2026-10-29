@@ -69,7 +69,7 @@ export const BackgroundStars: React.FC = () => {
   });
 
   return (
-    <points ref={pointsRef}>
+    <points ref={pointsRef} name="background-stars">
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" count={particleCount} args={[positions, 3]} />
         <bufferAttribute attach="attributes-opacity" count={particleCount} args={[opacities, 1]} />

@@ -23,7 +23,10 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
   const { viewState, hoveredPlanet, visitedThemes, completionPulseId, visualMode, triggerCoreFirework } = useGalaxyStore();
   const [completionGlow, setCompletionGlow] = useState(false);
   const isVisible = viewState === 'HOME' || viewState === 'HOVER_PLANET';
-  const canTriggerFirework = isVisible && visualMode !== 'silent';
+  // The finale turns the centre star into a black hole and flies away from it: no label meanwhile.
+  const finaleRunning = useGalaxyStore((state) => Boolean(state.finale));
+  const showButton = isVisible && !finaleRunning;
+  const canTriggerFirework = showButton && visualMode !== 'silent';
   const isComplete = Object.values(visitedThemes).filter(Boolean).length === themeCount;
   const lockedColor = completionGlow ? '#f8fafc' : hoveredPlanet ? themes[hoveredPlanet].color : '#e2e8f0';
   const shownCompletionPulseId = useRef(0);
@@ -191,7 +194,7 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
         position={[0, 0.12, 0]}
         center
         zIndexRange={[100, 0]}
-        style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
+        style={{ pointerEvents: showButton ? 'auto' : 'none' }}
       >
         <button
           type="button"
@@ -201,7 +204,7 @@ export const SaturnCore: React.FC<SaturnCoreProps> = ({ mousePosRef, mouseScreen
           disabled={!canTriggerFirework}
           aria-label="触发 Dazzle 星座烟花"
           className={`flex flex-col items-center justify-center rounded-full border px-6 py-2.5 text-gray-200 backdrop-blur-sm transition-all duration-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/45 ${
-            isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+            showButton ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
           } ${canTriggerFirework ? 'cursor-pointer hover:scale-105 active:scale-95' : 'cursor-default'}`}
           style={{
             background: completionGlow

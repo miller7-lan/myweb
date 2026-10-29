@@ -7,6 +7,7 @@ import { GuidePet } from './components/UI/GuidePet';
 import { LiquidGlass } from './components/UI/LiquidGlass';
 import { PortalTransition } from './components/UI/PortalTransition';
 import { IntroSequence } from './components/UI/IntroSequence';
+import { FinaleSequence } from './components/UI/FinaleSequence';
 import { UfoRaid } from './components/UI/UfoRaid';
 import { PaperPlane } from './components/UI/PaperPlane';
 import { CoreTether } from './components/UI/CoreTether';
@@ -85,6 +86,7 @@ function App() {
       <CoreTether />
       <PortalTransition />
       <IntroSequence />
+      <FinaleSequence />
       <UfoRaid />
       <PaperPlane />
       <GuidePet />

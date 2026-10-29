@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Gauge, Lock, LogOut, Moon, Pencil, Plus, RefreshCw, Save, Sparkles, Trash2, Upload, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, Check, ChevronDown, Gauge, Lock, LogOut, Moon, Pencil, Plus, RefreshCw, Save, Sparkles, Trash2, Upload, type LucideIcon } from 'lucide-react';
 import { themeCount, useGalaxyStore, type NonNullThemeKey, type VisualMode } from '../../store/useGalaxyStore';
 import { themes } from '../../data/themes';
 import { canRaid } from '../../utils/raid';
+import { canStartFinale } from '../../utils/finale';
 import {
   createCertificateAddon,
   createCreationAddon,
@@ -138,7 +139,9 @@ export const UIOverlay: React.FC = () => {
   const announcementButtonRef = useRef<HTMLButtonElement>(null);
   const announcementPanelRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<number | null>(null);
-  const isVisible = viewState === 'HOME' || viewState === 'HOVER_PLANET';
+  const finaleRunning = useGalaxyStore((state) => Boolean(state.finale));
+  const requestFinale = useGalaxyStore((state) => state.requestFinale);
+  const isVisible = (viewState === 'HOME' || viewState === 'HOVER_PLANET') && !finaleRunning;
   const focusedTheme = hoveredPlanet ? themes[hoveredPlanet] : null;
   const lastVisited = lastVisitedTheme ? themes[lastVisitedTheme] : null;
   const visitedCount = themeListLength(visitedThemes);
@@ -487,7 +490,7 @@ export const UIOverlay: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (viewState !== 'HOME' && viewState !== 'HOVER_PLANET') return;
+      if (!isVisible) return;
       const activeElement = document.activeElement;
       const isTyping = activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement;
       if (isTyping) return;
@@ -539,7 +542,7 @@ export const UIOverlay: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [announcementOpen, closeAnnouncement, hoveredPlanet, setActiveTheme, setHoveredPlanet, setViewState, viewState]);
+  }, [announcementOpen, closeAnnouncement, hoveredPlanet, isVisible, setActiveTheme, setHoveredPlanet, setViewState]);
 
   useEffect(() => {
     if (!announcementOpen || !announcementPanelRef.current || !announcementButtonRef.current) return;
@@ -745,10 +748,24 @@ export const UIOverlay: React.FC = () => {
           aria-live="polite"
         >
           <div className="home-status-head">
-            <span className="hud-kicker">
-              <span className="hud-dot" />
-              <span>{hudTitle}</span>
-            </span>
+            {isComplete && !focusedTheme ? (
+              // Everything lit: the title takes the visitor out to the finale again.
+              <button
+                type="button"
+                className="hud-kicker home-status-replay pointer-events-auto"
+                onClick={() => { if (canStartFinale()) requestFinale(); }}
+                title="再去一次：总有一个星系属于你"
+              >
+                <span className="hud-dot" />
+                <span>{hudTitle}</span>
+                <ArrowUpRight size={12} aria-hidden="true" />
+              </button>
+            ) : (
+              <span className="hud-kicker">
+                <span className="hud-dot" />
+                <span>{hudTitle}</span>
+              </span>
+            )}
             <ExplorationStars visitedThemes={visitedThemes} activeKey={focusedThemeKey ?? (lastVisitedTheme as NonNullThemeKey | null)} />
           </div>
           <p>{hudText}</p>

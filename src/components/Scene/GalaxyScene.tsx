@@ -8,11 +8,13 @@ import { ThemePlanet } from './ThemePlanet';
 import { BackgroundStars } from './BackgroundStars';
 import { LockBeam } from './LockBeam';
 import { ConstellationFireworks } from './ConstellationFireworks';
+import { FinaleFlight } from './FinaleFlight';
 import { themes } from '../../data/themes';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
-import { wormholePull } from '../../utils/portal';
+import { petRect, wormholePull } from '../../utils/portal';
 import { introSpeed, introTiming, lightAt } from '../../utils/intro';
 import { canRaid } from '../../utils/raid';
+import { canStartFinale, isShortFinale } from '../../utils/finale';
 
 export const GalaxyScene: React.FC = () => {
   const mousePos = useRef(new THREE.Vector3(0, 0, 0));
@@ -99,6 +101,26 @@ export const GalaxyScene: React.FC = () => {
     // planetGroups and toScreen read refs and the camera at the time of the request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raidRequest]);
+
+  // The finale (utils/finale.ts): find the centre star and 星仔 on screen.
+  const finaleRequest = useGalaxyStore((state) => state.finaleRequest);
+  const finaleId = useRef(0);
+  useEffect(() => {
+    const core = galaxyGroup.current;
+    if (finaleRequest === 0 || !core || !canStartFinale()) return;
+    const store = useGalaxyStore.getState();
+    store.setHoveredPlanet(null);
+    store.setViewState('HOME');
+    finaleId.current += 1;
+    store.setFinale({
+      id: finaleId.current,
+      core: toScreen(core.getWorldPosition(new THREE.Vector3()), 2.0 * core.scale.x),
+      pet: petRect(),
+      short: isShortFinale(),
+    });
+    // toScreen reads the camera at the time of the request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finaleRequest]);
 
   // No opening animation (or it has just been skipped or finished): everything is in place.
   useEffect(() => {
@@ -265,7 +287,7 @@ export const GalaxyScene: React.FC = () => {
       </group>
       
       {/* Planets are outside galaxyGroup so they don't fade/shrink with it */}
-      <group ref={planetsGroup}>
+      <group ref={planetsGroup} name="planets">
         <LockBeam />
         {Object.values(themes).map(theme => (
           <ThemePlanet 
@@ -279,6 +301,8 @@ export const GalaxyScene: React.FC = () => {
           />
         ))}
       </group>
+
+      <FinaleFlight />
     </>
   );
 };

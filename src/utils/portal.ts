@@ -86,6 +86,34 @@ export const tintParticles = (
   uHoverBrightness.value = 0;
 };
 
+/**
+ * 星仔 (a stand-in `pet`, already standing at `from`) drops through a
+ * pixel hole under itself and pops out of a second one at `to`.
+ * Choreographed at 1.05s.
+ */
+export const hopThroughHoles = (
+  pet: HTMLElement,
+  holeA: HTMLElement,
+  holeB: HTMLElement,
+  from: { x: number; y: number; width: number; height: number },
+  to: { x: number; y: number },
+) => {
+  const { x: px, y: py, width: w, height: h } = from;
+  const holeW = Math.max(48, w * 0.95);
+  gsap.set(holeA, { width: holeW, height: holeW, left: px + w / 2 - holeW / 2, top: py + h * 0.9 - holeW / 2, scaleY: 0.42, scaleX: 0 });
+  gsap.set(holeB, { width: holeW, height: holeW, left: to.x - holeW / 2, top: to.y + h * 0.4 - holeW / 2, scaleY: 0, scaleX: 0 });
+  return gsap.timeline()
+    .to(pet, { scale: 1.12, duration: 0.1, ease: 'power2.out', yoyo: true, repeat: 1 }, 0)
+    .to(holeA, { autoAlpha: 1, scaleX: 1, duration: 0.24, ease: 'back.out(2)' }, 0.14)
+    .to(pet, { scale: 0, rotation: 300, y: h * 0.4, duration: 0.28, ease: 'power2.in' }, 0.34)
+    .to(holeA, { scaleX: 0, scaleY: 0, duration: 0.16, ease: 'power2.in' }, 0.6)
+    .to(holeB, { autoAlpha: 1, scaleX: 1, scaleY: 0.42, duration: 0.2, ease: 'back.out(2)' }, 0.55)
+    .set(pet, { left: to.x - w / 2, top: to.y - h / 2, rotation: -300, y: h * 0.4 }, 0.7)
+    .to(pet, { scale: 1, rotation: 0, y: -h * 0.3, duration: 0.22, ease: 'power2.out' }, 0.72)
+    .to(pet, { y: 0, duration: 0.14, ease: 'power2.in' }, 0.94)
+    .to(holeB, { scaleX: 0, scaleY: 0, duration: 0.15, ease: 'power2.in' }, 0.9);
+};
+
 let nextId = 1;
 
 export const effectiveTransitionStyle = (): TransitionStyle => {
@@ -104,7 +132,8 @@ const styleFor = (kind: PortalPlan['kind']): TransitionStyle => {
   return Math.random() < 0.5 ? 'full' : 'wormhole';
 };
 
-const petRect = (): PortalPlan['pet'] => {
+/** Where 星仔 stands on screen, or null when it is tucked away off screen. */
+export const petRect = (): PortalPlan['pet'] => {
   const avatar = document.querySelector<HTMLElement>('.guide-pet-shell .guide-pet-avatar');
   if (!avatar) return null;
   const rect = avatar.getBoundingClientRect();

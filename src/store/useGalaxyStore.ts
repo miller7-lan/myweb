@@ -51,6 +51,17 @@ export interface RaidPlan {
   exit: { x: number; y: number };
 }
 
+/** One trip of the all-planets-lit easter egg (see utils/finale.ts). Screen points in CSS px. */
+export interface FinalePlan {
+  id: number;
+  /** The centre star on screen: it becomes the black hole 星仔 walks into. */
+  core: { x: number; y: number; r: number };
+  /** Where 星仔 stands when it sets off; null skips its walk to the hole. */
+  pet: { x: number; y: number; width: number; height: number } | null;
+  /** Silent mode or reduced motion: no flight, the galaxy just fades out behind the sentence. */
+  short: boolean;
+}
+
 const themeKeys: NonNullThemeKey[] = ['identity', 'creations', 'stack', 'orbit', 'signal'];
 export const themeCount = themeKeys.length;
 
@@ -73,6 +84,9 @@ interface GalaxyState {
   /** Bumped to ask for a UFO visit; GalaxyScene answers with `raid`. */
   raidRequest: number;
   raid: RaidPlan | null;
+  /** Bumped to start the easter egg; GalaxyScene answers with `finale`. */
+  finaleRequest: number;
+  finale: FinalePlan | null;
   setViewState: (state: ViewState) => void;
   setHoveredPlanet: (theme: ThemeKey) => void;
   setActiveTheme: (theme: ThemeKey) => void;
@@ -86,6 +100,8 @@ interface GalaxyState {
   finishIntro: () => void;
   requestRaid: () => void;
   setRaid: (raid: RaidPlan | null) => void;
+  requestFinale: () => void;
+  setFinale: (finale: FinalePlan | null) => void;
 }
 
 const readInitialVisualMode = (): VisualMode => {
@@ -190,4 +206,8 @@ export const useGalaxyStore = create<GalaxyState>((set) => ({
   raid: null,
   requestRaid: () => set((state) => ({ raidRequest: state.raidRequest + 1 })),
   setRaid: (raid) => set({ raid }),
+  finaleRequest: 0,
+  finale: null,
+  requestFinale: () => set((state) => ({ finaleRequest: state.finaleRequest + 1 })),
+  setFinale: (finale) => set({ finale }),
 }));

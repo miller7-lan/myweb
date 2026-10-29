@@ -37,21 +37,27 @@ export const raidTrack = { x: 0, y: 0 };
 export const nextRaidDelay = () => 45000 + Math.random() * 30000;
 
 export const canRaid = () => {
-  const { viewState, introPlaying, portal, raid } = useGalaxyStore.getState();
-  return (viewState === 'HOME' || viewState === 'HOVER_PLANET') && !introPlaying && !portal && !raid;
+  const { viewState, introPlaying, portal, raid, finale } = useGalaxyStore.getState();
+  return (viewState === 'HOME' || viewState === 'HOVER_PLANET') && !introPlaying && !portal && !raid && !finale;
 };
 
-/** What UfoRaid and PaperPlane ask 星仔 (GuidePet) to do. */
+/** What UfoRaid, PaperPlane and the finale ask 星仔 (GuidePet) to do. */
 export type PetReaction = 'shock' | 'throw' | 'cheer' | 'catch' | 'read';
 
 declare global {
   interface WindowEventMap {
     'galaxy-pet-react': CustomEvent<{ reaction: PetReaction }>;
+    'galaxy-pet-say': CustomEvent<{ text: string }>;
   }
 }
 
 export const petReact = (reaction: PetReaction) => {
   window.dispatchEvent(new CustomEvent('galaxy-pet-react', { detail: { reaction } }));
+};
+
+/** 星仔 says `text` in its speech bubble. */
+export const petSay = (text: string) => {
+  window.dispatchEvent(new CustomEvent('galaxy-pet-say', { detail: { text } }));
 };
 
 /*
