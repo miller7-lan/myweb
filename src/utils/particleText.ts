@@ -43,14 +43,20 @@ type Star = { x: number; y: number; size: number; alpha: number; phase: number }
 const fontFamily = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", sans-serif';
 /** A particle flies in over this share of `form`; the last ones set off at 1 - travel. */
 const travel = 0.55;
+/** Big letters take about this many particles. */
+const denseCount = 3400;
 
 const hexToRgb = (hex: string) => {
   const value = parseInt(hex.slice(1), 16);
   return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;
 };
 
-/** A soft dot with a white-hot centre, drawn once per colour and stamped for every particle. */
-const makeSprite = (color: string) => {
+/**
+ * A soft dot with a white-hot centre, drawn once per colour and stamped for
+ * every particle. A crisp one has a wider core and a shorter glow, so it
+ * still reads as a point when it is drawn small.
+ */
+const makeSprite = (color: string, crisp: boolean) => {
   const size = 32;
   const canvas = document.createElement('canvas');
   canvas.width = size;
@@ -60,16 +66,16 @@ const makeSprite = (color: string) => {
   const rgb = hexToRgb(color);
   const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
   gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-  gradient.addColorStop(0.18, `rgba(${rgb}, 0.95)`);
-  gradient.addColorStop(0.42, `rgba(${rgb}, 0.32)`);
+  gradient.addColorStop(crisp ? 0.3 : 0.18, `rgba(${rgb}, 0.95)`);
+  gradient.addColorStop(crisp ? 0.52 : 0.42, `rgba(${rgb}, ${crisp ? 0.22 : 0.32})`);
   gradient.addColorStop(1, `rgba(${rgb}, 0)`);
   context.fillStyle = gradient;
   context.fillRect(0, 0, size, size);
   return canvas;
 };
 
-/** Draws `lines` centred on `centerY` and returns the points inside the letters, about `target` of them. */
-const sampleText = (width: number, height: number, lines: string[], target: number) => {
+/** Draws `lines` centred on `centerY` and returns the points inside the letters, `gap` apart. */
+const sampleText = (width: number, height: number, lines: string[], fine: boolean) => {
   const wide = lines.length === 1;
   const fontSize = Math.min(
     wide ? Math.min(Math.max(width * 0.058, 30), 84) : Math.min(Math.max(width * 0.12, 28), 64),
@@ -85,7 +91,7 @@ const sampleText = (width: number, height: number, lines: string[], target: numb
   canvas.width = width;
   canvas.height = bottom - top;
   const context = canvas.getContext('2d', { willReadFrequently: true });
-  if (!context) return { points: [], left: 0, right: width, centerY, top: centerY, bottom: centerY };
+  if (!context) return { points: [], gap: 2, left: 0, right: width, centerY, top: centerY, bottom: centerY };
 
   context.fillStyle = '#fff';
   context.font = `600 ${fontSize}px ${fontFamily}`;
@@ -108,7 +114,9 @@ const sampleText = (width: number, height: number, lines: string[], target: numb
   const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
   let ink = 0;
   for (let i = 3; i < data.length; i += 4) if (data[i] > 128) ink += 1;
-  const gap = Math.max(1.6, Math.sqrt(ink / target));
+  // Big letters take a dense glitter of soft dots. Small ones (fine) take
+  // fewer, spaced by the letter size, so each particle still shows.
+  const gap = fine ? Math.max(1.8, fontSize / 17) : Math.max(1.6, Math.sqrt(ink / denseCount));
   const points: Array<{ x: number; y: number }> = [];
   for (let y = gap / 2; y < canvas.height; y += gap) {
     for (let x = gap / 2; x < canvas.width; x += gap) {
@@ -118,6 +126,7 @@ const sampleText = (width: number, height: number, lines: string[], target: numb
   }
   return {
     points,
+    gap,
     left,
     right,
     centerY,
@@ -126,7 +135,8 @@ const sampleText = (width: number, height: number, lines: string[], target: numb
   };
 };
 
-export function createParticleText(canvas: HTMLCanvasElement, options: { lines: string[]; colors: string[]; count: number }) {
+/** `fine`: small letters (phones), drawn with fewer, crisper particles. */
+export function createParticleText(canvas: HTMLCanvasElement, options: { lines: string[]; colors: string[]; fine: boolean }) {
   const context = canvas.getContext('2d');
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const width = window.innerWidth;
@@ -136,11 +146,12 @@ export function createParticleText(canvas: HTMLCanvasElement, options: { lines: 
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
 
-  const text = sampleText(width, height, options.lines, options.count);
+  const { fine } = options;
+  const text = sampleText(width, height, options.lines, fine);
   const textWidth = Math.max(1, text.right - text.left);
   // Mostly starlight, with every planet's colour mixed in.
-  const cool = ['#f4f7ff', '#dbe7ff', '#bfe3ff'].map(makeSprite);
-  const tinted = options.colors.map(makeSprite);
+  const cool = ['#f4f7ff', '#dbe7ff', '#bfe3ff'].map((color) => makeSprite(color, fine));
+  const tinted = options.colors.map((color) => makeSprite(color, fine));
   const reach = Math.hypot(width, height) * 0.5;
   const particles: Particle[] = text.points.map((point) => {
     const angle = Math.random() * Math.PI * 2;
@@ -155,7 +166,8 @@ export function createParticleText(canvas: HTMLCanvasElement, options: { lines: 
       curl: (Math.random() - 0.5) * reach * 0.4,
       pull: Math.random(),
       sprite: Math.random() < 0.3 ? tinted[Math.floor(Math.random() * tinted.length)] : cool[Math.floor(Math.random() * cool.length)],
-      size: 4 + Math.random() * 3.5,
+      // Fine: just over the gap, so neighbours touch only at the glow.
+      size: fine ? text.gap * (1.15 + Math.random() * 0.75) : 4 + Math.random() * 3.5,
       phase: Math.random() * Math.PI * 2,
       speed: 1.2 + Math.random() * 2.4,
     };

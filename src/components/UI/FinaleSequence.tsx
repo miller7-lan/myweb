@@ -150,7 +150,7 @@ export const FinaleSequence: React.FC = () => {
     const makeText = () => createParticleText(canvas, {
       lines: window.innerWidth < 640 ? sentence.narrow : sentence.wide,
       colors: finaleColors,
-      count: window.innerWidth < 768 ? 1800 : 3400,
+      fine: window.innerWidth < 768,
     });
     let text = makeText();
     let phase: Phase = 'out';
