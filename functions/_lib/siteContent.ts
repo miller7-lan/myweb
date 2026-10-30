@@ -97,6 +97,27 @@ export const readSiteContentBody = async (request: Request) => {
   }
 };
 
+/**
+ * Saving: the first entry that is not filled in enough to keep (normalizing
+ * would drop it without a word), as a message for the admin, or null.
+ */
+export const findIncompleteEntry = (input: unknown): string | null => {
+  const source = typeof input === 'object' && input ? input as Record<string, unknown> : {};
+  const rows = (key: string) => (Array.isArray(source[key]) ? source[key] as unknown[] : [])
+    .map((item) => (typeof item === 'object' && item ? item as Record<string, unknown> : {}));
+  const filled = (value: unknown) => clampText(value, 1000) !== '';
+  const sections: Array<[string, string, (row: Record<string, unknown>) => boolean]> = [
+    ['identityAddons', '个人介绍', (row) => filled(row.title) && filled(row.body)],
+    ['certificates', '奖状', (row) => filled(row.title) && isCertificateAssetKey(clampText(row.imageKey, 160))],
+    ['creationAddons', '作品', (row) => filled(row.title) && filled(row.description)],
+  ];
+  for (const [key, label, complete] of sections) {
+    const index = rows(key).findIndex((row) => !complete(row));
+    if (index >= 0) return `${label}第 ${index + 1} 条还没填完`;
+  }
+  return null;
+};
+
 export const normalizeSiteContent = (input: unknown): SiteContentDocument => {
   const source = typeof input === 'object' && input ? input as Record<string, unknown> : {};
 

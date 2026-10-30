@@ -32,3 +32,7 @@ public/downloads/*
 
 # Local Netlify folder
 .netlify
+
+# Wrangler local dev: secrets and state
+.dev.vars
+.wrangler/

@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Award, Brain, Code2, Cpu, ExternalLink, Layers3, Lock, Medal, Rocket, ShieldCheck, Sparkles, Trophy, Unlock, Wand2, X, type LucideIcon } from 'lucide-react';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
-import { defaultSiteContent, visibleBySort, type DynamicCertificate, type IdentityAddon, type SiteContentDocument } from '../../data/siteContent';
+import { visibleBySort, type DynamicCertificate, type IdentityAddon } from '../../data/siteContent';
+import { useSiteContent } from '../../utils/useSiteContent';
 
 const identityProfiles = [
   {
@@ -330,7 +331,7 @@ export const IdentityContent: React.FC = () => {
   const [isCertificateGalleryOpen, setIsCertificateGalleryOpen] = useState(false);
   const [selectedCertificateIndex, setSelectedCertificateIndex] = useState(0);
   const setActiveTheme = useGalaxyStore((state) => state.setActiveTheme);
-  const [siteContent, setSiteContent] = useState<SiteContentDocument>(defaultSiteContent);
+  const siteContent = useSiteContent();
   const activeProfile = identityProfiles[activeRoleIndex];
   const ActiveIcon = activeProfile.icon;
   const dynamicIdentityAddons = useMemo<IdentityAddon[]>(
@@ -388,31 +389,6 @@ export const IdentityContent: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [isOverclocked]);
-
-  const loadSiteContent = useCallback(async () => {
-    try {
-      const response = await fetch('/api/site-content', {
-        cache: 'no-store',
-        credentials: 'same-origin',
-      });
-      if (!response.ok) throw new Error('site content unavailable');
-      const payload = await response.json() as { siteContent?: SiteContentDocument };
-      setSiteContent(payload.siteContent ?? defaultSiteContent);
-    } catch {
-      setSiteContent(defaultSiteContent);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadSiteContent();
-    }, 0);
-    window.addEventListener('galaxy-site-content-updated', loadSiteContent);
-    return () => {
-      window.clearTimeout(timeoutId);
-      window.removeEventListener('galaxy-site-content-updated', loadSiteContent);
-    };
-  }, [loadSiteContent]);
 
   // Rolling diagnostic logs in background
   useEffect(() => {

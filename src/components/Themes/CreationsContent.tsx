@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { Activity, ArrowRight, Bot, Calculator, ChartNoAxesColumnIncreasing, Cpu, Eye, FolderSearch, MailSearch, Moon, Network, Route, Search, SearchCode, X, type LucideIcon } from 'lucide-react';
 import { useGalaxyStore } from '../../store/useGalaxyStore';
 import type { DownloadableReleaseKey } from '../../data/releases';
-import { defaultSiteContent, visibleBySort, type CreationAddon, type SiteContentDocument } from '../../data/siteContent';
+import { visibleBySort, type CreationAddon } from '../../data/siteContent';
+import { useSiteContent } from '../../utils/useSiteContent';
 
 type Project = {
   title: string;
@@ -627,7 +628,7 @@ const CreationStrip: React.FC<{
 export const CreationsContent: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [siteContent, setSiteContent] = useState<SiteContentDocument>(defaultSiteContent);
+  const siteContent = useSiteContent();
   const setActiveTheme = useGalaxyStore((state) => state.setActiveTheme);
   const dynamicProjects = useMemo(
     () => visibleBySort<CreationAddon>(siteContent.creationAddons).map<Project>((addon) => ({
@@ -657,31 +658,6 @@ export const CreationsContent: React.FC = () => {
       ...project.design,
     ].join(' ').toLowerCase().includes(normalizedQuery))
     : allProjects;
-
-  const loadSiteContent = useCallback(async () => {
-    try {
-      const response = await fetch('/api/site-content', {
-        cache: 'no-store',
-        credentials: 'same-origin',
-      });
-      if (!response.ok) throw new Error('site content unavailable');
-      const payload = await response.json() as { siteContent?: SiteContentDocument };
-      setSiteContent(payload.siteContent ?? defaultSiteContent);
-    } catch {
-      setSiteContent(defaultSiteContent);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadSiteContent();
-    }, 0);
-    window.addEventListener('galaxy-site-content-updated', loadSiteContent);
-    return () => {
-      window.clearTimeout(timeoutId);
-      window.removeEventListener('galaxy-site-content-updated', loadSiteContent);
-    };
-  }, [loadSiteContent]);
 
   useEffect(() => {
     const preferredProject = window.sessionStorage.getItem('preferredCreationProject');

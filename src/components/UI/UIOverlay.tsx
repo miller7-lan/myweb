@@ -4,6 +4,7 @@ import { themeCount, useGalaxyStore, type NonNullThemeKey, type VisualMode } fro
 import { themes } from '../../data/themes';
 import { canRaid } from '../../utils/raid';
 import { canStartFinale } from '../../utils/finale';
+import { announceSiteContent } from '../../utils/useSiteContent';
 import {
   createCertificateAddon,
   createCreationAddon,
@@ -84,6 +85,127 @@ const splitListInput = (value: string, limit = 8) =>
 
 const joinListInput = (items: string[]) => items.join('，');
 
+/**
+ * A comma-separated list field (tags, highlights). It keeps exactly what is
+ * being typed, trailing comma or space included, and hands back the split
+ * list; the text is only rebuilt when the list changes from outside (a load
+ * or a save).
+ */
+const ListInput: React.FC<Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & {
+  value: string[];
+  onChange: (items: string[]) => void;
+}> = ({ value, onChange, ...props }) => {
+  const [text, setText] = useState(() => joinListInput(value));
+  const [shown, setShown] = useState(value);
+  if (value !== shown) {
+    setShown(value);
+    if (splitListInput(text).join('\n') !== value.join('\n')) setText(joinListInput(value));
+  }
+  return (
+    <input
+      {...props}
+      value={text}
+      onChange={(event) => {
+        setText(event.target.value);
+        onChange(splitListInput(event.target.value));
+      }}
+    />
+  );
+};
+
+/** On a save button: there are edits that are not saved yet. */
+const UnsavedMark: React.FC = () => (
+  <>
+    <span aria-hidden="true" title="有未保存的修改" className="h-1.5 w-1.5 rounded-full bg-amber-300 shadow-[0_0_6px_#fcd34d]" />
+    <span className="sr-only">（有未保存的修改）</span>
+  </>
+);
+
+// What an editor holds, without the save stamps: drafts with the same content are the same.
+const announcementContent = (doc: AnnouncementDocument) => JSON.stringify([doc.title, doc.subtitle, doc.status, doc.items]);
+const siteContentEntries = (doc: SiteContentDocument) => JSON.stringify([doc.identityAddons, doc.certificates, doc.creationAddons]);
+
+const entryLabel = (index: number) => String(index + 1).padStart(2, '0');
+
+/** Why the announcement can't be saved yet (the server would refuse it), or null. */
+const announcementProblem = (draft: AnnouncementDocument) => {
+  if (draft.items.length === 0) return '至少保留一条公告';
+  for (const [index, item] of draft.items.entries()) {
+    const missing = [!item.code.trim() && '代码', !item.title.trim() && '标题', !item.detail.trim() && '详情'].filter(Boolean);
+    if (missing.length) return `条目 ${entryLabel(index)} 还缺${missing.join('、')}`;
+  }
+  return null;
+};
+
+/** The same for 个人介绍, 奖状 and 作品. */
+const siteContentProblem = (draft: SiteContentDocument) => {
+  const identity = draft.identityAddons.findIndex((item) => !item.title.trim() || !item.body.trim());
+  if (identity >= 0) return `个人介绍 ${entryLabel(identity)} 需要标题和内容`;
+  const certificate = draft.certificates.findIndex((item) => !item.title.trim() || !item.imageKey);
+  if (certificate >= 0) {
+    return draft.certificates[certificate].imageKey ? `奖状 ${entryLabel(certificate)} 需要标题` : `奖状 ${entryLabel(certificate)} 还没上传图片`;
+  }
+  const creation = draft.creationAddons.findIndex((item) => !item.title.trim() || !item.description.trim());
+  if (creation >= 0) return `作品 ${entryLabel(creation)} 需要名称和介绍`;
+  return null;
+};
+
+// An emptied 排序 field is NaN while editing (so it can be cleared and
+// retyped); it saves as the entry's position.
+const readSortOrder = (value: string) => (value.trim() === '' ? Number.NaN : Number(value));
+const withSortOrders = <T extends { sortOrder: number }>(items: T[]) =>
+  items.map((item, index) => (Number.isFinite(item.sortOrder) ? item : { ...item, sortOrder: index }));
+
+/** A response's JSON, or {} when the body isn't JSON (a gateway error page, say). */
+const readJson = async <T,>(response: Response): Promise<T & { error?: string }> => {
+  try {
+    return await response.json() as T & { error?: string };
+  } catch {
+    return {} as T & { error?: string };
+  }
+};
+
+const maxUploadSide = 2400;
+
+/**
+ * Re-encodes an image before it is uploaded: phone photos are often over the
+ * 4 MB limit, and re-encoding also drops their metadata (EXIF can hold where
+ * a photo was taken). PNG stays PNG unless it is still too big.
+ */
+const prepareUpload = async (file: File): Promise<File> => {
+  let bitmap: ImageBitmap | null = null;
+  try {
+    bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxUploadSide / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const context = canvas.getContext('2d');
+    if (!context) return file;
+    const encode = (type: string, background?: string, quality?: number) => {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      if (background) {
+        context.fillStyle = background;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      context.drawImage(bitmap!, 0, 0, canvas.width, canvas.height);
+      return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+    };
+    let blob = file.type === 'image/png' ? await encode('image/png') : null;
+    if (!blob || blob.size > 3.8 * 1024 * 1024) {
+      blob = file.type === 'image/webp' ? await encode('image/webp', undefined, 0.9) : await encode('image/jpeg', '#ffffff', 0.88);
+    }
+    if (!blob) return file;
+    const extension = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
+    return new File([blob], `${file.name.replace(/\.[^.]+$/, '') || 'certificate'}.${extension}`, { type: blob.type });
+  } catch {
+    // Not something this browser can decode: let the server judge the original.
+    return file;
+  } finally {
+    bitmap?.close();
+  }
+};
+
 const visualModes: Array<{
   key: VisualMode;
   label: string;
@@ -131,6 +253,20 @@ export const UIOverlay: React.FC = () => {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [editorDraft, setEditorDraft] = useState<AnnouncementDocument>(defaultAnnouncement);
   const [siteDraft, setSiteDraft] = useState<SiteContentDocument>(defaultSiteContent);
+  // What each editor was last loaded or saved from: a draft that differs has
+  // unsaved edits, and no refresh overwrites them.
+  const [editorBaseline, setEditorBaseline] = useState<AnnouncementDocument>(defaultAnnouncement);
+  const [siteBaseline, setSiteBaseline] = useState<SiteContentDocument>(defaultSiteContent);
+  const announcementDirty = announcementContent(editorDraft) !== announcementContent(editorBaseline);
+  const siteDirty = siteContentEntries(siteDraft) !== siteContentEntries(siteBaseline);
+  const announcementDirtyRef = useRef(false);
+  const siteDirtyRef = useRef(false);
+  // The newest announcement seen: a refresh that brings back an older one
+  // (the store still catching up after a save) is ignored.
+  const latestAnnouncementAtRef = useRef(0);
+  // A click only closes the dialog if it also started on the backdrop, so a
+  // text selection dragged out of a field doesn't close it.
+  const backdropPressRef = useRef(false);
   const [adminContentTab, setAdminContentTab] = useState<AdminContentTab>('announcement');
   const [adminBusy, setAdminBusy] = useState(false);
   const [adminError, setAdminError] = useState('');
@@ -199,13 +335,18 @@ export const UIOverlay: React.FC = () => {
       });
       if (!response.ok) throw new Error('announcement api unavailable');
       const payload = await response.json() as { announcement?: AnnouncementDocument };
-      if (payload.announcement) {
-        setAnnouncement(payload.announcement);
-        setEditorDraft(payload.announcement);
+      const next = payload.announcement;
+      const nextAt = Date.parse(next?.updatedAt ?? '');
+      if (!next || nextAt < latestAnnouncementAtRef.current) return;
+      if (Number.isFinite(nextAt)) latestAnnouncementAtRef.current = nextAt;
+      setAnnouncement(next);
+      // The editor follows the live version only while it has no unsaved edits.
+      if (!announcementDirtyRef.current) {
+        setEditorDraft(next);
+        setEditorBaseline(next);
       }
     } catch {
-      setAnnouncement(defaultAnnouncement);
-      setEditorDraft(defaultAnnouncement);
+      // Keep what is shown: a failed refresh is no reason to drop it.
     } finally {
       if (!silent) setAnnouncementLoading(false);
     }
@@ -218,9 +359,11 @@ export const UIOverlay: React.FC = () => {
       });
       if (!response.ok) throw new Error('site content unavailable');
       const payload = await response.json() as { siteContent?: SiteContentDocument };
-      setSiteDraft(payload.siteContent ?? defaultSiteContent);
+      if (!payload.siteContent || siteDirtyRef.current) return;
+      setSiteDraft(payload.siteContent);
+      setSiteBaseline(payload.siteContent);
     } catch {
-      setSiteDraft(defaultSiteContent);
+      // Keep the draft as it is.
     }
   }, []);
   const checkAdminSession = useCallback(async () => {
@@ -237,8 +380,14 @@ export const UIOverlay: React.FC = () => {
         csrf: payload.csrf ?? null,
       });
     } catch {
-      setAdminSession(emptyAdminSession);
+      // Offline for a moment: stay signed in rather than dropping to the login form.
     }
+  }, []);
+  // The session ran out (it lasts 12 hours): back to the login form, with
+  // every unsaved edit kept for after signing in again.
+  const expireSession = useCallback(() => {
+    setAdminSession(emptyAdminSession);
+    setAdminError('登录已过期，请重新登录。未保存的修改都还在，登录后再保存即可');
   }, []);
   const openAdminPanel = useCallback(() => {
     setAdminPanelOpen((open) => !open);
@@ -312,7 +461,12 @@ export const UIOverlay: React.FC = () => {
   }, []);
   const saveAnnouncement = useCallback(async () => {
     if (!adminSession.csrf) {
-      setAdminError('登录已失效，请重新登录');
+      expireSession();
+      return;
+    }
+    const problem = announcementProblem(editorDraft);
+    if (problem) {
+      setAdminError(problem);
       return;
     }
     setAdminBusy(true);
@@ -327,22 +481,33 @@ export const UIOverlay: React.FC = () => {
         },
         body: JSON.stringify(editorDraft),
       });
-      const payload = await response.json() as { announcement?: AnnouncementDocument; error?: string };
-      if (!response.ok || !payload.announcement) {
-        throw new Error(payload.error || '保存失败');
+      const payload = await readJson<{ announcement?: AnnouncementDocument }>(response);
+      if (response.status === 401) {
+        expireSession();
+        return;
       }
+      if (!response.ok || !payload.announcement) {
+        throw new Error(payload.error || `保存失败（${response.status}）`);
+      }
+      latestAnnouncementAtRef.current = Date.parse(payload.announcement.updatedAt) || Date.now();
       setAnnouncement(payload.announcement);
       setEditorDraft(payload.announcement);
+      setEditorBaseline(payload.announcement);
       setAnnouncementNotice('公告已同步到线上');
     } catch (error) {
       setAdminError(error instanceof Error ? error.message : '保存失败');
     } finally {
       setAdminBusy(false);
     }
-  }, [adminSession.csrf, editorDraft]);
+  }, [adminSession.csrf, editorDraft, expireSession]);
   const saveSiteContent = useCallback(async () => {
     if (!adminSession.csrf) {
-      setAdminError('登录已失效，请重新登录');
+      expireSession();
+      return;
+    }
+    const problem = siteContentProblem(siteDraft);
+    if (problem) {
+      setAdminError(problem);
       return;
     }
     setAdminBusy(true);
@@ -355,32 +520,42 @@ export const UIOverlay: React.FC = () => {
           'content-type': 'application/json',
           'x-gp-admin-csrf': adminSession.csrf,
         },
-        body: JSON.stringify(siteDraft),
+        body: JSON.stringify({
+          ...siteDraft,
+          identityAddons: withSortOrders(siteDraft.identityAddons),
+          certificates: withSortOrders(siteDraft.certificates),
+          creationAddons: withSortOrders(siteDraft.creationAddons),
+        }),
       });
-      const payload = await response.json() as { siteContent?: SiteContentDocument; error?: string };
+      const payload = await readJson<{ siteContent?: SiteContentDocument }>(response);
+      if (response.status === 401) {
+        expireSession();
+        return;
+      }
       if (!response.ok || !payload.siteContent) {
-        throw new Error(payload.error || '保存失败');
+        throw new Error(payload.error || `保存失败（${response.status}）`);
       }
       setSiteDraft(payload.siteContent);
+      setSiteBaseline(payload.siteContent);
       setAnnouncementNotice('内容已同步到线上');
-      window.dispatchEvent(new CustomEvent('galaxy-site-content-updated'));
+      announceSiteContent(payload.siteContent);
     } catch (error) {
       setAdminError(error instanceof Error ? error.message : '保存失败');
     } finally {
       setAdminBusy(false);
     }
-  }, [adminSession.csrf, siteDraft]);
+  }, [adminSession.csrf, expireSession, siteDraft]);
   const uploadCertificateImage = useCallback(async (certificateId: string, file: File | undefined) => {
     if (!file) return;
     if (!adminSession.csrf) {
-      setAdminError('登录已失效，请重新登录');
+      expireSession();
       return;
     }
     setUploadingCertificateId(certificateId);
     setAdminError('');
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', await prepareUpload(file));
       const response = await fetch('/api/site-content/assets', {
         method: 'POST',
         credentials: 'same-origin',
@@ -389,12 +564,13 @@ export const UIOverlay: React.FC = () => {
         },
         body: formData,
       });
-      const payload = await response.json() as {
-        asset?: { key: string; url: string };
-        error?: string;
-      };
+      const payload = await readJson<{ asset?: { key: string; url: string } }>(response);
+      if (response.status === 401) {
+        expireSession();
+        return;
+      }
       if (!response.ok || !payload.asset) {
-        throw new Error(payload.error || '上传失败');
+        throw new Error(payload.error || `上传失败（${response.status}）`);
       }
       setSiteDraft((draft) => ({
         ...draft,
@@ -402,13 +578,13 @@ export const UIOverlay: React.FC = () => {
           ? { ...certificate, imageKey: payload.asset!.key, imageUrl: payload.asset!.url }
           : certificate),
       }));
-      setAnnouncementNotice('图片已上传，保存后前台显示');
+      setAnnouncementNotice('图片已上传，点「保存内容」后前台显示');
     } catch (error) {
       setAdminError(error instanceof Error ? error.message : '上传失败');
     } finally {
       setUploadingCertificateId(null);
     }
-  }, [adminSession.csrf]);
+  }, [adminSession.csrf, expireSession]);
 
   const updateIdentityAddon = useCallback((index: number, patch: Partial<IdentityAddon>) => {
     setSiteDraft((draft) => ({
@@ -489,6 +665,20 @@ export const UIOverlay: React.FC = () => {
   }, [adminPanelOpen, adminSession.authenticated, loadSiteContent]);
 
   useEffect(() => {
+    announcementDirtyRef.current = announcementDirty;
+    siteDirtyRef.current = siteDirty;
+  }, [announcementDirty, siteDirty]);
+
+  // While the admin edits, the galaxy behind the dialog holds still: it is
+  // under a blurred glass panel, and redrawing it every frame made typing lag.
+  const adminEditing = announcementOpen && adminPanelOpen && adminSession.authenticated;
+  const setSceneHeld = useGalaxyStore((state) => state.setSceneHeld);
+  useEffect(() => {
+    setSceneHeld(adminEditing);
+    return () => setSceneHeld(false);
+  }, [adminEditing, setSceneHeld]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isVisible) return;
       const activeElement = document.activeElement;
@@ -500,6 +690,8 @@ export const UIOverlay: React.FC = () => {
         closeAnnouncement();
         return;
       }
+      // The planet shortcuts don't reach past the open announcement dialog.
+      if (announcementOpen) return;
 
       const currentIndex = hoveredPlanet ? themeList.findIndex((theme) => theme.key === hoveredPlanet) : -1;
       const lockTheme = (index: number) => {
@@ -793,7 +985,11 @@ export const UIOverlay: React.FC = () => {
           role="dialog"
           aria-modal="true"
           aria-label="最近更新公告"
-          onClick={closeAnnouncement}
+          onPointerDown={(event) => { backdropPressRef.current = event.target === event.currentTarget; }}
+          onClick={(event) => {
+            if (backdropPressRef.current && event.target === event.currentTarget) closeAnnouncement();
+            backdropPressRef.current = false;
+          }}
         >
           <div
             ref={announcementPanelRef}
@@ -831,7 +1027,7 @@ export const UIOverlay: React.FC = () => {
 
               <div className="rounded-2xl border border-white/[0.07] bg-black/20">
                 {announcement.items.map((item, index) => (
-                  <div key={item.code} className={`grid grid-cols-[2.5rem_1fr] gap-3 px-4 py-4 text-left ${index > 0 ? 'border-t border-white/[0.06]' : ''}`}>
+                  <div key={`${index}-${item.code}`} className={`grid grid-cols-[2.5rem_1fr] gap-3 px-4 py-4 text-left ${index > 0 ? 'border-t border-white/[0.06]' : ''}`}>
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.035] text-[10px] font-medium tracking-wider text-gray-300">
                       {String(index + 1).padStart(2, '0')}
                     </div>
@@ -923,7 +1119,8 @@ export const UIOverlay: React.FC = () => {
 
                       <div className="space-y-3">
                         {editorDraft.items.map((item, index) => (
-                          <div key={`${index}-${item.code}`} className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+                          // Keyed by position, not by the code being typed, so the fields keep focus.
+                          <div key={index} className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
                             <div className="mb-2 flex items-center justify-between gap-3">
                               <span className="text-[10px] uppercase tracking-[0.18em] text-gray-500">条目 {String(index + 1).padStart(2, '0')}</span>
                               <button
@@ -980,6 +1177,7 @@ export const UIOverlay: React.FC = () => {
                         >
                           <Save size={13} />
                           保存并同步
+                          {announcementDirty && <UnsavedMark />}
                         </button>
                       </div>
                         </div>
@@ -1011,8 +1209,8 @@ export const UIOverlay: React.FC = () => {
                                 />
                                 <input
                                   type="number"
-                                  value={item.sortOrder}
-                                  onChange={(event) => updateIdentityAddon(index, { sortOrder: Number(event.target.value) })}
+                                  value={Number.isFinite(item.sortOrder) ? item.sortOrder : ''}
+                                  onChange={(event) => updateIdentityAddon(index, { sortOrder: readSortOrder(event.target.value) })}
                                   aria-label={`个人介绍 ${index + 1} 排序`}
                                   className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-300 outline-none transition-colors focus:border-white/25"
                                 />
@@ -1025,9 +1223,9 @@ export const UIOverlay: React.FC = () => {
                                 placeholder="补充介绍内容"
                                 className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs leading-relaxed text-gray-300 outline-none transition-colors focus:border-white/25"
                               />
-                              <input
-                                value={joinListInput(item.tags)}
-                                onChange={(event) => updateIdentityAddon(index, { tags: splitListInput(event.target.value) })}
+                              <ListInput
+                                value={item.tags}
+                                onChange={(tags) => updateIdentityAddon(index, { tags })}
                                 maxLength={160}
                                 placeholder="标签，用逗号分隔"
                                 className="mt-2 w-full rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-300 outline-none transition-colors focus:border-white/25"
@@ -1061,6 +1259,7 @@ export const UIOverlay: React.FC = () => {
                             >
                               <Save size={13} />
                               保存内容
+                              {siteDirty && <UnsavedMark />}
                             </button>
                           </div>
                         </div>
@@ -1092,8 +1291,8 @@ export const UIOverlay: React.FC = () => {
                                 />
                                 <input
                                   type="number"
-                                  value={item.sortOrder}
-                                  onChange={(event) => updateCertificateAddon(index, { sortOrder: Number(event.target.value) })}
+                                  value={Number.isFinite(item.sortOrder) ? item.sortOrder : ''}
+                                  onChange={(event) => updateCertificateAddon(index, { sortOrder: readSortOrder(event.target.value) })}
                                   aria-label={`奖状 ${index + 1} 排序`}
                                   className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-300 outline-none transition-colors focus:border-white/25"
                                 />
@@ -1164,6 +1363,7 @@ export const UIOverlay: React.FC = () => {
                             >
                               <Save size={13} />
                               保存内容
+                              {siteDirty && <UnsavedMark />}
                             </button>
                           </div>
                         </div>
@@ -1195,8 +1395,8 @@ export const UIOverlay: React.FC = () => {
                                 />
                                 <input
                                   type="number"
-                                  value={item.sortOrder}
-                                  onChange={(event) => updateCreationAddon(index, { sortOrder: Number(event.target.value) })}
+                                  value={Number.isFinite(item.sortOrder) ? item.sortOrder : ''}
+                                  onChange={(event) => updateCreationAddon(index, { sortOrder: readSortOrder(event.target.value) })}
                                   aria-label={`作品 ${index + 1} 排序`}
                                   className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-300 outline-none transition-colors focus:border-white/25"
                                 />
@@ -1216,9 +1416,9 @@ export const UIOverlay: React.FC = () => {
                                 placeholder="作品介绍"
                                 className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs leading-relaxed text-gray-300 outline-none transition-colors focus:border-white/25"
                               />
-                              <input
-                                value={joinListInput(item.highlights)}
-                                onChange={(event) => updateCreationAddon(index, { highlights: splitListInput(event.target.value) })}
+                              <ListInput
+                                value={item.highlights}
+                                onChange={(highlights) => updateCreationAddon(index, { highlights })}
                                 maxLength={180}
                                 placeholder="亮点，用逗号分隔"
                                 className="mt-2 w-full rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-300 outline-none transition-colors focus:border-white/25"
@@ -1252,6 +1452,7 @@ export const UIOverlay: React.FC = () => {
                             >
                               <Save size={13} />
                               保存内容
+                              {siteDirty && <UnsavedMark />}
                             </button>
                           </div>
                         </div>

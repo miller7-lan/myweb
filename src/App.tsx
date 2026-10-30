@@ -60,16 +60,18 @@ function useGlassHighlight() {
 function App() {
   const visualMode = useGalaxyStore((state) => state.visualMode);
   const viewState = useGalaxyStore((state) => state.viewState);
+  const sceneHeld = useGalaxyStore((state) => state.sceneHeld);
   useGlassHighlight();
 
   return (
     <div className="w-full h-full relative overflow-hidden bg-galaxy-bg text-gray-200" data-visual-mode={visualMode}>
       <Canvas
         className="galaxy-canvas-brightness"
-        // While a theme page is open the galaxy sits under a dark, heavily
-        // blurred backdrop. Rendering it only on demand there means every
-        // glass surface's backdrop stops changing each frame.
-        frameloop={viewState === 'THEME' ? 'demand' : 'always'}
+        // While a theme page is open (or the announcement editor) the galaxy
+        // sits under a dark, heavily blurred backdrop. Rendering it only on
+        // demand there means every glass surface's backdrop stops changing
+        // each frame.
+        frameloop={viewState === 'THEME' || sceneHeld ? 'demand' : 'always'}
         camera={{ position: [0, 5, 20], fov: 45 }}
         gl={{ antialias: true, alpha: false }}
         dpr={Math.min(window.devicePixelRatio, 2)}

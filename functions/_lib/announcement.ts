@@ -116,7 +116,7 @@ export const saveAnnouncement = async (env: AnnouncementEnv, doc: AnnouncementDo
 export const normalizeAnnouncement = (input: unknown, requireItems = true): AnnouncementDocument => {
   const source = typeof input === 'object' && input ? input as Record<string, unknown> : {};
   const itemsSource = Array.isArray(source.items) ? source.items : [];
-  const items = itemsSource
+  const rows = itemsSource
     .slice(0, 5)
     .map((item) => {
       const row = typeof item === 'object' && item ? item as Record<string, unknown> : {};
@@ -125,8 +125,19 @@ export const normalizeAnnouncement = (input: unknown, requireItems = true): Anno
         title: clampText(row.title, 48),
         detail: clampText(row.detail, 180),
       };
-    })
-    .filter((item) => item.code && item.title && item.detail);
+    });
+
+  // Saving: an entry that is only partly filled in is an error, not something to drop quietly.
+  if (requireItems) {
+    const incomplete = rows.findIndex((item) => (item.code || item.title || item.detail) && !(item.code && item.title && item.detail));
+    if (incomplete >= 0) {
+      throw new Response(JSON.stringify({ ok: false, error: `第 ${incomplete + 1} 条公告缺少代码、标题或详情` }), {
+        status: 400,
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+      });
+    }
+  }
+  const items = rows.filter((item) => item.code && item.title && item.detail);
 
   if (requireItems && items.length === 0) {
     throw new Response(JSON.stringify({ ok: false, error: '至少保留一条公告内容' }), {

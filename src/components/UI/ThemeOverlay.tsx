@@ -256,7 +256,8 @@ export const ThemeOverlay: React.FC = () => {
 
       {/* Scrollable Container */}
       <div ref={scrollRef} className="theme-scroll absolute inset-0 pointer-events-auto overflow-y-auto z-30 flex flex-col" data-guide-scroll-container="theme">
-        <div className="theme-layout w-full max-w-6xl mx-auto flex flex-col flex-1 min-h-full pb-24">
+        {/* Grows with the page (never shrinks to one screen), so its bottom padding always clears the module switcher. */}
+        <div className="theme-layout w-full max-w-6xl mx-auto flex flex-col grow shrink-0 min-h-full pb-24">
           <div className="theme-content opacity-0 flex-1" data-guide-id={activeTheme ? `theme-${activeTheme}` : undefined}>
             <Suspense fallback={null}>
               {ActiveThemeContent ? <ActiveThemeContent /> : null}

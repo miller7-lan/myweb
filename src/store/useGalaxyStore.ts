@@ -87,6 +87,8 @@ interface GalaxyState {
   /** Bumped to start the easter egg; GalaxyScene answers with `finale`. */
   finaleRequest: number;
   finale: FinalePlan | null;
+  /** The galaxy draws only on demand (behind the announcement editor, so typing stays smooth). */
+  sceneHeld: boolean;
   setViewState: (state: ViewState) => void;
   setHoveredPlanet: (theme: ThemeKey) => void;
   setActiveTheme: (theme: ThemeKey) => void;
@@ -102,6 +104,7 @@ interface GalaxyState {
   setRaid: (raid: RaidPlan | null) => void;
   requestFinale: () => void;
   setFinale: (finale: FinalePlan | null) => void;
+  setSceneHeld: (held: boolean) => void;
 }
 
 const readInitialVisualMode = (): VisualMode => {
@@ -210,4 +213,6 @@ export const useGalaxyStore = create<GalaxyState>((set) => ({
   finale: null,
   requestFinale: () => set((state) => ({ finaleRequest: state.finaleRequest + 1 })),
   setFinale: (finale) => set({ finale }),
+  sceneHeld: false,
+  setSceneHeld: (held) => set({ sceneHeld: held }),
 }));

@@ -894,8 +894,8 @@ canvas {
     border-color: color-mix(in srgb, var(--theme-color) 50%, transparent);
     background: color-mix(in srgb, var(--theme-color) 9%, #0a0e18);
   }
-  /* Tall enough to scroll the whole star map into view, with room below it to clear the module switcher. */
-  .stack-map-panel { height: clamp(34rem, 80svh, 60rem); min-height: 34rem; margin-bottom: 5rem; }
+  /* Tall enough to scroll the whole star map into view (the theme layout's bottom padding clears the module switcher). */
+  .stack-map-panel { height: clamp(34rem, 80svh, 60rem); min-height: 34rem; }
   .stack-view-option {
     display: flex;
     align-items: center;
@@ -958,7 +958,7 @@ canvas {
     .theme-shell .creation-card { padding: 1.4rem; min-height: 0; }
     .theme-shell .creation-card p { min-height: 0; margin-bottom: 1.5rem; }
     .hud-search, .hud-input { font-size: 16px; }
-    .stack-map-panel { min-height: 28rem; height: 74svh; border-radius: 1.5rem; margin-bottom: 4rem; }
+    .stack-map-panel { min-height: 28rem; height: 74svh; border-radius: 1.5rem; }
     .stack-map-panel.stack-relation-panel { min-height: 32rem; height: 68svh; }
     .stack-view-toolbar { align-items: flex-start; }
     .stack-view-toolbar > p { font-size: 10px; padding-left: 0.25rem; }

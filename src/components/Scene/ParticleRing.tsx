@@ -8,6 +8,7 @@ import { tintParticles, wormholeTintAt } from '../../utils/portal';
 import { MeteorImpact, type ManualMeteorEvent, type RingImpactEvent } from './MeteorImpact';
 import { RingShip, type RingImpactSlot } from './RingShip';
 import { wakeTrail } from '../../utils/wakeTrail';
+import { meteorWave } from '../../utils/meteorWave';
 import { WakeSurface } from './WakeSurface';
 
 const ringRest = { color: '#8a8a98', glow: '#aeb7c8' };
@@ -98,7 +99,7 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
     uImpactPoints: { value: Array.from({ length: 4 }, () => new THREE.Vector3()) },
     uImpactStartTimes: { value: Array.from({ length: 4 }, () => -999) },
     uImpactStrengths: { value: Array.from({ length: 4 }, () => 0.0) },
-    uImpactRadius: { value: 6.8 },
+    uImpactRadius: { value: meteorWave.radius },
     uShipPos: { value: new THREE.Vector3() },
     ...particleSharedUniforms(),
     uWakePoints: { value: wakeTrail.points },
@@ -164,7 +165,7 @@ export const ParticleRing: React.FC<ParticleRingProps> = ({ mousePosRef, mouseSc
         const pendingImpact = impactQueueRef.current.shift();
         if (!pendingImpact) break;
         const expiredSlot = impactSlots.current.findIndex(
-          (slot) => localTime.current - slot.startTime > 1.55
+          (slot) => localTime.current - slot.startTime > meteorWave.life
         );
         const slotIndex = expiredSlot >= 0 ? expiredSlot : impactSlotCursor.current;
         impactSlotCursor.current = (slotIndex + 1) % impactSlots.current.length;

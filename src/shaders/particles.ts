@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { meteorWave } from '../utils/meteorWave';
 
 /*
  * The ship's ripples on the ring (utils/wakeTrail.ts), in ring-local space:
@@ -91,7 +92,7 @@ void main() {
   targetPos.y += sin(uTime * 0.5 + aRandom * 10.0) * 0.05;
   targetPos.x += cos(uTime * 0.3 + aRandom * 10.0) * 0.05;
 
-  float impactLife = 1.55;
+  float impactLife = ${meteorWave.life.toFixed(2)};
   float combinedWave = 0.0;
   for (int i = 0; i < 4; i++) {
     float impactAge = uTime - uImpactStartTimes[i];

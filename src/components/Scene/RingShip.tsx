@@ -6,6 +6,7 @@ import { useGalaxyStore } from '../../store/useGalaxyStore';
 import { createSeededRandom } from '../../utils/random';
 import { introSpeed, introTiming } from '../../utils/intro';
 import { wakeSourceCount, wakeTrail } from '../../utils/wakeTrail';
+import { meteorWave } from '../../utils/meteorWave';
 
 export type RingImpactSlot = {
   point: THREE.Vector3;
@@ -19,9 +20,21 @@ interface RingShipProps {
   shipPositionRef: React.MutableRefObject<THREE.Vector3>;
 }
 
-const impactLife = 1.85;
-const impactRadius = 6.8;
 const baseFlowVelocity = 0.108; // 20% higher than the ring's rotation speed (0.09)
+// After a wave: how fast a push along the ring is folded into the ship's
+// course (it keeps the ground it gained, and the offset never piles up
+// against its limit), and how the ship is pulled back to its lane after a
+// push across it.
+const courseSettle = 0.6;
+const laneSpring = 2.0;
+const laneDamping = 2.2;
+
+/** Keeps a pushed offset within [min, max]; at an edge its velocity stops pressing outward, so the next wave moves it at once. */
+const atEdge = (offset: number, velocity: number, min: number, max: number): [number, number] => {
+  if (offset < min) return [min, Math.max(velocity, 0)];
+  if (offset > max) return [max, Math.min(velocity, 0)];
+  return [offset, velocity];
+};
 
 // The opening animation assembles the ship in layers, each out of its own
 // part of a swarm of ring particles: the hull, then the outriggers and
@@ -94,6 +107,8 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
   const lookTargetRef = useRef(new THREE.Vector3());
   const upRef = useRef(new THREE.Vector3(0, 1, 0));
   const targetQuaternionRef = useRef(new THREE.Quaternion());
+  const tiltRef = useRef(new THREE.Euler());
+  const tiltQuaternionRef = useRef(new THREE.Quaternion());
   const { viewState, visualMode, introPlaying } = useGalaxyStore();
   const introPoints = useGalaxyStore((state) => state.introPoints);
   const isMobilePortrait = size.width <= 768 && size.height > size.width;
@@ -184,18 +199,19 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
     const tangent = tangentRef.current.set(-Math.sin(effectiveAngle), 0, Math.cos(effectiveAngle)).normalize();
     const radial = radialRef.current.set(Math.cos(effectiveAngle), 0, Math.sin(effectiveAngle)).normalize();
 
-    // Meteor wave impact forces
+    // Meteor wave impact forces: the same ripple the ring's particles draw
+    // (same life and spread, measured across the ring like the shader).
     let tangentForce = 0;
     let radialForce = 0;
     let liftForce = 0;
     let leanForce = 0;
     impactsRef.current.forEach((slot) => {
       const age = ringTime - slot.startTime;
-      if (age < 0 || age > impactLife) return;
+      if (age < 0 || age > meteorWave.life) return;
 
-      const waveTravel = age / impactLife;
-      const waveFront = waveTravel * impactRadius;
-      const distanceToImpact = basePosition.distanceTo(slot.point);
+      const waveTravel = age / meteorWave.life;
+      const waveFront = waveTravel * meteorWave.radius;
+      const distanceToImpact = Math.hypot(basePosition.x - slot.point.x, basePosition.z - slot.point.z);
       const waveAlignment = 1 - THREE.MathUtils.smoothstep(Math.abs(distanceToImpact - waveFront), 0, 1.55);
       const nearImpact = (1 - THREE.MathUtils.smoothstep(distanceToImpact, 0.2, 2.75)) * Math.pow(1 - THREE.MathUtils.clamp(waveTravel, 0, 1), 2.35);
       const distanceFalloff = 1 - THREE.MathUtils.smoothstep(distanceToImpact, 0.8, 8.6);
@@ -212,26 +228,32 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
       leanForce += influence * tangentDirection * 3.8;
     });
 
+    // Along the ring: a wave can slow the ship or carry it along, but never
+    // sails it backwards, and the ground it gains is folded into its course.
+    const forward = visible ? flowVelocityRef.current * motionScale * build.thrust : 0;
     const tangentAcceleration = tangentForce - tangentVelocityRef.current * 1.05;
-    tangentVelocityRef.current += tangentAcceleration * dt;
+    tangentVelocityRef.current = THREE.MathUtils.clamp(tangentVelocityRef.current + tangentAcceleration * dt, -forward * 0.7, 0.38);
     tangentOffsetRef.current += tangentVelocityRef.current * dt;
-    tangentOffsetRef.current = THREE.MathUtils.clamp(tangentOffsetRef.current, -0.55, 0.55);
-    tangentVelocityRef.current = THREE.MathUtils.clamp(tangentVelocityRef.current, -0.38, 0.38);
+    const folded = tangentOffsetRef.current * (1 - Math.exp(-courseSettle * dt));
+    angleRef.current += folded;
+    tangentOffsetRef.current -= folded;
+    [tangentOffsetRef.current, tangentVelocityRef.current] = atEdge(tangentOffsetRef.current, tangentVelocityRef.current, -0.55, 0.55);
 
-    const radialAcceleration = radialForce - radialVelocityRef.current * 1.2;
+    // Across the ring: pushed aside, then eased back into its lane.
+    const radialAcceleration = radialForce - radialOffsetRef.current * laneSpring - radialVelocityRef.current * laneDamping;
     radialVelocityRef.current += radialAcceleration * dt;
     radialOffsetRef.current += radialVelocityRef.current * dt;
-    radialOffsetRef.current = THREE.MathUtils.clamp(radialOffsetRef.current, -0.82, 0.82);
+    [radialOffsetRef.current, radialVelocityRef.current] = atEdge(radialOffsetRef.current, radialVelocityRef.current, -0.82, 0.82);
 
     const liftAcceleration = liftForce - liftOffsetRef.current * 4.1 - liftVelocityRef.current * 1.75;
     liftVelocityRef.current += liftAcceleration * dt;
     liftOffsetRef.current += liftVelocityRef.current * dt;
-    liftOffsetRef.current = THREE.MathUtils.clamp(liftOffsetRef.current, -0.1, 0.62);
+    [liftOffsetRef.current, liftVelocityRef.current] = atEdge(liftOffsetRef.current, liftVelocityRef.current, -0.1, 0.62);
 
     const leanAcceleration = leanForce - leanOffsetRef.current * 3.8 - leanVelocityRef.current * 1.8;
     leanVelocityRef.current += leanAcceleration * dt;
     leanOffsetRef.current += leanVelocityRef.current * dt;
-    leanOffsetRef.current = THREE.MathUtils.clamp(leanOffsetRef.current, -0.36, 0.36);
+    [leanOffsetRef.current, leanVelocityRef.current] = atEdge(leanOffsetRef.current, leanVelocityRef.current, -0.36, 0.36);
 
     const position = positionRef.current
       .copy(basePosition)
@@ -288,6 +310,9 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
     lookMatrixRef.current.lookAt(position, lookTargetRef.current, upRef.current);
     targetQuaternionRef.current.setFromRotationMatrix(lookMatrixRef.current);
     groupRef.current.quaternion.copy(targetQuaternionRef.current);
+    // Rock with the waves: pitch with the push along the ring, roll with the push across it.
+    tiltRef.current.set(leanOffsetRef.current * 0.6, 0, THREE.MathUtils.clamp(-radialVelocityRef.current * 0.5, -0.3, 0.3));
+    groupRef.current.quaternion.multiply(tiltQuaternionRef.current.setFromEuler(tiltRef.current));
 
     groupRef.current.scale.setScalar(visualScale * (1.0 + liftOffsetRef.current * 0.16));
 

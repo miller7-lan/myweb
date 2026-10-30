@@ -65,7 +65,7 @@ const randomToken = () => {
 export async function onRequestPost({ request, env }: { request: Request; env: Env }) {
   try {
     const session = await requireAdminSessionWithCsrf(request, env);
-    await assertAdminActionAllowed(request, env, session.username, 'certificate-upload', 20, 60 * 60);
+    await assertAdminActionAllowed(request, env, session.username, 'certificate-upload', 60, 60 * 60);
     if (!env.SITE_ASSETS_R2) {
       return json({ ok: false, error: 'SITE_ASSETS_R2 未绑定' }, 503);
     }

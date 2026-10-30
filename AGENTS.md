@@ -197,3 +197,4 @@ Do not revert unrelated user changes. If the worktree has unrelated modification
 - `release-assets/` is used for committed downloadable assets that should not be bundled into Cloudflare Pages' publish directory.
 - `netlify.toml` intentionally keeps `/downloads/*` available and redirects other routes to Cloudflare Pages.
 - `src/components/Themes/SignalContent.tsx` uses `VITE_CONTACT_API_URL` or `/api/contact`; do not point public page code back to Netlify unless explicitly requested.
+- To test the admin backend (announcements, site content, certificate uploads) locally: put a test `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` (from `scripts/hash-admin-password.mjs`) and `ADMIN_SESSION_SECRET` in `.dev.vars` (gitignored, never deployed), run `npm run build`, then `wrangler pages dev dist --kv ANNOUNCEMENTS_KV --r2 SITE_ASSETS_R2`. KV and R2 are simulated locally under `.wrangler/`.
