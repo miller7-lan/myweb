@@ -26,6 +26,8 @@ const baseFlowVelocity = 0.108; // 20% higher than the ring's rotation speed (0.
 // against its limit), and how the ship is pulled back to its lane after a
 // push across it.
 const courseSettle = 0.6;
+// The fastest a wave from ahead can push the ship backwards, as a share of its cruising speed.
+const driftBack = 0.8;
 const laneSpring = 2.0;
 const laneDamping = 2.2;
 
@@ -228,11 +230,13 @@ export const RingShip: React.FC<RingShipProps> = ({ impactsRef, ringTimeRef, shi
       leanForce += influence * tangentDirection * 3.8;
     });
 
-    // Along the ring: a wave can slow the ship or carry it along, but never
-    // sails it backwards, and the ground it gains is folded into its course.
+    // Along the ring: a wave can carry the ship along, or (a meteor ahead of
+    // it) push it back a little, at most driftBack of its cruising speed, until
+    // the push dies away. Whatever ground it gains or loses is folded into its
+    // course.
     const forward = visible ? flowVelocityRef.current * motionScale * build.thrust : 0;
     const tangentAcceleration = tangentForce - tangentVelocityRef.current * 1.05;
-    tangentVelocityRef.current = THREE.MathUtils.clamp(tangentVelocityRef.current + tangentAcceleration * dt, -forward * 0.7, 0.38);
+    tangentVelocityRef.current = THREE.MathUtils.clamp(tangentVelocityRef.current + tangentAcceleration * dt, -forward * (1 + driftBack), 0.38);
     tangentOffsetRef.current += tangentVelocityRef.current * dt;
     const folded = tangentOffsetRef.current * (1 - Math.exp(-courseSettle * dt));
     angleRef.current += folded;
